@@ -1,10 +1,11 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+PROJECT_DIR = BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -18,8 +19,17 @@ class Settings(BaseSettings):
         ]
     )
 
+    postgres_host: str = "127.0.0.1"
+    postgres_port: int = Field(default=5432, ge=1, le=65535)
+    postgres_db: str = "skillforge"
+    postgres_user: str = "skillforge"
+    postgres_password: SecretStr
+
     model_config = SettingsConfigDict(
-        env_file=BACKEND_DIR / ".env",
+        env_file=(
+            PROJECT_DIR / ".env.postgres",
+            BACKEND_DIR / ".env",
+        ),
         env_file_encoding="utf-8",
         extra="forbid",
     )
