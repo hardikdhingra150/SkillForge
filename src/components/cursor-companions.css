@@ -1,0 +1,72 @@
+.cursor-companions {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  opacity: 1;
+  contain: layout style;
+}
+.cursor-companions, .cursor-companions * { pointer-events: none !important; }
+.cursor-companions .cursor-companion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 56px;
+  height: 56px;
+  opacity: 1;
+  will-change: transform;
+  filter: drop-shadow(0 0 1px rgba(230, 255, 248, .8)) drop-shadow(0 4px 5px rgba(0, 0, 0, .4));
+}
+.cursor-companion-byte { transform: translate3d(calc(100vw - 89px), calc(100vh - 125px), 0); }
+.cursor-companion-scout { transform: translate3d(calc(100vw - 154px), calc(100vh - 112px), 0); }
+.cursor-companions .cursor-companion > .pixel-sprite { width: 56px; height: 56px; animation: none; }
+.cursor-companions .cursor-companion-scout, .cursor-companions .cursor-companion-scout > .pixel-sprite { width: 48px; height: 48px; }
+.cursor-companions .companion-whisper {
+  position: absolute;
+  right: 24px;
+  bottom: 22px;
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  padding: 9px 12px;
+  color: var(--text, #edf7f2);
+  background: var(--surface, #18201e);
+  border: 1px solid var(--line, #3b5149);
+  border-radius: 10px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .12);
+  font: 10px/1.5 var(--mono, monospace);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.companion-whisper strong { display: block; font-size: 9px; letter-spacing: 1.1px; color: var(--lime, #a5dec7); margin-bottom: 2px; }
+.cursor-companions.is-perched .companion-whisper { opacity: 1; transform: translateY(0); }
+.companion-touch-hint { display: none; }
+.companion-spark {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 5px;
+  height: 5px;
+  background: #b7ffeb;
+  box-shadow: -6px 0 #b7ffeb, 0 -6px #b7ffeb;
+  opacity: 0;
+}
+.is-celebrating .companion-spark { animation: companion-cheer 600ms ease-out; }
+.is-celebrating .cursor-companion-scout .companion-spark { animation-delay: 60ms; background: #c2dfff; box-shadow: -6px 0 #c2dfff, 0 -6px #c2dfff; }
+.cursor-companions.is-paused .sprite-eye { animation-play-state: paused; }
+.cursor-companions.is-paused .companion-pointer-hint { display: none; }
+.cursor-companions.is-paused .companion-touch-hint { display: inline; }
+:root[data-theme="light"] .cursor-companions .cursor-companion { filter: drop-shadow(0 0 1px rgba(12, 40, 34, .8)) drop-shadow(0 3px 3px rgba(15, 51, 42, .18)); }
+:root[data-theme="light"] .companion-spark { background: #286e60; box-shadow: -6px 0 #286e60, 0 -6px #286e60; }
+@keyframes companion-cheer { 0% { opacity: 0; transform: translateY(4px) scale(.4) rotate(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px) scale(1) rotate(50deg); } }
+@media (pointer: coarse) {
+  .companion-pointer-hint { display: none; }
+  .companion-touch-hint { display: inline; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-companions *, .cursor-companions *::before, .cursor-companions *::after { animation: none !important; transition: none !important; }
+  .companion-pointer-hint { display: none; }
+  .companion-touch-hint { display: inline; }
+}

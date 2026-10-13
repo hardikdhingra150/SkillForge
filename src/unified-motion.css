@@ -1,0 +1,99 @@
+/* One atmosphere and one surface system across every route. */
+:root[data-scene=particle]{--glass-panel:rgba(24,35,40,.67);--glass-inset:rgba(12,20,23,.45);--glass-raised:rgba(41,61,65,.56);--glass-edge:rgba(184,214,205,.25);--motion-glint:rgba(205,250,228,.7)}
+:root[data-scene=particle][data-theme=light]{--glass-panel:rgba(255,254,249,.63);--glass-inset:rgba(237,241,233,.47);--glass-raised:rgba(211,225,214,.54);--glass-edge:rgba(80,115,97,.31);--motion-glint:rgba(36,104,71,.55)}
+/* A fixed shared video stays mounted when the route changes. No workspace dimming. */
+:root[data-scene=particle] .app .particle-film-bg{opacity:.54;filter:none;mix-blend-mode:normal;transform:translateZ(0);animation:none}
+:root[data-scene=particle][data-theme=light] .app .particle-film-bg{opacity:.13;filter:grayscale(1) invert(1);mix-blend-mode:multiply}
+:root[data-scene=particle] .app .background-vignette{background:linear-gradient(90deg,var(--bg),transparent 75%),linear-gradient(0deg,var(--bg),transparent 85%);opacity:.74}
+:root[data-scene=particle][data-theme=light] .app .background-vignette{background:linear-gradient(90deg,#eff2e9,transparent);opacity:.45}
+.app .topbar{backdrop-filter:none;background:rgba(12,20,23,.9)}[data-theme=light] .app .topbar{background:rgba(249,251,245,.87)}
+.app .landing-final :is(.hero-product,.forge-capability-strip,.forge-system,.learning-studio,.application-panel,.principle-grid article,.cinema-finale),
+.app.is-workspace .main-content :is(.panel,.metric-card,.skill-card,.guard-card,.hero,.habitat,.console-explain article,.privacy-panel){
+  background:var(--glass-panel);border-color:var(--glass-edge);backdrop-filter:none;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 28px rgba(0,0,0,.045);
+  position:relative;isolation:isolate;
+}
+.app .landing-final :is(.hero-code-window,.hero-result,.studio-code,.studio-outcome,.application-prompt,.application-demo),
+.app.is-workspace .main-content :is(.terminal-output,.task-input,.skill-scene,.search-field,.demo-result,.console-explain article){background:var(--glass-inset);border-color:var(--glass-edge);backdrop-filter:none}
+.app.is-workspace .main-content :is(.skill-scene,.skill-card.byte .skill-scene,.skill-card.patch .skill-scene,.skill-card.scout .skill-scene){background:var(--glass-inset)}
+.app .landing-final :is(.hero-product-top,.hero-product-bottom,.studio-toolbar,.application-tabs>button,.forge-capability-strip>div),
+.app.is-workspace .main-content :is(.panel-top,.skill-tags>span,.version,.filter-pills>button,.crew-avatar){background:var(--glass-raised);border-color:var(--glass-edge);color:var(--muted)}
+.app .landing-final :is(.application-tabs>button.selected,.studio-steps>button.selected),.app.is-workspace .main-content .filter-pills>button.selected{background:var(--lime);color:var(--ink);border-color:var(--lime)}
+.app .landing-final .studio-steps>button.selected>span{color:inherit}
+.app.is-workspace .main-content :is(.skill-title h3,.guard-card h2,.metric-value){color:var(--text)}
+.app.is-workspace .main-content :is(.scene-token,.skill-tagline,.skill-bottom,.skill-number){color:var(--muted)}
+.app.is-workspace .main-content .scene-token{background:var(--glass-raised);border-color:var(--glass-edge)}
+.app.is-workspace .main-content .skill-platform{background:var(--soft)}
+.app.is-workspace .main-content .skill-grid{opacity:.55}
+.app .core-heart,.app .hero-pill,.app .application-tabs>button{backdrop-filter:none}
+.app .modal-backdrop{backdrop-filter:none;background:rgba(5,12,15,.74)}
+.app .modal{background:var(--glass);border-color:var(--glass-edge)}
+/* Card frames stay stable; their light, icons, and contents remain alive. */
+.app .landing-final :is(.hero-product,.forge-system,.learning-studio,.application-panel,.principle-grid article,.cinema-finale)::before,
+.app.is-workspace .main-content :is(.panel,.metric-card,.skill-card,.guard-card,.hero)::before{
+  content:'';position:absolute;z-index:2;pointer-events:none;top:-1px;left:12%;width:25%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--motion-glint),transparent);opacity:.65;
+  animation:sf-edge-travel 6s calc(var(--i,0)*-.8s) ease-in-out infinite;
+}
+.app.is-workspace .main-content :is(.panel,.metric-card,.skill-card,.guard-card){transition:transform .25s cubic-bezier(.2,.7,.2,1),border-color .25s;animation:sf-surface-enter .5s calc(var(--i,0)*.045s) backwards}
+.app .landing-final :is(.forge-system,.learning-studio,.application-panel,.principle-grid article){transition:border-color .25s,transform .25s}
+@media(hover:hover){
+ .app.is-workspace .main-content :is(.skill-card:hover,.metric-card:hover,.guard-card:hover),.app .landing-final .principle-grid article:hover{transform:translateY(-3px);border-color:var(--lime)}
+ .app.is-workspace .main-content .skill-card:hover .skill-scene>.pixel-sprite{animation:sf-pet-celebrate 1.4s ease-in-out infinite}
+ .app button:not(.skill-card):hover>svg,.app .inline-action:hover>svg{transform:translate(2px,-2px) rotate(5deg)}
+ .motion-word:hover>span{transform:translateY(-5px) rotate(-3deg) scale(1.025);color:var(--lime)}
+}
+/* Transform/opacity animation only: no animated blur, shadows, or layout properties. */
+.app .kinetic-letter{will-change:auto;animation-name:sf-letter-arrive;animation-duration:.58s;filter:none}
+.app .letter-hover,.app .kinetic-letter:hover .letter-hover{filter:none;transition:transform .24s cubic-bezier(.2,.8,.2,1),color .2s}
+.app .letter-float{animation:sf-letter-wave 5.6s calc(var(--letter)*-.16s) ease-in-out infinite;will-change:auto}
+.app .kinetic-type.dotted .letter-float{animation-name:sf-dot-wave}
+.app .forge-headline .letter-float{animation-duration:5.6s}
+.app .pixel-sprite.voxel svg{filter:none}
+.app .mini-companion .pixel-sprite{filter:none}
+.app .tiny-crew .pixel-sprite,.app .crew-avatar .pixel-sprite,.app .activity-row>span:first-child>.pixel-sprite,.app .guard-card>.pixel-sprite,.app .skill-detail-intro>.pixel-sprite,.app .new-skill-sprite>.pixel-sprite{animation:sf-pet-float 3.8s calc(var(--i,0)*-.7s) ease-in-out infinite}
+.app .scene-spark,.app .skill-spark,.app .hero-kicker .pixel-spark,.app .crew-note>.pixel-spark,.app .closing-strip>.pixel-spark{animation:sf-spark-turn 5s ease-in-out infinite}
+.app .motion-button.on svg{animation:equalizer-wiggle 1.8s ease-in-out infinite}
+.app .status i,.app .window-lights i:nth-child(3){animation:status-pulse 2.6s ease-in-out infinite}
+.app .mini-companion.busy .pixel-sprite{animation:busy-spin 1.2s ease-in-out infinite}
+.app .lifecycle-step.active .step-node{animation:step-jump 1.1s ease-in-out infinite}
+.app .hero-product-flow>i:after,.app .system-connection i:after{left:0;width:28%;animation:sf-signal-travel 3s linear infinite}
+.app .habitat-grid:after{left:0;animation:sf-scan-travel 12s linear infinite}
+.app .cursor-companion{filter:none}.app .cursor-companion .pixel-sprite{animation:none!important}
+.app.is-workspace .main-content .page-heading h1{animation:none;filter:none;transform:none;opacity:1}
+.app.is-workspace .main-content .hero h1>.dot-text{animation:sf-surface-enter .6s both,sf-heading-drift 7s 1s ease-in-out infinite;filter:none}
+.app.is-workspace .main-content .hero h1>span:last-child{animation:none;filter:none}
+.motion-text{display:inline;white-space:normal}.motion-word{display:inline-block;white-space:pre;animation:sf-word-wave 6.4s calc(var(--word)*-.24s) ease-in-out infinite;transform-origin:50% 80%}.motion-word>span{display:inline-block;transition:transform .22s cubic-bezier(.2,.8,.2,1),color .2s}
+.app.is-workspace .main-content .page-heading h1 .motion-text{font:inherit;letter-spacing:inherit}
+.app.is-workspace .main-content :is(.console-heading h2,.crew-heading h2,.section-heading h2,.guard-card h2,.console-explain h3,.privacy-panel h2),
+.app .landing-final :is(.cinema-section h2,.system-unit h3,.studio-narrative h3,.application-copy h3,.principle-grid h3){animation:sf-heading-drift 7s ease-in-out infinite;transform-origin:0 60%}
+.app.is-workspace .main-content .metric-value{animation:sf-count-enter .55s both,sf-heading-drift 5.8s .6s ease-in-out infinite}
+.app .landing-final .unit-icon{animation:sf-icon-breathe 4.6s ease-in-out infinite}.app .landing-final .unit-icon.engine{animation-delay:-2s}
+.app :is(.metric-heading>svg,.guard-card>svg,.forge-capability-strip>div>svg,.result-stamp>svg,.principle-grid article>div>svg){animation:sf-icon-breathe 4.8s calc(var(--i,0)*-.6s) ease-in-out infinite;transform-origin:center}
+.app :is(.panel-sigil,.product-mark>svg,.studio-toolbar>span>svg){display:inline-block;animation:sf-sigil-tilt 5s ease-in-out infinite}
+.app .hero-product{animation:sf-surface-enter .65s both}.app .studio-narrative,.app .application-copy{animation:sf-surface-enter .35s both}
+.app .main-content{animation:sf-page-enter .35s ease-out!important}.app .log-line{animation:sf-log-enter .28s ease-out}.app .modal{animation:sf-surface-enter .22s ease-out}.app .toast{animation:sf-surface-enter .25s ease-out}
+.app button{transition:background-color .2s,color .2s,border-color .2s,transform .2s}.app button>svg{transition:transform .2s}.app button:active{scale:.985}.app .filter-pills>button,.app .application-tabs>button{transition:background-color .22s,color .22s,border-color .22s}
+@keyframes sf-letter-arrive{from{opacity:0;transform:translateY(18px) rotate(-5deg) scale(.96)}to{opacity:1;transform:none}}
+@keyframes sf-letter-wave{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-3px) rotate(.8deg)}65%{transform:translateY(1px) rotate(-.5deg)}}
+@keyframes sf-dot-wave{0%,100%{transform:translateY(0)}35%{transform:translateY(-4px) rotate(-1.5deg)}70%{transform:translateY(1px) rotate(.5deg)}}
+@keyframes sf-word-wave{0%,100%{transform:translateY(0) rotate(0)}28%{transform:translateY(-2px) rotate(-.45deg)}62%{transform:translateY(.7px) rotate(.25deg)}}
+@keyframes sf-heading-drift{0%,100%{transform:translateY(0)}45%{transform:translateY(-2px)}75%{transform:translateY(.5px)}}
+@keyframes sf-icon-breathe{0%,100%{transform:translateY(0) rotate(0)}35%{transform:translateY(-3px) rotate(6deg)}70%{transform:translateY(1px) rotate(-3deg)}}
+@keyframes sf-sigil-tilt{0%,100%{transform:rotate(0)}30%{transform:rotate(-7deg) translateY(-1px)}65%{transform:rotate(5deg)}}
+@keyframes sf-edge-travel{0%,100%{transform:translateX(-20%);opacity:.25}50%{transform:translateX(195%);opacity:.8}}
+@keyframes sf-signal-travel{from{transform:translateX(-110%)}to{transform:translateX(470%)}}
+@keyframes sf-scan-travel{from{transform:translateX(-120%)}to{transform:translateX(420%)}}
+@keyframes sf-pet-float{0%,100%{transform:translateY(0) rotate(-1deg)}45%{transform:translateY(-5px) rotate(2deg)}70%{transform:translateY(-2px)}}
+@keyframes sf-pet-celebrate{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-9px) rotate(-5deg)}65%{transform:translateY(-4px) rotate(4deg)}}
+@keyframes sf-spark-turn{0%,100%{transform:scale(.85) rotate(0);opacity:.5}50%{transform:scale(1.05) rotate(90deg);opacity:1}}
+@keyframes sf-surface-enter{from{opacity:.35;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sf-page-enter{from{opacity:.65;translate:0 6px}to{opacity:1;translate:0 0}}
+@keyframes sf-count-enter{from{opacity:.3;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sf-log-enter{from{opacity:.3;transform:translateX(-5px)}to{opacity:1;transform:translateX(0)}}
+/* Offscreen work is paused, never hidden. Only visible sections animate. */
+.app .motion-sleep,.app .motion-sleep *,.app .motion-sleep::before,.app .motion-sleep::after,.app .motion-sleep *::before,.app .motion-sleep *::after,
+.app.motion-document-hidden *,.app.motion-document-hidden *::before,.app.motion-document-hidden *::after{animation-play-state:paused!important}
+.app.motion-paused *,.app.motion-paused *::before,.app.motion-paused *::after{animation-play-state:paused!important}
+.app.motion-paused :is(.main-content,.hero-product,.metric-value,.kinetic-letter,.studio-narrative,.application-copy,.modal,.toast){animation:none!important;opacity:1!important;filter:none!important;translate:none;transform:none}
+@media(prefers-reduced-motion:reduce){.app *,.app *::before,.app *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.app :is(.kinetic-letter,.hero-product,.main-content,.metric-value,.studio-narrative,.application-copy){opacity:1!important;transform:none!important;translate:none!important}}

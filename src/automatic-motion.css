@@ -1,0 +1,226 @@
+/* Visible, automatic motion. Layout frames and click targets stay in place. */
+.app .motion-text > .motion-word {
+  display: inline-block;
+  transform-origin: 50% 90%;
+  animation: sf-auto-word 4.7s calc(var(--word, 0) * -.38s) ease-in-out infinite;
+}
+
+/* The old last-child rule belongs to the container, not its animated words. */
+.app.is-workspace .main-content .hero h1 > span.motion-text:last-child {
+  animation: none;
+  transform: none;
+  filter: none;
+  white-space: normal;
+}
+.app.is-workspace .main-content .hero h1 > .motion-text > .motion-word {
+  animation-name: sf-auto-hero-word;
+  animation-duration: 4.8s;
+}
+.app.is-workspace .main-content .hero h1 > .dot-text {
+  animation: sf-auto-dotted-title 4.8s -.8s ease-in-out infinite;
+  transform-origin: 30% 80%;
+  filter: none;
+}
+.app.is-workspace .main-content .page-heading h1 .motion-word {
+  animation-duration: 4.9s;
+}
+.app.is-workspace .main-content .skill-title h3 .motion-word {
+  animation: sf-auto-word 5.5s calc(var(--word, 0) * -.5s - var(--i, 0) * .8s) ease-in-out infinite;
+}
+
+/* Each letter has one continuous transform layer, with no animated blur. */
+.app .kinetic-type .kinetic-letter .letter-float {
+  animation: sf-auto-letter 4.6s calc(var(--letter, 0) * -.17s) ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+.app .kinetic-type.dotted .kinetic-letter .letter-float {
+  animation-name: sf-auto-dot-letter;
+  animation-duration: 4.9s;
+}
+.app .forge-headline .kinetic-letter .letter-float {
+  animation-duration: 4.8s;
+}
+
+/* Secondary headings breathe as complete lines; paragraphs remain still. */
+.app.is-workspace .main-content :is(.console-heading h2, .crew-heading h2, .section-heading h2, .guard-card h2, .console-explain h3, .privacy-panel h2),
+.app .landing-final :is(.cinema-section h2, .system-unit h3, .studio-narrative h3, .application-copy h3, .principle-grid h3) {
+  animation: sf-auto-heading 5.8s -.7s ease-in-out infinite;
+  transform-origin: 15% 85%;
+}
+.app.is-workspace .main-content .metric-value {
+  animation: sf-auto-number 4.8s calc(var(--i, 0) * -.85s) ease-in-out infinite;
+  transform-origin: 25% 80%;
+}
+.app .landing-final .application-result strong {
+  display: inline-block;
+  animation: sf-auto-number 5.2s -1.2s ease-in-out infinite;
+  transform-origin: 20% 80%;
+}
+
+/* Pet silhouettes move inside their stable holders; cursor pets use JS only. */
+.app .forge-title-pet > .pixel-sprite,
+.app .result-art > .pixel-sprite,
+.app .studio-outcome > .pixel-sprite,
+.app .application-result > .pixel-sprite,
+.app .finale-pet > .pixel-sprite,
+.app .core-node > .pixel-sprite,
+.app .tiny-crew > .pixel-sprite,
+.app .crew-avatar > .pixel-sprite,
+.app .new-skill-sprite > .pixel-sprite,
+.app .skill-detail-intro > .pixel-sprite {
+  animation: sf-auto-companion 3.8s calc(var(--i, 0) * -.7s) ease-in-out infinite;
+  transform-origin: 50% 80%;
+}
+.app.is-workspace .main-content .skill-card .skill-scene > .pixel-sprite {
+  animation: sf-auto-companion 4.1s calc(var(--i, 0) * -.85s) ease-in-out infinite;
+}
+.app .tiny-crew > .pixel-sprite:nth-child(2),
+.app .core-n2 > .pixel-sprite { animation-delay: -1.4s; }
+.app .tiny-crew > .pixel-sprite:nth-child(3),
+.app .core-n3 > .pixel-sprite { animation-delay: -2.7s; }
+.app .mini-companion:not(.busy) > .pixel-sprite {
+  animation: sf-auto-companion 3.9s -.9s ease-in-out infinite;
+}
+.app .activity-row > span:first-child > .pixel-sprite {
+  animation: sf-auto-small-companion 4.1s -.9s ease-in-out infinite;
+}
+.app .cursor-companion,
+.app .cursor-companion > .pixel-sprite { animation: none !important; }
+
+/* A moving symbol is visible without moving the surrounding button or card. */
+.app :is(.metric-heading > svg, .guard-card > svg, .forge-capability-strip > div > svg, .result-stamp > svg, .principle-grid article > div > svg, .unit-icon > svg, .system-header > svg, .system-memory > svg, .outcome-icon > svg) {
+  animation: sf-auto-symbol 4.4s calc(var(--i, 0) * -.8s) ease-in-out infinite;
+  transform-origin: center;
+}
+.app .landing-final .unit-icon { animation: none; }
+.app :is(.panel-sigil, .product-mark > svg, .studio-toolbar > span > svg) {
+  display: inline-block;
+  animation: sf-auto-sigil 4s -1.3s ease-in-out infinite;
+}
+.app .main-content :is(.scene-token.token-left, .scene-token.token-right) {
+  animation: sf-auto-token 5s calc(var(--i, 0) * -.5s) ease-in-out infinite;
+}
+.app .main-content .scene-token.token-right { animation-delay: -2.5s; }
+.app :is(.scene-spark, .skill-spark, .hero-kicker > .pixel-spark, .closing-strip > .pixel-spark) {
+  animation: sf-auto-spark 4.3s -1s ease-in-out infinite;
+}
+.app .mini-bars > i {
+  animation: sf-auto-bar 3.5s calc(var(--i, 0) * -.23s) ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+/* The glint travels along fixed card edges. No animated dimensions or offsets. */
+.app .landing-final :is(.hero-product, .forge-system, .learning-studio, .application-panel, .principle-grid article, .cinema-finale)::before,
+.app.is-workspace .main-content :is(.panel, .metric-card, .skill-card, .guard-card, .hero)::before {
+  height: 2px;
+  animation: sf-auto-edge 4.8s calc(var(--i, 0) * -.75s) ease-in-out infinite;
+}
+.app .hero-product-flow > i::after,
+.app .system-connection i::after {
+  animation-duration: 2.4s;
+}
+
+@keyframes sf-auto-word {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  24% { transform: translateY(-7px) rotate(-1.2deg) scale(1.025); }
+  49% { transform: translateY(-3px) rotate(.65deg) scale(1.01); }
+  76% { transform: translateY(1px) rotate(.8deg) scale(1); }
+}
+@keyframes sf-auto-hero-word {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  25% { transform: translateY(-9px) rotate(-1.4deg) scale(1.025); }
+  51% { transform: translateY(-4px) rotate(.8deg) scale(1.01); }
+  76% { transform: translateY(1px) rotate(.7deg) scale(1); }
+}
+@keyframes sf-auto-dotted-title {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  30% { transform: translateY(-10px) rotate(-.85deg) scale(1.012); }
+  63% { transform: translateY(-3px) rotate(.65deg) scale(1); }
+  82% { transform: translateY(1px) rotate(.3deg) scale(1); }
+}
+@keyframes sf-auto-letter {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  27% { transform: translateY(-9px) rotate(-2deg) scale(1.035); }
+  55% { transform: translateY(-3px) rotate(1.4deg) scale(1.01); }
+  78% { transform: translateY(1px) rotate(.8deg) scale(1); }
+}
+@keyframes sf-auto-dot-letter {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  29% { transform: translateY(-10px) rotate(-2deg) scale(1.035); }
+  60% { transform: translateY(-3px) rotate(1.3deg) scale(1.01); }
+  80% { transform: translateY(1px) rotate(.5deg) scale(1); }
+}
+@keyframes sf-auto-heading {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  32% { transform: translateY(-5px) rotate(-.35deg); }
+  66% { transform: translateY(-2px) rotate(.25deg); }
+}
+@keyframes sf-auto-number {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  27% { transform: translateY(-6px) rotate(-1deg) scale(1.025); }
+  60% { transform: translateY(-2px) rotate(.6deg) scale(1.01); }
+}
+@keyframes sf-auto-companion {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  30% { transform: translateY(-9px) rotate(3deg); }
+  62% { transform: translateY(-4px) rotate(-3deg); }
+  82% { transform: translateY(1px) rotate(1deg); }
+}
+@keyframes sf-auto-small-companion {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  38% { transform: translateY(-4px) rotate(4deg); }
+  70% { transform: translateY(-1px) rotate(-2deg); }
+}
+@keyframes sf-auto-symbol {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  28% { transform: translateY(-5px) rotate(-7deg) scale(1.08); }
+  62% { transform: translateY(-2px) rotate(5deg) scale(1.03); }
+}
+@keyframes sf-auto-sigil {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-3px) rotate(-10deg); }
+  66% { transform: translateY(-1px) rotate(7deg); }
+}
+@keyframes sf-auto-token {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  45% { transform: translateY(-7px) rotate(4deg); }
+  76% { transform: translateY(-2px) rotate(-1deg); }
+}
+@keyframes sf-auto-spark {
+  0%, 100% { transform: translateY(0) rotate(0) scale(.85); opacity: .65; }
+  45% { transform: translateY(-6px) rotate(90deg) scale(1.15); opacity: 1; }
+  75% { transform: translateY(-2px) rotate(120deg) scale(.95); opacity: .8; }
+}
+@keyframes sf-auto-bar {
+  0%, 100% { transform: scaleY(.62); opacity: .65; }
+  45% { transform: scaleY(1); opacity: 1; }
+  72% { transform: scaleY(.8); opacity: .85; }
+}
+@keyframes sf-auto-edge {
+  0%, 100% { transform: translateX(-25%); opacity: .35; }
+  48% { transform: translateX(195%); opacity: .95; }
+  70% { transform: translateX(155%); opacity: .65; }
+}
+
+/* Offscreen and hidden-page suspension applies to all new layers too. */
+.app .motion-sleep,
+.app .motion-sleep *,
+.app .motion-sleep::before,
+.app .motion-sleep::after,
+.app .motion-sleep *::before,
+.app .motion-sleep *::after,
+.app.motion-document-hidden *,
+.app.motion-document-hidden *::before,
+.app.motion-document-hidden *::after,
+.app.motion-paused *,
+.app.motion-paused *::before,
+.app.motion-paused *::after {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app *, .app *::before, .app *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

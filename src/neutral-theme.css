@@ -1,0 +1,51 @@
+/* The particle reference is graphite and silver. Keep every route achromatic. */
+:root[data-scene=particle] {
+  --bg:#181818; --surface:#252525; --surface-high:#323232; --line:#525252;
+  --text:#f2f2f2; --muted:#c3c3c3; --faint:#a6a6a6; --lime:#e2e2e2;
+  --lavender:#c3c3c3; --peach:#bdbdbd; --blue:#d1d1d1; --ink:#202020;
+  --glass:rgba(35,35,35,.97); --soft:rgba(235,235,235,.07);
+  --glass-panel:rgba(35,35,35,.62); --glass-inset:rgba(20,20,20,.36);
+  --glass-raised:rgba(77,77,77,.35); --glass-edge:rgba(215,215,215,.24);
+  --motion-glint:rgba(250,250,250,.9);
+}
+:root[data-scene=particle][data-theme=light] {
+  --bg:#e9e9e9; --surface:#f5f5f5; --surface-high:#dedede; --line:#b1b1b1;
+  --text:#252525; --muted:#505050; --faint:#656565; --lime:#363636;
+  --lavender:#555; --peach:#626262; --blue:#4b4b4b; --ink:#fafafa;
+  --glass:rgba(248,248,248,.97); --soft:rgba(30,30,30,.055);
+  --glass-panel:rgba(249,249,249,.62); --glass-inset:rgba(230,230,230,.37);
+  --glass-raised:rgba(185,185,185,.26); --glass-edge:rgba(75,75,75,.28);
+  --motion-glint:rgba(40,40,40,.68);
+}
+:root[data-scene=particle] body { background:var(--bg); }
+:root[data-scene=particle] .app .living-background {
+  background:var(--bg);
+}
+:root[data-scene=particle] .app .particle-film-bg {
+  opacity:.86; filter:grayscale(1); mix-blend-mode:normal;
+}
+:root[data-scene=particle] .app .background-vignette {
+  background:linear-gradient(90deg,rgba(24,24,24,.75),transparent 72%),linear-gradient(0deg,rgba(24,24,24,.65),transparent 70%);
+  opacity:.5;
+}
+:root[data-scene=particle][data-theme=light] .app .particle-film-bg {
+  opacity:.22; filter:grayscale(1) invert(1); mix-blend-mode:multiply;
+}
+:root[data-scene=particle][data-theme=light] .app .background-vignette {
+  background:linear-gradient(90deg,rgba(233,233,233,.7),transparent 75%);
+  opacity:.4;
+}
+:root[data-scene=particle] .app .topbar {background:rgba(24,24,24,.91);border-color:var(--glass-edge)}
+:root[data-scene=particle][data-theme=light] .app .topbar {background:rgba(241,241,241,.91)}
+.app .forge-hero-overline i {box-shadow:0 0 12px rgba(255,255,255,.3)}
+.app .hero-product {box-shadow:0 25px 65px rgba(0,0,0,.12)}
+.app .landing-final .code-line.added {background:var(--soft);color:var(--text)}
+.app .landing-final .code-line.removed {background:var(--soft);color:var(--muted)}
+.app .landing-final .forge-headline,.app .landing-final .kinetic-type.dotted {color:var(--text)}
+.app .metric-card::after {background:var(--soft)}
+.app .tiny-block {box-shadow:2px 2px 0 var(--line)}
+.app .status i {box-shadow:0 0 0 3px var(--soft)}
+.app .main-content .crew-note {background:var(--glass-raised)}
+.app .main-content .workspace-line>button {background:var(--glass-panel)}
+.app .main-content .task-key {background:var(--glass-inset)}
+.app .modal-backdrop {background:rgba(10,10,10,.76)}

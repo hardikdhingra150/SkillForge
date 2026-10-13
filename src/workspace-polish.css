@@ -1,0 +1,443 @@
+/* Workspace surfaces stay still. Motion belongs to the crew and the signals. */
+.is-workspace .main-content {
+  width: 100%;
+  max-width: 1456px;
+  min-width: 0;
+  padding: 0 48px;
+  animation: none;
+}
+.is-workspace .main-content :is(section, article, .work-grid > div, .hero-copy, .skill-content, .crew-member > div) { min-width: 0; }
+.is-workspace .main-content :is(.motion-panel, .panel, .metric-card, .skill-card, .guard-card) {
+  animation: none;
+  transform: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .06);
+  backdrop-filter: none;
+}
+.is-workspace .main-content :is(.skill-card:hover, .activity-row:hover, .crew-member:hover) { transform: none; }
+.is-workspace .main-content .skill-card:hover { border-color: var(--lime); box-shadow: 0 0 0 1px var(--lime); }
+.is-workspace .main-content button:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
+.is-workspace .main-content .button { min-height: 45px; font-size: 13px; padding: 12px 18px; border-radius: 10px; gap: 12px; }
+.is-workspace .main-content .button.lime { color: var(--ink); background: var(--lime); }
+.is-workspace .main-content .button.outline { background: var(--surface); border: 1px solid var(--line); }
+.is-workspace .main-content .quiet-button { font-size: 13px; min-height: 44px; }
+.is-workspace .main-content :is(.eyebrow, .section-meta, .workspace-line) { color: var(--muted); font-size: 10px; line-height: 1.6; letter-spacing: .7px; }
+.is-workspace .main-content .status { color: var(--lime); font-size: 9px; line-height: 1.5; letter-spacing: .3px; }
+.is-workspace .main-content .workspace-line { padding: 26px 0 30px; gap: 20px; }
+.is-workspace .main-content .workspace-line > div { flex-wrap: wrap; row-gap: 4px; }
+.is-workspace .main-content .workspace-line > div > span:last-child { color: var(--muted); font-size: 10px; }
+.is-workspace .main-content .workspace-line > button { min-height: 36px; border: 1px solid var(--line); background: var(--surface); padding: 8px 11px; border-radius: 30px; flex-shrink: 0; }
+.is-workspace .main-content .workspace-divider { color: var(--faint); }
+
+/* The workbench starts with one calm, legible introduction. */
+.is-workspace .main-content .hero {
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, .85fr);
+  gap: 25px;
+  margin: 0 0 36px;
+  padding: 32px 36px;
+  background: linear-gradient(110deg, var(--surface), var(--surface-high));
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  overflow: hidden;
+}
+.is-workspace .main-content .hero-copy { padding: 10px 0; }
+.is-workspace .main-content .hero-kicker { font: 10px/1.6 var(--mono); color: var(--muted); letter-spacing: .8px; margin-bottom: 24px; }
+.is-workspace .main-content .hero h1 { line-height: 1.14; margin-bottom: 20px; letter-spacing: -1px; }
+.is-workspace .main-content .hero h1 > .dot-text { color: var(--text); width: 100%; max-width: 520px; margin: 0 0 20px; animation: workspace-type-reveal .65s ease-out both; }
+.is-workspace .main-content .hero h1 > span:last-child { font: 400 clamp(32px, 3.3vw, 49px)/1.1 var(--pixel); white-space: normal; animation: workspace-type-reveal .7s .1s ease-out both; }
+.is-workspace .main-content .hero-copy > p { color: var(--muted); font-size: 14px; line-height: 1.85; max-width: 540px; margin-bottom: 25px; }
+.is-workspace .main-content .hero-copy > p strong { color: var(--text); font-weight: 500; }
+.is-workspace .main-content .hero-copy .desktop-break { display: none; }
+.is-workspace .main-content .hero-actions { flex-wrap: wrap; gap: 12px 20px; }
+.is-workspace .main-content .hero-bottom { margin-top: 25px; gap: 11px; }
+.is-workspace .main-content .hero-bottom > span { font-size: 8px; line-height: 1.6; letter-spacing: .45px; }
+.is-workspace .main-content .hero-bottom .hero-arrow { font-size: 30px; color: var(--muted); margin-left: 0; }
+.is-workspace .main-content .hero > .evolving-core { width: 100%; max-width: 375px; justify-self: center; }
+.is-workspace .main-content .core-caption { font-size: 8px; }
+.is-workspace .main-content .core-coordinate { font-size: 7px; }
+.is-workspace .main-content .section-meta { gap: 18px; margin-bottom: 14px; }
+.is-workspace .main-content .section-meta > span:first-child { color: var(--text); }
+.is-workspace .main-content .section-meta > span:last-child { font-size: 9px; color: var(--muted); letter-spacing: .4px; }
+
+/* Consistent metrics, with movement confined to their little charts. */
+.is-workspace .main-content .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
+.is-workspace .main-content .metric-card { padding: 22px 21px 18px; }
+.is-workspace .main-content .metric-card::after { opacity: .45; }
+.is-workspace .main-content .metric-heading { color: var(--muted); font-size: 12px; line-height: 1.4; gap: 10px; min-height: 34px; align-items: flex-start; }
+.is-workspace .main-content .metric-heading svg { color: var(--lime); width: 16px; height: 16px; margin-top: 1px; }
+.is-workspace .main-content .metric-main { margin: 13px 0 20px; gap: 8px; }
+.is-workspace .main-content .metric-value { font: 47px/.95 var(--pixel); color: var(--text); animation: workspace-number-reveal .45s ease-out both; }
+.is-workspace .main-content .metric-value small { color: var(--muted); font-size: 23px; }
+.is-workspace .main-content .metric-bottom { color: var(--muted); border-color: var(--line); font-size: 8px; letter-spacing: .1px; line-height: 1.6; padding-top: 13px; gap: 8px; }
+.is-workspace .main-content .metric-bottom > span:last-child { color: var(--lime); font-size: 15px; }
+.is-workspace .main-content .mini-bars { height: 31px; gap: 3px; }
+.is-workspace .main-content .mini-bars i { width: 3px; opacity: .65; }
+
+/* Give the running task and the team their own stable, readable surfaces. */
+.is-workspace .main-content .work-grid { grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 24px; margin-bottom: 48px; align-items: stretch; }
+.is-workspace .main-content .panel-top { min-height: 51px; height: auto; padding: 15px 22px; font-size: 10px; line-height: 1.5; gap: 10px; background: var(--surface-high); color: var(--muted); border-color: var(--line); }
+.is-workspace .main-content .panel-top-right { min-width: 0; }
+.is-workspace .main-content .panel-top .status { font-size: 8px; }
+.is-workspace .main-content .panel-sigil { color: var(--lime); }
+.is-workspace .main-content .console-heading { padding: 25px 24px 20px; gap: 20px; }
+.is-workspace .main-content .console-heading .eyebrow { font-size: 9px; margin-bottom: 10px; }
+.is-workspace .main-content .console-heading h2 { font: 34px/1.12 var(--pixel); color: var(--text); }
+.is-workspace .main-content .console-heading h2 span { color: var(--lime); }
+.is-workspace .main-content .mini-companion .pixel-sprite { width: 47px; height: 47px; }
+.is-workspace .main-content .task-input { margin: 0 24px; padding: 14px; gap: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-high); }
+.is-workspace .main-content .task-input p { font-size: 13px; line-height: 1.65; color: var(--text); }
+.is-workspace .main-content .task-key { font-size: 14px; color: var(--muted); background: var(--surface); }
+.is-workspace .main-content .file-chip { margin: 12px 24px; font-size: 10px; gap: 8px; line-height: 1.7; flex-wrap: wrap; color: var(--muted); }
+.is-workspace .main-content .file-chip > span:nth-last-child(2) { font-size: 9px; color: var(--muted); }
+.is-workspace .main-content .file-chip .demo-text { font-size: 8px; }
+.is-workspace .main-content .lifecycle { margin: 25px 24px; gap: 3px; }
+.is-workspace .main-content .lifecycle-step { flex: 1; width: auto; min-width: 0; gap: 9px; }
+.is-workspace .main-content .lifecycle-step > span { font: 8px/1.5 var(--mono); color: var(--muted); }
+.is-workspace .main-content .step-node { width: 29px; height: 29px; font-size: 14px; background: var(--surface-high); border-color: var(--line); color: var(--muted); }
+.is-workspace .main-content .lifecycle::before { top: 14px; left: 7%; right: 7%; background: var(--line); }
+.is-workspace .main-content .lifecycle-step.done .step-node { color: var(--ink); background: var(--lime); border-color: var(--lime); }
+.is-workspace .main-content .lifecycle-step.active .step-node { background: var(--lime); color: var(--ink); }
+.is-workspace .main-content .lifecycle-step:is(.done, .active) > span { color: var(--text); }
+.is-workspace .main-content .terminal-output { height: 235px; margin: 0 24px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); scrollbar-color: var(--line) var(--bg); }
+.is-workspace .main-content .terminal-idle { gap: 15px; }
+.is-workspace .main-content .terminal-symbol { font-size: 34px; color: var(--faint); }
+.is-workspace .main-content .terminal-idle p { font-size: 12px; color: var(--text); line-height: 1.8; }
+.is-workspace .main-content .terminal-idle > div > span { font-size: 12px; line-height: 1.8; color: var(--muted); }
+.is-workspace .main-content .log-line { display: grid; grid-template-columns: 48px 52px minmax(0, 1fr); gap: 8px; font-size: 10px; line-height: 1.9; margin-bottom: 10px; overflow-wrap: anywhere; }
+.is-workspace .main-content .log-time { font-size: 8px; color: var(--faint); }
+.is-workspace .main-content .log-tag { font-size: 7px; line-height: 1.6; min-width: 0; align-self: start; padding: 3px; text-align: center; }
+.is-workspace .main-content .log-line.error { color: #f3a398; }
+.is-workspace .main-content .console-footer { padding: 22px 24px; gap: 13px; flex-wrap: wrap; }
+.is-workspace .main-content .console-footer > span { font-size: 8px; letter-spacing: .1px; line-height: 1.8; color: var(--muted); }
+.is-workspace .main-content .console-footer .button { font-size: 12px; margin-left: auto; }
+.is-workspace .main-content .demo-result { font-size: 11px; padding: 15px; border-color: var(--line); background: var(--surface); }
+.is-workspace .main-content .demo-result > div { font-size: 10px; }
+.is-workspace .main-content .demo-result em { color: var(--text); }
+.is-workspace .main-content .crew-panel { display: flex; flex-direction: column; }
+.is-workspace .main-content .crew-count { font-size: 9px; }
+.is-workspace .main-content .crew-heading { padding: 27px 24px 15px; display: block; }
+.is-workspace .main-content .crew-heading h2 { font: 35px/1.08 var(--pixel); margin: 0 0 12px; }
+.is-workspace .main-content .crew-heading p { max-width: none; font-size: 13px; line-height: 1.7; }
+.is-workspace .main-content .crew-list { padding: 0 18px 16px; }
+.is-workspace .main-content .crew-member { padding: 17px 6px; gap: 13px; border-color: var(--line); }
+.is-workspace .main-content .crew-member:hover { background: var(--soft); }
+.is-workspace .main-content .crew-avatar { width: 48px; height: 48px; border-color: var(--line); background: var(--surface-high); }
+.is-workspace .main-content .crew-avatar .pixel-sprite { width: 42px; height: 42px; }
+.is-workspace .main-content .crew-member h3 { font-size: 25px; margin-bottom: 6px; flex-wrap: wrap; gap: 4px 9px; }
+.is-workspace .main-content .crew-member h3 > span { font-size: 8px; color: var(--muted); letter-spacing: .2px; }
+.is-workspace .main-content .crew-member p { font-size: 12px; line-height: 1.65; color: var(--muted); }
+.is-workspace .main-content .crew-note { padding: 19px 24px; background: var(--surface-high); border-color: var(--line); }
+.is-workspace .main-content .crew-note > span { font-size: 8px; line-height: 1.9; letter-spacing: .4px; color: var(--muted); }
+.is-workspace .main-content .crew-note .crew-heart { font-size: 26px; color: var(--lime); }
+
+/* A card should read as an object: clear artwork, then useful information. */
+.is-workspace .main-content .section-heading { align-items: end; gap: 24px; margin-bottom: 23px; }
+.is-workspace .main-content .section-heading .eyebrow { font-size: 10px; line-height: 1.6; margin-bottom: 12px; }
+.is-workspace .main-content .section-heading h2 { font: 38px/1.1 var(--pixel); }
+.is-workspace .main-content .section-heading h2 > span { color: var(--muted); }
+.is-workspace .main-content .skills-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; align-items: stretch; }
+.is-workspace .main-content .skill-card { padding: 10px; gap: 0; display: flex; flex-direction: column; border-radius: 21px; }
+.is-workspace .main-content .skill-scene { min-height: 190px; height: 190px; width: 100%; border-radius: 13px; border-color: var(--line); background: var(--surface-high); }
+.is-workspace .main-content .skill-grid { opacity: .35; }
+.is-workspace .main-content .skill-scene > .pixel-sprite { height: 98px; width: 98px; }
+.is-workspace .main-content .skill-number { font-size: 8px; line-height: 1.5; left: 14px; top: 13px; color: var(--muted); letter-spacing: .4px; }
+.is-workspace .main-content .skill-hover-label { font-size: 8px; line-height: 1.5; right: 14px; top: 13px; color: var(--muted); letter-spacing: .3px; }
+.is-workspace .main-content .skill-tagline { font-size: 8px; line-height: 1.6; bottom: 13px; color: var(--muted); letter-spacing: .4px; padding: 0 15px; }
+.is-workspace .main-content .skill-platform { top: 132px; left: calc(50% - 60px); width: 120px; }
+.is-workspace .main-content .scene-token { color: var(--text); background: var(--surface); border-color: var(--line); }
+.is-workspace .main-content .skill-content { flex: 1; display: flex; flex-direction: column; padding: 22px 13px 10px; }
+.is-workspace .main-content .skill-title { gap: 10px; align-items: start; }
+.is-workspace .main-content .skill-title h3 { font: 31px/1.08 var(--pixel); letter-spacing: -.2px; overflow-wrap: anywhere; }
+.is-workspace .main-content .version { font-size: 9px; line-height: 1.5; padding: 3px 7px; margin-top: 3px; background: var(--surface-high); border-color: var(--line); color: var(--text); white-space: nowrap; }
+.is-workspace .main-content .skill-content > p { color: var(--muted); font-size: 13px; line-height: 1.8; margin: 6px 0 20px; min-height: 68px; }
+.is-workspace .main-content .skill-tags { gap: 6px; margin-top: auto; margin-bottom: 20px; }
+.is-workspace .main-content .skill-tags > span { font-size: 9px; line-height: 1.5; padding: 5px 7px; color: var(--muted); border-color: var(--line); background: var(--surface-high); border-radius: 5px; }
+.is-workspace .main-content .skill-bottom { padding-top: 15px; padding-bottom: 6px; gap: 10px; }
+.is-workspace .main-content .skill-bottom code { min-width: 0; font-size: 9px; overflow-wrap: anywhere; line-height: 1.6; color: var(--muted); }
+.is-workspace .main-content .skill-bottom > span { font-size: 10px; color: var(--text); }
+
+/* Readable history retains its columns rather than hiding information. */
+.is-workspace .main-content .recent-panel { margin-top: 30px; }
+.is-workspace .main-content .text-link { font-size: 11px; min-height: 28px; }
+.is-workspace .main-content .activity-table { overflow-x: auto; padding: 0 24px 10px; scrollbar-width: thin; scrollbar-color: var(--line) var(--surface); }
+.is-workspace .main-content .activity-row { grid-template-columns: minmax(0, 2fr) minmax(98px, .65fr) minmax(94px, .65fr) minmax(78px, .4fr); gap: 18px; padding: 21px 0; border-color: var(--line); min-width: 590px; }
+.is-workspace .main-content .activity-row > span:first-child { font-size: 14px; line-height: 1.4; gap: 15px; }
+.is-workspace .main-content .activity-row > span:first-child > .pixel-sprite { height: 34px; width: 34px; }
+.is-workspace .main-content .activity-row small { font-size: 10px; line-height: 1.7; margin-top: 6px; color: var(--muted); }
+.is-workspace .main-content .activity-labels, .is-workspace .main-content .activity-labels > span:first-child { font: 10px/1.5 var(--mono); letter-spacing: .5px; color: var(--muted); padding-top: 20px; padding-bottom: 16px; }
+.is-workspace .main-content .activity-labels > span:last-child { display: block; }
+.is-workspace .main-content .run-when { font-size: 11px; line-height: 1.5; color: var(--muted); }
+.is-workspace .main-content .run-duration { display: flex; font-size: 11px; color: var(--text); }
+.is-workspace .main-content .result-pill { font-size: 10px; padding: 7px 9px; gap: 6px; border-color: var(--line); color: var(--lime); background: var(--surface-high); }
+.is-workspace .main-content .result-pill.repaired { color: var(--peach); }
+.is-workspace .main-content .page-heading { margin: 16px 0 32px; gap: 25px; }
+.is-workspace .main-content .page-heading .eyebrow { font-size: 10px; letter-spacing: .7px; margin-bottom: 15px; }
+.is-workspace .main-content .page-heading h1 { font: 52px/1.06 var(--pixel); letter-spacing: -1px; margin-bottom: 16px; animation: workspace-type-reveal .6s ease-out both; }
+.is-workspace .main-content .page-heading p:last-child { font-size: 14px; line-height: 1.8; max-width: 690px; }
+.is-workspace .main-content .library-tools { gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+.is-workspace .main-content .search-field { min-height: 48px; max-width: 470px; padding: 13px 16px; background: var(--surface); border-color: var(--line); box-shadow: none; border-radius: 11px; }
+.is-workspace .main-content .search-field input { font-size: 13px; }
+.is-workspace .main-content .search-field input::placeholder { color: var(--muted); }
+.is-workspace .main-content .filter-pills { gap: 7px; flex-wrap: wrap; }
+.is-workspace .main-content .filter-pills button { font: 13px var(--pixel); padding: 11px 16px; min-height: 42px; border-color: var(--line); background: var(--surface); color: var(--muted); border-radius: 8px; }
+.is-workspace .main-content .filter-pills button.selected { background: var(--lime); color: var(--ink); border-color: var(--lime); box-shadow: none; }
+.is-workspace .main-content .filter-pills button:hover { transform: none; }
+.is-workspace .main-content .expanded .console-heading { padding: 30px 30px 23px; }
+.is-workspace .main-content .expanded .console-heading h2 { font-size: 39px; }
+.is-workspace .main-content .expanded .task-input { margin: 0 30px; }
+.is-workspace .main-content .expanded .file-chip { margin: 14px 30px; }
+.is-workspace .main-content .expanded .lifecycle { margin: 30px 35px; }
+.is-workspace .main-content .expanded .lifecycle-step > span { font-size: 10px; }
+.is-workspace .main-content .expanded .terminal-output { height: 330px; padding: 23px; margin: 0 30px; }
+.is-workspace .main-content .expanded .log-line { font-size: 12px; grid-template-columns: 56px 63px minmax(0, 1fr); }
+.is-workspace .main-content .expanded .log-tag { font-size: 8px; }
+.is-workspace .main-content .expanded .log-time { font-size: 10px; }
+.is-workspace .main-content .expanded .console-footer { padding: 25px 30px; }
+.is-workspace .main-content .console-explain { gap: 24px; }
+.is-workspace .main-content .console-explain article { background: var(--surface); border-color: var(--line); border-radius: 18px; padding: 27px; }
+.is-workspace .main-content .console-explain article > span { font-size: 10px; color: var(--muted); }
+.is-workspace .main-content .console-explain h3 { font-size: 31px; line-height: 1.12; margin-top: 17px; }
+.is-workspace .main-content .console-explain p { font-size: 14px; line-height: 1.8; }
+.is-workspace .main-content .guard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.is-workspace .main-content .guard-card { padding: 30px; }
+.is-workspace .main-content .guard-card h2 { font-size: 33px; line-height: 1.12; }
+.is-workspace .main-content .guard-card p { font-size: 14px; line-height: 1.85; color: var(--muted); max-width: 93%; margin-bottom: 28px; }
+.is-workspace .main-content .guard-card > span { color: var(--lime); font-size: 10px; line-height: 1.6; max-width: calc(100% - 50px); }
+.is-workspace .main-content .guard-card > .pixel-sprite { opacity: 1; }
+.is-workspace .main-content .privacy-panel { margin-top: 24px; padding: 30px; gap: 24px; }
+.is-workspace .main-content .privacy-panel h2 { font-size: 32px; }
+.is-workspace .main-content .privacy-panel p { font-size: 14px; line-height: 1.8; color: var(--muted); }
+.is-workspace .main-content .closing-strip { padding: 32px 0; gap: 18px; }
+.is-workspace .main-content .closing-strip > .dot-text { width: 350px; color: var(--muted); }
+.is-workspace .main-content .closing-strip button { font-size: 9px; line-height: 1.7; color: var(--muted); }
+.is-workspace .main-content .site-footer { margin-top: 32px; padding: 26px 0 35px; font-size: 9px; line-height: 1.7; letter-spacing: .4px; border-color: var(--line); color: var(--muted); }
+.is-workspace .main-content .site-footer button { font-size: 11px; color: var(--text); min-height: 35px; }
+.is-workspace .main-content .site-footer > div { flex-wrap: wrap; gap: 18px; }
+.is-workspace .main-content .site-footer > div > span { font-size: 8px; }
+.is-workspace .main-content .empty-state { grid-column: 1 / -1; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 45px 25px; }
+.is-workspace .main-content .empty-state h2 { font-size: 32px; }
+.is-workspace .main-content .empty-state p { font-size: 14px; color: var(--muted); }
+.is-workspace[data-theme="light"] .main-content :is(.panel, .metric-card, .skill-card, .guard-card) { box-shadow: 0 8px 24px rgba(27, 56, 42, .035); }
+.is-workspace[data-theme="light"] .main-content .log-line.error { color: #a4352d; }
+.is-workspace[data-theme="light"] .main-content .skill-platform { background: #718c7530; border-color: #54745b55; box-shadow: 0 5px 0 #65826912; }
+.is-workspace[data-theme="light"] .main-content .guard-card > svg { color: var(--lime); }
+.is-workspace[data-theme="light"] .main-content .terminal-output { background: #f1f5ed; }
+
+@keyframes workspace-type-reveal { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes workspace-number-reveal { from { opacity: .2; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 1180px) {
+  .is-workspace .main-content { padding-right: 32px; padding-left: 32px; }
+  .is-workspace .main-content .hero { padding: 25px 28px; grid-template-columns: minmax(0, 1.4fr) minmax(230px, .8fr); }
+  .is-workspace .main-content .hero-kicker { font-size: 9px; }
+  .is-workspace .main-content .hero > .evolving-core { max-width: 320px; }
+  .is-workspace .main-content .metric-card { padding: 20px 16px 17px; }
+  .is-workspace .main-content .metric-value { font-size: 43px; }
+  .is-workspace .main-content .metric-bottom { font-size: 7px; }
+  .is-workspace .main-content .work-grid { grid-template-columns: minmax(0, 1.65fr) minmax(285px, 1fr); gap: 20px; }
+  .is-workspace .main-content .panel-top { padding-right: 18px; padding-left: 18px; font-size: 9px; }
+  .is-workspace .main-content .panel-top .status { font-size: 7px; }
+  .is-workspace .main-content .crew-heading { padding-right: 20px; padding-left: 20px; }
+  .is-workspace .main-content .crew-heading h2 { font-size: 32px; }
+  .is-workspace .main-content .crew-member h3 > span { font-size: 7px; }
+  .is-workspace .main-content .skill-title h3 { font-size: 29px; }
+  .is-workspace .main-content .skill-content { padding-right: 10px; padding-left: 10px; }
+  .is-workspace .main-content .skill-content > p { font-size: 12px; min-height: 87px; }
+  .is-workspace .main-content .skill-tags > span { font-size: 8px; }
+  .is-workspace .main-content .skill-bottom { flex-wrap: wrap; }
+}
+@media (max-width: 1000px) {
+  .is-workspace .main-content .work-grid { grid-template-columns: minmax(0, 1fr); }
+  .is-workspace .main-content .crew-panel { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr); }
+  .is-workspace .main-content .crew-panel .panel-top { grid-column: 1 / -1; }
+  .is-workspace .main-content .crew-heading { grid-column: 1; grid-row: 2; padding: 26px 24px 15px; }
+  .is-workspace .main-content .crew-list { grid-column: 2; grid-row: 2 / 4; padding: 10px 20px 15px; }
+  .is-workspace .main-content .crew-note { grid-column: 1; grid-row: 3; align-self: end; padding: 18px 24px; background: transparent; }
+  .is-workspace .main-content .crew-note .crew-heart { display: none; }
+  .is-workspace .main-content .skills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .is-workspace .main-content .skill-content > p { min-height: 68px; font-size: 13px; }
+  .is-workspace .main-content .metric-heading { font-size: 11px; }
+  .is-workspace .main-content .metric-main { margin-bottom: 17px; }
+  .is-workspace .main-content .mini-bars { display: none; }
+  .is-workspace .main-content .hero { grid-template-columns: minmax(0, 1.35fr) minmax(210px, .8fr); gap: 12px; }
+  .is-workspace .main-content .hero h1 > span:last-child { font-size: 37px; }
+  .is-workspace .main-content .hero-bottom > span { font-size: 7px; }
+  .is-workspace .main-content .hero-bottom .hero-arrow { display: none; }
+  .is-workspace .main-content .hero-copy > p { font-size: 13px; }
+  .is-workspace .main-content .hero-kicker { font-size: 8px; }
+}
+@media (max-width: 760px) {
+  .is-workspace .main-content { padding-right: 22px; padding-left: 22px; }
+  .is-workspace .main-content .workspace-line { font-size: 9px; gap: 12px; padding: 22px 0; }
+  .is-workspace .main-content .workspace-line > div > span:last-child { font-size: 9px; }
+  .is-workspace .main-content .hero { grid-template-columns: minmax(0, 1fr); padding: 27px 26px 8px; gap: 0; }
+  .is-workspace .main-content .hero > .evolving-core { max-width: 280px; margin: -14px auto -17px; }
+  .is-workspace .main-content .hero h1 > span:last-child { font-size: 42px; }
+  .is-workspace .main-content .hero-kicker { font-size: 9px; }
+  .is-workspace .main-content .hero-copy > p { font-size: 14px; }
+  .is-workspace .main-content .hero-bottom > span { font-size: 8px; }
+  .is-workspace .main-content .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .is-workspace .main-content .metric-card { padding: 21px 20px 17px; }
+  .is-workspace .main-content .metric-heading { font-size: 12px; min-height: 20px; }
+  .is-workspace .main-content .metric-value { font-size: 46px; }
+  .is-workspace .main-content .metric-bottom { font-size: 8px; }
+  .is-workspace .main-content .mini-bars { display: flex; }
+  .is-workspace .main-content .section-meta { align-items: start; font-size: 9px; line-height: 1.7; }
+  .is-workspace .main-content .section-meta > span:last-child { font-size: 8px; text-align: right; max-width: 155px; }
+  .is-workspace .main-content .section-heading { align-items: start; flex-direction: column; gap: 13px; }
+  .is-workspace .main-content .section-heading h2 { font-size: 36px; }
+  .is-workspace .main-content .section-heading h2 > span { display: inline; }
+  .is-workspace .main-content .section-heading .button { margin-top: 0; font-size: 12px; }
+  .is-workspace .main-content .skill-title h3 { font-size: 27px; }
+  .is-workspace .main-content .skill-title { gap: 7px; }
+  .is-workspace .main-content .skill-content { padding: 19px 9px 10px; }
+  .is-workspace .main-content .skill-content > p { font-size: 12px; min-height: 86px; }
+  .is-workspace .main-content .skill-tags > span { font-size: 8px; }
+  .is-workspace .main-content .skill-number, .is-workspace .main-content .skill-hover-label { font-size: 7px; }
+  .is-workspace .main-content .skill-hover-label { display: none; }
+  .is-workspace .main-content .skill-tagline { font-size: 7px; }
+  .is-workspace .main-content .crew-panel { display: flex; }
+  .is-workspace .main-content .crew-heading { padding: 27px 24px 14px; }
+  .is-workspace .main-content .crew-list { padding: 0 18px 17px; }
+  .is-workspace .main-content .crew-member p { font-size: 13px; }
+  .is-workspace .main-content .crew-member h3 > span { font-size: 9px; }
+  .is-workspace .main-content .crew-note { background: var(--surface-high); width: 100%; }
+  .is-workspace .main-content .crew-note .crew-heart { display: block; }
+  .is-workspace .main-content .page-heading { align-items: start; flex-direction: column; gap: 20px; }
+  .is-workspace .main-content .page-heading h1 { font-size: 46px; }
+  .is-workspace .main-content .page-heading p:last-child { font-size: 14px; }
+  .is-workspace .main-content .library-tools { gap: 15px; }
+  .is-workspace .main-content .search-field { flex-basis: 100%; max-width: none; }
+  .is-workspace .main-content .console-explain { grid-template-columns: minmax(0, 1fr); }
+  .is-workspace .main-content .guard-grid { grid-template-columns: minmax(0, 1fr); }
+  .is-workspace .main-content .closing-strip { flex-wrap: wrap; justify-content: center; }
+  .is-workspace .main-content .closing-strip button { flex-basis: 100%; justify-content: center; margin-left: 0; }
+  .is-workspace .main-content .site-footer { flex-direction: column; align-items: start; gap: 13px; }
+  .is-workspace .main-content .site-footer > div { justify-content: start; gap: 20px; }
+  .is-workspace .main-content .site-footer > div > span { display: none; }
+}
+@media (max-width: 540px) {
+  .is-workspace .main-content { padding-right: 16px; padding-left: 16px; }
+  .is-workspace .main-content .workspace-line { padding: 19px 0; font-size: 8px; gap: 10px; }
+  .is-workspace .main-content .workspace-line > div { gap: 5px; }
+  .is-workspace .main-content .workspace-line > div > span:last-child { font-size: 8px; }
+  .is-workspace .main-content .workspace-line > button { padding: 7px 9px; }
+  .is-workspace .main-content .workspace-line .status { font-size: 7px; letter-spacing: 0; gap: 5px; }
+  .is-workspace .main-content .workspace-divider { margin: 0 2px; }
+  .is-workspace .main-content .hero { padding: 23px 19px 8px; border-radius: 20px; margin-bottom: 29px; }
+  .is-workspace .main-content .hero-kicker { font-size: 8px; gap: 7px; letter-spacing: .35px; margin-bottom: 22px; }
+  .is-workspace .main-content .hero h1 > .dot-text { margin-bottom: 17px; }
+  .is-workspace .main-content .hero h1 > span:last-child { font-size: 37px; }
+  .is-workspace .main-content .hero-copy > p { font-size: 13px; }
+  .is-workspace .main-content .hero-actions { gap: 10px; }
+  .is-workspace .main-content .hero-actions .button { width: 100%; justify-content: space-between; font-size: 12px; }
+  .is-workspace .main-content .hero-actions .quiet-button { font-size: 12px; }
+  .is-workspace .main-content .hero-bottom { gap: 8px; margin-top: 18px; }
+  .is-workspace .main-content .hero-bottom > span { font-size: 7px; }
+  .is-workspace .main-content .hero > .evolving-core { max-width: 255px; margin-top: -2px; }
+  .is-workspace .main-content .section-meta { font-size: 8px; gap: 10px; }
+  .is-workspace .main-content .section-meta > span:last-child { font-size: 7px; max-width: 135px; }
+  .is-workspace .main-content .metrics { gap: 11px; margin-bottom: 24px; }
+  .is-workspace .main-content .metric-card { padding: 16px 14px 14px; border-radius: 15px; }
+  .is-workspace .main-content .metric-heading { font-size: 11px; min-height: 32px; gap: 6px; }
+  .is-workspace .main-content .metric-heading svg { width: 13px; height: 13px; }
+  .is-workspace .main-content .metric-value { font-size: 42px; }
+  .is-workspace .main-content .metric-value small { font-size: 20px; }
+  .is-workspace .main-content .metric-main { margin: 12px 0 15px; }
+  .is-workspace .main-content .mini-bars { display: none; }
+  .is-workspace .main-content .metric-bottom { font-size: 7px; line-height: 1.8; min-height: 35px; align-items: start; gap: 5px; padding-top: 10px; }
+  .is-workspace .main-content .panel-top { padding: 14px 16px; font-size: 10px; gap: 7px; min-height: 49px; flex-wrap: wrap; }
+  .is-workspace .main-content .panel-top .status { font-size: 8px; letter-spacing: 0; gap: 5px; }
+  .is-workspace .main-content .panel-top .status i { width: 3px; height: 3px; }
+  .is-workspace .main-content .console-heading { padding: 23px 18px 18px; gap: 14px; }
+  .is-workspace .main-content .console-heading .eyebrow { font-size: 8px; letter-spacing: .3px; }
+  .is-workspace .main-content .console-heading h2 { font-size: 29px; }
+  .is-workspace .main-content .mini-companion .pixel-sprite { width: 38px; height: 38px; }
+  .is-workspace .main-content .task-input { margin: 0 18px; padding: 12px; gap: 8px; }
+  .is-workspace .main-content .task-input p { font-size: 12px; line-height: 1.7; }
+  .is-workspace .main-content .task-key { display: none; }
+  .is-workspace .main-content .file-chip { margin: 11px 18px; font-size: 9px; column-gap: 6px; row-gap: 3px; }
+  .is-workspace .main-content .file-chip > span:nth-last-child(2) { font-size: 8px; margin-left: 0; }
+  .is-workspace .main-content .file-chip .demo-text { display: none; }
+  .is-workspace .main-content .lifecycle { margin: 24px 10px; gap: 0; }
+  .is-workspace .main-content .lifecycle-step > span { font-size: 8px; letter-spacing: -.15px; }
+  .is-workspace .main-content .step-node { width: 25px; height: 25px; font-size: 12px; }
+  .is-workspace .main-content .lifecycle::before { top: 12px; }
+  .is-workspace .main-content .terminal-output { margin: 0 18px; padding: 14px 12px; height: 260px; }
+  .is-workspace .main-content .terminal-idle { gap: 10px; }
+  .is-workspace .main-content .terminal-symbol { font-size: 25px; }
+  .is-workspace .main-content .terminal-idle p { font-size: 11px; line-height: 1.8; }
+  .is-workspace .main-content .terminal-idle > div > span { font-size: 12px; }
+  .is-workspace .main-content .log-line { grid-template-columns: 43px minmax(0, 1fr); gap: 5px 7px; font-size: 10px; }
+  .is-workspace .main-content .log-line .log-time { grid-column: 1; font-size: 8px; }
+  .is-workspace .main-content .log-line .log-tag { grid-column: 1; grid-row: auto; font-size: 6px; }
+  .is-workspace .main-content .log-line > span:last-child { grid-column: 2; grid-row: 1 / 3; }
+  .is-workspace .main-content .console-footer { padding: 17px 18px; gap: 13px; }
+  .is-workspace .main-content .console-footer > span { font-size: 7px; width: 100%; }
+  .is-workspace .main-content .console-footer .button { width: 100%; justify-content: space-between; margin: 0; font-size: 12px; }
+  .is-workspace .main-content .demo-result { padding: 12px; font-size: 10px; }
+  .is-workspace .main-content .demo-result > div { font-size: 9px; }
+  .is-workspace .main-content .crew-heading { padding: 25px 21px 14px; }
+  .is-workspace .main-content .crew-heading h2 { font-size: 32px; }
+  .is-workspace .main-content .crew-list { padding: 0 15px 17px; }
+  .is-workspace .main-content .crew-member { padding: 16px 6px; gap: 12px; }
+  .is-workspace .main-content .crew-member h3 { font-size: 24px; }
+  .is-workspace .main-content .crew-member h3 > span { font-size: 8px; }
+  .is-workspace .main-content .crew-member p { font-size: 12px; }
+  .is-workspace .main-content .crew-note { padding: 18px 21px; }
+  .is-workspace .main-content .crew-note > span { font-size: 8px; }
+  .is-workspace .main-content .work-grid { margin-bottom: 36px; }
+  .is-workspace .main-content .section-heading h2 { font-size: 34px; }
+  .is-workspace .main-content .section-heading .eyebrow { font-size: 9px; }
+  .is-workspace .main-content .skills-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .is-workspace .main-content .skill-scene { height: 195px; min-height: 195px; }
+  .is-workspace .main-content .skill-content { padding: 22px 13px 11px; }
+  .is-workspace .main-content .skill-title h3 { font-size: 31px; }
+  .is-workspace .main-content .skill-content > p { font-size: 13px; min-height: 0; }
+  .is-workspace .main-content .skill-number, .is-workspace .main-content .skill-hover-label { font-size: 8px; }
+  .is-workspace .main-content .skill-hover-label { display: block; }
+  .is-workspace .main-content .skill-tagline { font-size: 8px; }
+  .is-workspace .main-content .skill-tags > span { font-size: 9px; }
+  .is-workspace .main-content .skill-bottom code { font-size: 9px; }
+  .is-workspace .main-content .skill-bottom > span { font-size: 10px; }
+  .is-workspace .main-content .activity-table { padding-right: 18px; padding-left: 18px; }
+  .is-workspace .main-content .activity-row { padding-top: 18px; padding-bottom: 18px; }
+  .is-workspace .main-content .page-heading { margin-top: 10px; margin-bottom: 27px; }
+  .is-workspace .main-content .page-heading .eyebrow { font-size: 9px; line-height: 1.7; }
+  .is-workspace .main-content .page-heading h1 { font-size: 42px; }
+  .is-workspace .main-content .page-heading p:last-child { font-size: 13px; }
+  .is-workspace .main-content .filter-pills { gap: 6px; }
+  .is-workspace .main-content .filter-pills button { padding: 9px 12px; font-size: 13px; min-height: 40px; }
+  .is-workspace .main-content .expanded .console-heading { padding: 23px 18px 18px; }
+  .is-workspace .main-content .expanded .console-heading h2 { font-size: 30px; }
+  .is-workspace .main-content .expanded .task-input { margin: 0 18px; }
+  .is-workspace .main-content .expanded .file-chip { margin: 11px 18px; }
+  .is-workspace .main-content .expanded .lifecycle { margin: 24px 10px; }
+  .is-workspace .main-content .expanded .lifecycle-step > span { font-size: 8px; }
+  .is-workspace .main-content .expanded .terminal-output { margin: 0 18px; padding: 16px 12px; height: 350px; }
+  .is-workspace .main-content .expanded .log-line { grid-template-columns: 43px minmax(0, 1fr); font-size: 10px; }
+  .is-workspace .main-content .expanded .log-time { font-size: 8px; }
+  .is-workspace .main-content .expanded .log-tag { font-size: 6px; }
+  .is-workspace .main-content .expanded .console-footer { padding: 17px 18px; }
+  .is-workspace .main-content .console-explain article { padding: 24px; }
+  .is-workspace .main-content .console-explain h3 { font-size: 29px; }
+  .is-workspace .main-content .console-explain p { font-size: 13px; }
+  .is-workspace .main-content .guard-card { padding: 26px 24px; }
+  .is-workspace .main-content .guard-card h2 { font-size: 30px; }
+  .is-workspace .main-content .guard-card p { font-size: 13px; max-width: 100%; margin-bottom: 28px; }
+  .is-workspace .main-content .guard-card > span { font-size: 9px; }
+  .is-workspace .main-content .privacy-panel { padding: 25px 23px; gap: 16px; }
+  .is-workspace .main-content .privacy-panel > svg { width: 22px; }
+  .is-workspace .main-content .privacy-panel h2 { font-size: 27px; }
+  .is-workspace .main-content .privacy-panel p { font-size: 13px; }
+  .is-workspace .main-content .site-footer { font-size: 8px; }
+  .is-workspace .main-content .site-footer button { font-size: 11px; }
+}
+.is-workspace.motion-paused .main-content :is(.hero h1 > .dot-text, .hero h1 > span:last-child, .page-heading h1, .metric-value) { animation: none; transform: none; opacity: 1; filter: none; }
+@media (prefers-reduced-motion: reduce) {
+  .is-workspace .main-content :is(.hero h1 > .dot-text, .hero h1 > span:last-child, .page-heading h1, .metric-value) { animation: none; transform: none; opacity: 1; filter: none; }
+}
+/* Keep all flow content above the fixed ambient background. */
+.is-workspace .main-content{position:relative;z-index:1}
