@@ -152,7 +152,7 @@ export function useSkillForgeProcess() {
     if (submittingRef.current) return;
     const executionId = id.trim();
     if (!UUID_PATTERN.test(executionId)) {
-      setError("Enter the execution_id returned by POST /api/v1/tasks.");
+      setError("Enter the task run ID shown in a previous task.");
       return;
     }
     if (saved.pending) {

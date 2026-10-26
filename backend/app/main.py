@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.tasks import router as tasks_router
+from app.api.inputs import router as inputs_router
 from app.config import settings
 from app.database.connection import engine
 
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(tasks_router)
+app.include_router(inputs_router)
 
 
 @app.get("/api/v1/health/live")

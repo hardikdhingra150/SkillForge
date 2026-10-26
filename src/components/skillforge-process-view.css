@@ -42,3 +42,9 @@
     .sf-process { border-radius: 12px; }
     .sf-process .sf-process__facts { gap: 16px; }
   }
+
+.sf-process select {
+  width: 100%; margin: 6px 0 14px; padding: 10px;
+  border: 1px solid var(--sfp-border); border-radius: 8px;
+  background: #101218; color: #f1f3f7; font: inherit;
+}

@@ -1,3 +1,5 @@
+"""Short transactional queue review. Do not add file or model calls here."""
+
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -6,38 +8,23 @@ from sqlalchemy.orm import Session
 
 from app.database.models import Execution, Task
 from app.services.events import append_event
-from app.services.requirement_review import (
-    review_requirement,
-)
+from app.services.requirement_review import review_requirement
+
+DEV_WORKSPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
-DEV_WORKSPACE_ID = UUID(
-    "00000000-0000-0000-0000-000000000001"
-)
-
-
-def queued_execution_statement(
-    workspace_id: UUID,
-):
+def queued_execution_statement(workspace_id: UUID):
     return (
         select(Execution)
-        .join(
-            Task,
-            Task.id == Execution.task_id,
-        )
+        .join(Task, Task.id == Execution.task_id)
         .where(
             Execution.status == "queued",
+            Execution.current_stage == "admission",
             Task.workspace_id == workspace_id,
         )
-        .order_by(
-            Execution.created_at,
-            Execution.id,
-        )
+        .order_by(Execution.created_at, Execution.id)
         .limit(1)
-        .with_for_update(
-            of=Execution,
-            skip_locked=True,
-        )
+        .with_for_update(of=Execution, skip_locked=True)
     )
 
 
@@ -46,38 +33,21 @@ def review_next(
     *,
     workspace_id: UUID = DEV_WORKSPACE_ID,
 ) -> UUID | None:
-    # The caller owns the transaction.
+    """Caller must commit/rollback the claim, review, status, and events together."""
     if not db.in_transaction():
-        raise RuntimeError(
-            "Call review_next inside "
-            "an explicit transaction."
-        )
+        raise RuntimeError("Call review_next inside an explicit transaction.")
 
-    execution = db.scalars(
-        queued_execution_statement(workspace_id)
-    ).first()
-
+    execution = db.scalars(queued_execution_statement(workspace_id)).first()
     if execution is None:
         return None
 
-    task = db.get(
-        Task,
-        execution.task_id,
-    )
-
+    task = db.get(Task, execution.task_id)
     if task is None:
-        raise RuntimeError(
-            "The queued execution has no task."
-        )
+        raise RuntimeError("The queued execution has no task.")
 
     execution.status = "running"
     execution.current_stage = "requirement_review"
-
-    execution.started_at = (
-        execution.started_at
-        or datetime.now(timezone.utc)
-    )
-
+    execution.started_at = execution.started_at or datetime.now(timezone.utc)
     db.flush()
 
     append_event(
@@ -86,20 +56,11 @@ def review_next(
         event_key="review.v1.execution_started",
         stage="requirement_review",
         event_type="execution_started",
-        message=(
-            "A worker started reviewing "
-            "this request."
-        ),
-        payload={
-            "worker": "requirement_review_v1",
-        },
+        message="A worker started reviewing this request.",
+        payload={"worker": "requirement_review_v1"},
     )
 
-    review = review_requirement(
-        task.requirement
-    )
-
-    # Preserve existing requirement metadata.
+    review = review_requirement(task.requirement)
     task.requirements_json = {
         **(task.requirements_json or {}),
         "review": review.payload(),
@@ -127,12 +88,9 @@ def review_next(
         message=review.input_message,
         payload={
             "next_action": review.next_action,
-            "required_inputs": list(
-                review.required_inputs
-            ),
+            "required_inputs": list(review.required_inputs),
         },
     )
 
     db.flush()
-
     return execution.id

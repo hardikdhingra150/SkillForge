@@ -4,6 +4,7 @@ from alembic import context
 
 from app.database.connection import database_url, engine
 from app.database.models import Base
+from app.database import input_models
 
 config = context.config
 

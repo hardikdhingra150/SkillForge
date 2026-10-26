@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import CSVInputPanel from "./CSVInputPanel.jsx";
 import { useSkillForgeProcess } from "../hooks/useSkillForgeProcess.js";
 import "./skillforge-process-view.css";
 
@@ -50,7 +51,7 @@ export default function SkillForgeProcessView() {
           rows={4}
         />
         <p id={`${uid}-scope`} className="sf-process__muted">
-          This step saves the request and its history. File uploads and skill execution come next.
+          Submit a requirement for review, then provide the input it needs.
         </p>
         {process.pending && (
           <p className="sf-process__notice">
@@ -77,10 +78,10 @@ export default function SkillForgeProcessView() {
         event.preventDefault();
         process.openExecution(restoreId);
       }}>
-        <label htmlFor={`${uid}-restore`}>Open a saved execution</label>
+        <label htmlFor={`${uid}-restore`}>Open a previous task</label>
         <div className="sf-process__actions">
           <input id={`${uid}-restore`} type="text" required
-            placeholder="Paste the execution_id from Swagger"
+            placeholder="Paste the task run ID from a previous task"
             value={restoreId} onChange={(event) => setRestoreId(event.target.value)} />
           <button type="submit" className="sf-process__secondary"
             disabled={process.submitting || Boolean(process.pending)}>Open</button>
@@ -90,11 +91,11 @@ export default function SkillForgeProcessView() {
       {process.executionId && (
         <div className="sf-process__execution">
           <div className="sf-process__header">
-            <h3>Current execution</h3>
+            <h3>Current task</h3>
             <button type="button" className="sf-process__secondary"
               onClick={process.refresh} disabled={process.loading}>Refresh history</button>
           </div>
-          <p className="sf-process__muted">Execution ID</p>
+          <p className="sf-process__muted">Task run ID</p>
           <code className="sf-process__id">{process.executionId}</code>
           {process.execution ? (
             <>
@@ -105,21 +106,18 @@ export default function SkillForgeProcessView() {
                 <div><dt>Recorded events</dt><dd>{process.events.length}</dd></div>
               </dl>
               {process.execution.status === "queued" && (
-  <p className="sf-process__notice">
-    Request saved and queued.
-    Waiting for a worker to start processing.
-  </p>
-)}
-
-{process.execution.status === "waiting_input" && (
-  <p className="sf-process__notice">
-    More input is required.
-    See the recorded process history below.
-  </p>
-)}
+                <p className="sf-process__notice">{process.execution.current_stage === "skill_discovery" ? "Inputs confirmed. Queued for skill discovery." : "Request saved and queued. Waiting for requirement review."}</p>
+              )}
+              {process.execution.status === "waiting_input" && (
+                <p className="sf-process__notice">More input is required. See the recorded process history below.</p>
+              )}
             </>
           ) : <p>{process.loading ? "Loading execution…" : "Execution details are unavailable."}</p>}
 
+          {process.execution && (
+            <CSVInputPanel key={process.executionId} execution={process.execution}
+              events={process.events} onUpdated={process.refresh} />
+          )}
           <h3>Recorded process history</h3>
           <ol className="sf-process__timeline">
             {process.events.map((event) => (
