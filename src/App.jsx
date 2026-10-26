@@ -7,6 +7,7 @@ import LivingBackground from './components/LivingBackground';
 import CursorCompanions from './components/CursorCompanions';
 import MotionVisibility from './components/MotionVisibility';
 import MotionText from './components/MotionText';
+import SkillForgeProcessView from "./components/SkillForgeProcessView.jsx";
 
 const views = [{ id: 'workbench', label: 'Workbench', icon: Box }, { id: 'library', label: 'Skill library', icon: Layers3 }, { id: 'console', label: 'Live console', icon: Terminal }, { id: 'activity', label: 'Activity', icon: History }];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
