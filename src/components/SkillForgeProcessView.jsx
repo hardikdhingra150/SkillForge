@@ -105,8 +105,18 @@ export default function SkillForgeProcessView() {
                 <div><dt>Recorded events</dt><dd>{process.events.length}</dd></div>
               </dl>
               {process.execution.status === "queued" && (
-                <p className="sf-process__notice">Request saved and queued. The execution worker has not been implemented yet.</p>
-              )}
+  <p className="sf-process__notice">
+    Request saved and queued.
+    Waiting for a worker to start processing.
+  </p>
+)}
+
+{process.execution.status === "waiting_input" && (
+  <p className="sf-process__notice">
+    More input is required.
+    See the recorded process history below.
+  </p>
+)}
             </>
           ) : <p>{process.loading ? "Loading execution…" : "Execution details are unavailable."}</p>}
 
