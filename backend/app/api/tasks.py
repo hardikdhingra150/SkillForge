@@ -33,9 +33,7 @@ from app.services.events import append_event
 
 logger = logging.getLogger("uvicorn.error")
 
-DEV_WORKSPACE_ID = UUID(
-    "00000000-0000-0000-0000-000000000001"
-)
+DEV_WORKSPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 DB = Annotated[Session, Depends(get_db)]
 
@@ -60,6 +58,24 @@ router = APIRouter(
     dependencies=[Depends(require_development)],
 )
 
+
+def log_database_error(error: SQLAlchemyError):
+    original = getattr(error, "orig", error)
+    diagnostic = getattr(original, "diag", None)
+
+    reason = (
+        getattr(diagnostic, "message_primary", None)
+        or str(original)
+        or "Unknown database error"
+    )
+
+    logger.error(
+        "Task database operation failed: %s; "
+        "SQLSTATE=%s; reason=%s",
+        type(original).__name__,
+        getattr(original, "sqlstate", None),
+        reason,
+    )
 
 def lookup_execution(db: Session, execution_id: UUID):
     return db.execute(
@@ -125,7 +141,6 @@ def create_task(
     ],
     db: DB,
 ):
-    # Stable identity for the same workspace and submission key.
     execution_id = uuid5(
         DEV_WORKSPACE_ID,
         str(idempotency_key),
@@ -139,17 +154,13 @@ def create_task(
                     id=DEV_WORKSPACE_ID,
                     name="Local development",
                 )
-                .on_conflict_do_nothing(
-                    index_elements=["id"]
-                )
+                .on_conflict_do_nothing(index_elements=["id"])
             )
 
             existing = lookup_execution(db, execution_id)
 
             if existing is not None:
-                return replay_submission(
-                    existing, body, response
-                )
+                return replay_submission(existing, body, response)
 
             task = Task(
                 workspace_id=DEV_WORKSPACE_ID,
@@ -185,9 +196,7 @@ def create_task(
                 stage="admission",
                 event_type="execution_queued",
                 message="Execution queued.",
-                payload={
-                    "execution_id": str(execution.id)
-                },
+                payload={"execution_id": str(execution.id)},
             )
 
             db.flush()
@@ -195,17 +204,16 @@ def create_task(
 
         return output
 
-    except IntegrityError:
-        # A concurrent retry may have committed this submission.
+    except IntegrityError as error:
         db.rollback()
+
+        # A concurrent request may have saved this submission.
         existing = lookup_execution(db, execution_id)
 
         if existing is not None:
-            return replay_submission(
-                existing, body, response
-            )
+            return replay_submission(existing, body, response)
 
-        logger.error("Task admission integrity check failed")
+        log_database_error(error)
 
         raise HTTPException(
             status_code=500,
@@ -216,10 +224,8 @@ def create_task(
         ) from None
 
     except SQLAlchemyError as error:
-        logger.error(
-            "Task database operation failed: %s",
-            type(error).__name__,
-        )
+        db.rollback()
+        log_database_error(error)
 
         raise HTTPException(
             status_code=503,
@@ -276,7 +282,6 @@ def get_events(
         .limit(limit + 1)
     ).all()
 
-    has_more = len(rows) > limit
     events = [
         EventOut.model_validate(row)
         for row in rows[:limit]
@@ -284,8 +289,6 @@ def get_events(
 
     return EventPage(
         events=events,
-        next_after=(
-            events[-1].sequence if events else after
-        ),
-        has_more=has_more,
+        next_after=events[-1].sequence if events else after,
+        has_more=len(rows) > limit,
     )

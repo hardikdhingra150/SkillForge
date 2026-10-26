@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.database.connection import engine
-from app.api.tasks import router as tasks_router
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -32,11 +32,10 @@ app.add_middleware(
     allow_origins=settings.frontend_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
-    allow_headers=[
-        "Content-Type",
-        "Idempotency-Key",
-    ],
+    allow_headers=["Content-Type", "Idempotency-Key"],
 )
+
+app.include_router(tasks_router)
 
 
 @app.get("/api/v1/health/live")
@@ -53,11 +52,13 @@ def readiness() -> dict[str, str]:
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
+
     except SQLAlchemyError as error:
         logger.warning(
             "Database readiness failed: %s",
             type(error).__name__,
         )
+
         raise HTTPException(
             status_code=503,
             detail={
@@ -65,8 +66,6 @@ def readiness() -> dict[str, str]:
                 "message": "PostgreSQL connection failed.",
             },
         ) from None
-    
-    app.include_router(tasks_router)
 
     return {
         "service": "skillforge",
