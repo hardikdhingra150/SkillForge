@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
 from app.database.connection import engine
+from app.api.tasks import router as tasks_router
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -30,8 +31,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,
     allow_credentials=False,
-    allow_methods=["GET"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST"],
+    allow_headers=[
+        "Content-Type",
+        "Idempotency-Key",
+    ],
 )
 
 
@@ -61,6 +65,8 @@ def readiness() -> dict[str, str]:
                 "message": "PostgreSQL connection failed.",
             },
         ) from None
+    
+    app.include_router(tasks_router)
 
     return {
         "service": "skillforge",
