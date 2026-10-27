@@ -128,3 +128,12 @@ export function confirmCSVMapping(id, mapping, signal) {
     body: JSON.stringify(mapping),
   });
 }
+
+export function getSkillRegistry(options = {}, signal) {
+  const params = new URLSearchParams({ limit: "24" });
+  if (options.status) params.set("status", options.status);
+  if (options.query) params.set("q", options.query);
+  if (options.afterSkillId != null) params.set("after_skill_id", options.afterSkillId);
+  if (options.afterVersion != null) params.set("after_version", options.afterVersion);
+  return request(`/skills?${params}`, { signal });
+}
