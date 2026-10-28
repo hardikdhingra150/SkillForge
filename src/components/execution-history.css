@@ -1,0 +1,195 @@
+.sf-history {
+    --sfh-bg: #1c1c20;
+    --sfh-input: #141417;
+    --sfh-text: #ededf0;
+    --sfh-muted: #b8b8c3;
+    --sfh-border: #45454d;
+  
+    color: var(--sfh-text);
+    padding: 28px 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  
+  [data-theme="light"] .sf-history {
+    --sfh-bg: #fafafa;
+    --sfh-input: #fff;
+    --sfh-text: #202025;
+    --sfh-muted: #555561;
+    --sfh-border: #c8c8d0;
+  }
+  
+  .sf-history * {
+    box-sizing: border-box;
+  }
+  
+  .sf-history h1,
+  .sf-history h3,
+  .sf-history p {
+    margin: 0 0 12px;
+    color: inherit;
+  }
+  
+  .sf-history h1 {
+    font-size: clamp(22px, 4vw, 34px);
+  }
+  
+  .sf-history__header,
+  .sf-history__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+  }
+  
+  .sf-history__header {
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  
+  .sf-history__filters label:first-child {
+    flex: 1 1 240px;
+  }
+  
+  .sf-history label {
+    display: block;
+    font-size: 13px;
+    color: var(--sfh-muted);
+  }
+  
+  .sf-history input,
+  .sf-history select,
+  .sf-process .sf-history input,
+  .sf-process .sf-history select {
+    width: 100%;
+    min-height: 44px;
+    margin-top: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--sfh-border);
+    border-radius: 9px;
+    background: var(--sfh-input);
+    color: var(--sfh-text);
+    font: inherit;
+  }
+  
+  .sf-history button,
+  .sf-process .sf-history button {
+    min-height: 44px;
+    padding: 10px 15px;
+    border: 1px solid var(--sfh-border);
+    border-radius: 9px;
+    background: var(--sfh-bg);
+    color: var(--sfh-text);
+    font: inherit;
+    cursor: pointer;
+  }
+  
+  .sf-history button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  
+  .sf-history
+  :is(button, input, select):focus-visible {
+    outline: 2px solid #7e9fff;
+    outline-offset: 3px;
+  }
+  
+  .sf-history .sf-history__muted {
+    color: var(--sfh-muted);
+    font-size: 13px;
+  }
+  
+  .sf-history__list {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+  }
+  
+  .sf-history__item {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: center;
+    padding: 20px;
+    margin-bottom: 12px;
+    border: 1px solid var(--sfh-border);
+    border-radius: 12px;
+    background: var(--sfh-bg);
+  }
+  
+  .sf-history .sf-history__requirement {
+    font-weight: 600;
+  }
+  
+  .sf-history__badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border: 1px solid var(--sfh-border);
+    border-radius: 99px;
+    font-size: 12px;
+    text-transform: capitalize;
+  }
+  
+  .sf-history__badge[data-status="succeeded"] {
+    color: #94d7b6;
+    border-color: #528971;
+  }
+  
+  .sf-history__badge[data-status="failed"] {
+    color: #f1aaaa;
+    border-color: #a56464;
+  }
+  
+  [data-theme="light"]
+  .sf-history__badge[data-status="succeeded"] {
+    color: #1c6546;
+  }
+  
+  [data-theme="light"]
+  .sf-history__badge[data-status="failed"] {
+    color: #952929;
+  }
+  
+  .sf-history__error,
+  .sf-history__empty {
+    padding: 20px;
+    border: 1px solid var(--sfh-border);
+    border-radius: 12px;
+    margin: 14px 0;
+  }
+  
+  .sf-history__error {
+    border-color: #b67272;
+  }
+  
+  .sf-history--compact {
+    border-top:
+      1px solid var(--sfh-border);
+    margin-top: 24px;
+  }
+  
+  .sf-history--compact h3 {
+    font-size: 20px;
+  }
+  
+  /* Match the existing dark Process View. */
+  .sf-process .sf-history {
+    --sfh-bg: #1c1c20;
+    --sfh-input: #141417;
+    --sfh-text: #ededf0;
+    --sfh-muted: #b8b8c3;
+    --sfh-border: #45454d;
+  }
+  
+  @media (max-width: 560px) {
+    .sf-history__item {
+      grid-template-columns: 1fr;
+    }
+  
+    .sf-history__item > button {
+      justify-self: start;
+    }
+  }
