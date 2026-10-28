@@ -11,6 +11,7 @@ from app.api.inputs import router as inputs_router
 from app.api.skills import router as skills_router
 from app.config import settings
 from app.database.connection import engine
+from app.api.activity import router as activity_router
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -40,6 +41,7 @@ app.add_middleware(
 app.include_router(tasks_router)
 app.include_router(inputs_router)
 app.include_router(skills_router)
+app.include_router(activity_router)
 
 
 @app.get("/api/v1/health/live")
