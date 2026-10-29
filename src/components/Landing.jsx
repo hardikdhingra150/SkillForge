@@ -3,6 +3,7 @@ import { ArrowDown, ArrowRight, ArrowUpRight, Check, CheckCheck, Code2, Database
 import { DotText, PixelSpark, PixelSprite } from './PixelArt';
 import KineticType from './KineticType';
 import { Marquee, SectionRail } from './ScrollStory';
+import HeroForge from './HeroForge';
 
 const loop = [
   { name: 'Discover', title: 'Start with what you already know.', description: 'The orchestrator looks for a validated skill that fits. Reuse comes first, so good work does not get done twice.', code: 'registry.find("analyze sales CSV")', output: 'No matching skill. A new opportunity.', color: 'mint' },
@@ -64,27 +65,7 @@ export default function Landing({ onEnter, onDemo, onLibrary, motion, onToast })
   return <>
     <main className="landing landing-v4 landing-final">
       <SectionRail sections={chapters} onJump={goTo} />
-      <section className="forge-hero" id="top">
-        <div className="forge-hero-overline"><span><i />SELF-EVOLVING SKILL INFRASTRUCTURE</span><span>BUILT TO LEARN. MADE TO LAST.</span></div>
-        <div className="forge-hero-grid">
-          <div className="forge-hero-copy">
-            <div className="forge-intro-tag"><span className="mini-orbit">✳</span> A little intelligence. A lasting capability.</div>
-            <h1 className="forge-headline" aria-label="Good agents. Get better."><KineticType text="Good agents."/><KineticType text="Get better." dotted/><span className="forge-title-pet"><PixelSprite kind="scout" interactive title="Say hello to Scout" onPoke={()=>onToast('Scout is looking for your next great idea.')} /></span></h1>
-            <p className="forge-hero-description">Give your AI the ability to <strong>build, repair, and remember.</strong> Turn a one-time solution into a skill that’s ready for whatever comes next.</p>
-            <div className="forge-hero-actions"><button className="forge-cta" onClick={onEnter}>Open your workspace <ArrowUpRight size={18}/></button><button className="forge-secondary" onClick={()=>goTo('learning-loop')}>See how it learns <ArrowDown size={16}/></button></div>
-            <div className="forge-hero-proof"><span><ShieldCheck size={14}/>Test before trust</span><span><Database size={14}/>Every version remembered</span></div>
-          </div>
-          <div className="hero-product" aria-label="Illustrative SkillForge repair preview">
-            <div className="hero-product-top"><span className="product-mark"><Terminal size={15}/>FORGE / LIVE PREVIEW</span><span className="product-status"><i/>SKILL REPAIRED</span></div>
-            <div className="hero-product-task"><div className="task-avatar">YOU</div><div><span>A SMALL ASK. A NEW CAPABILITY.</span><p>“Show me revenue by product.”</p><small><FileText size={12}/>quarterly_sales.csv</small></div></div>
-            <div className="hero-product-flow"><span><Search size={14}/>Discover</span><i/><span><Code2 size={14}/>Build</span><i/><span className="current"><GitBranch size={14}/>Repair</span></div>
-            <div className="hero-code-window"><div><span>sales_analysis.py</span><span>v1.0 → v1.1</span></div><pre><span className="code-line"><b>01</b><em># A mismatch becomes a lesson.</em></span><span className="code-line removed"><b>02</b><s>column = "revenue"</s><small>missing</small></span><span className="code-line added"><b>03</b>column = "Sales"<Check size={13}/></span><span className="code-line"><b>04</b>return revenue_by_product(csv)</span></pre></div>
-            <div className="hero-result"><span className="result-art"><PixelSprite kind="patch"/></span><div><strong>Fixed. Tested. Remembered.</strong><span><CheckCheck size={13}/>3 / 3 checks passed <i/>v1.1 ready to reuse</span></div><span className="result-stamp"><ShieldCheck size={22}/></span></div>
-            <div className="hero-product-bottom"><span>ILLUSTRATIVE DEMO</span><button onClick={onDemo}>Try this run <ArrowUpRight size={14}/></button></div>
-          </div>
-        </div>
-        <div className="forge-capability-strip"><div><span>01</span><div><strong>Build what’s missing.</strong><p>A new task becomes a focused skill.</p></div><Code2 size={21}/></div><div><span>02</span><div><strong>Learn from what breaks.</strong><p>Test, diagnose, and repair the cause.</p></div><GitBranch size={21}/></div><div><span>03</span><div><strong>Keep getting better.</strong><p>Save the version. Reuse the progress.</p></div><Layers3 size={21}/></div></div>
-      </section>
+      <HeroForge motion={motion} onEnter={onEnter} onDemo={onDemo} onLearn={() => goTo('learning-loop')} onToast={onToast} />
       <Marquee words={loop.map(s => s.name.toUpperCase())} />
 
       <section className="cinema-section idea-v4" id="idea"><div className="cinema-section-label"><span>01 / INSIDE THE FORGE</span><i /><span>CAPABILITY THAT COMPOUNDS.</span></div><div className="idea-layout"><div><h2>An answer ends.<br /><em>A skill stays.</em></h2><p>Most agents can only use the tools they were given. SkillForge is designed to turn unfamiliar work into a capability they can use again.</p><p>A missing skill becomes a candidate. A failure becomes feedback. A passing test becomes progress worth keeping.</p><button className="inline-action" onClick={onEnter}>Meet your workspace <ArrowUpRight size={17} /></button></div><div className="forge-system"><div className="system-header"><span>THE TWO HALVES OF A SMARTER LOOP</span><Sparkles size={15} /></div><div className="system-unit"><span className="unit-icon"><Layers3 size={25} /></span><div><small>THE STEADY HAND</small><h3>SkillForge Core</h3><p>Plans the task, chooses tools, and keeps every step within your rules.</p></div><span className="unit-index">01</span></div><div className="system-connection"><i /><span>ORCHESTRATE ⇄ LEARN</span><i /></div><div className="system-unit"><span className="unit-icon engine"><GitBranch size={25} /></span><div><small>THE CURIOUS MIND</small><h3>SkillSmith Engine</h3><p>Creates skills, diagnoses failures, and repairs what needs another try.</p></div><span className="unit-index">02</span></div><div className="system-memory"><Database size={15} /><span>One shared, versioned memory.</span><span>SQLite registry</span></div></div></div></section>

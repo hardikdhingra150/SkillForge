@@ -54,18 +54,6 @@ html body .app.reveal-armed [data-reveal=curtain]:not(.is-revealed) { clip-path:
 html body .app.reveal-armed .main-content :is(.panel, .metric-card, .skill-card, .guard-card)[data-reveal] { animation-name: none; }
 
 /* ---------- Scroll-linked depth ---------- */
-.app:not(.motion-paused) .forge-hero .forge-hero-copy {
-  translate: 0 calc(var(--scene-out, 0) * -80px);
-  opacity: calc(1 - var(--scene-out, 0) * .85);
-}
-.app:not(.motion-paused) .forge-hero .hero-product {
-  translate: 0 calc(var(--scene-out, 0) * 60px);
-  rotate: x calc(var(--scene-out, 0) * 9deg);
-  scale: calc(1 - var(--scene-out, 0) * .05);
-  transform-origin: 50% 0;
-}
-.app .forge-hero-grid { perspective: 1600px; }
-.app:not(.motion-paused) .forge-hero .forge-capability-strip { translate: 0 calc(var(--scene-out, 0) * -30px); }
 .app:not(.motion-paused) .main-content > .hero .hero-copy {
   translate: 0 calc(var(--scene-out, 0) * -50px);
   opacity: calc(1 - var(--scene-out, 0) * .7);
@@ -168,7 +156,7 @@ html body .app.reveal-armed .main-content :is(.panel, .metric-card, .skill-card,
 
 /* ---------- Pointer light and magnetic calls to action ---------- */
 @property --spot { syntax: '<length>'; inherits: false; initial-value: 0px; }
-.app :is(.hero-product, .forge-system, .learning-studio, .application-panel, .principle-grid > article, .forge-capability-strip > div, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item).is-lit {
+.app :is(.hx-stage, .forge-system, .learning-studio, .application-panel, .principle-grid > article, .forge-capability-strip > div, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item).is-lit {
   background-image: radial-gradient(var(--spot) circle at var(--mx, 50%) var(--my, 50%), var(--soft), transparent 70%);
   animation: sf-spot-in .5s var(--sf-ease-out) forwards;
 }

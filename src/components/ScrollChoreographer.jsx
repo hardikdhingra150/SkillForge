@@ -7,9 +7,8 @@ import { useEffect } from 'react';
  */
 const REVEALS = [
   // Landing
-  ['.forge-hero-overline', 'fade'],
-  ['.forge-intro-tag, .forge-hero-description, .forge-hero-actions, .forge-hero-proof', 'up'],
-  ['.forge-capability-strip > div', 'up'],
+  // The hero animates on load, not on scroll, so it is never waiting offstage.
+  ['.hx-stats > div', 'up'],
   ['.forge-marquee', 'fade'],
   ['.cinema-section-label, .section-meta', 'line'],
   ['.cinema-section h2, .cinema-finale h2', 'mask'],
@@ -52,8 +51,8 @@ const REVEAL_SELECTOR = REVEALS.map(([selector]) => selector).join(',');
 
 // Sections that publish their scroll position as CSS variables for parallax.
 const SCENES = '.forge-hero, .cinema-section, .cinema-finale, .main-content > .hero, .page-heading';
-const SPOTLIGHT = '.hero-product, .forge-system, .learning-studio, .application-panel, .principle-grid > article, .forge-capability-strip > div, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item';
-const MAGNETIC = '.forge-cta, .header-enter, .button.lime, .forge-secondary';
+const SPOTLIGHT = '.hx-stage, .forge-system, .learning-studio, .application-panel, .principle-grid > article, .forge-capability-strip > div, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item';
+const MAGNETIC = '.forge-cta, .header-enter, .button.lime, .hx-try';
 const MAX_STAGGER = 9;
 const settle = 1400;
 

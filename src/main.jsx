@@ -17,5 +17,6 @@ import './neutral-theme.css';
 import './automatic-motion.css';
 import './frontend-harmony.css';
 import './scroll-choreography.css';
+import './hero-forge.css';
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
