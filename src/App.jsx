@@ -7,8 +7,11 @@ import LivingBackground from './components/LivingBackground';
 import CursorCompanions from './components/CursorCompanions';
 import MotionVisibility from './components/MotionVisibility';
 import MotionText from './components/MotionText';
+import ScrollChoreographer from './components/ScrollChoreographer';
+import { ScrollProgress } from './components/ScrollStory';
 import SkillForgeProcessView from "./components/SkillForgeProcessView.jsx";
 import SkillRegistryView from "./components/SkillRegistryView.jsx";
+import ExecutionHistory from "./components/ExecutionHistory.jsx";
 
 const views = [{ id: 'workbench', label: 'Workbench', icon: Box }, { id: 'library', label: 'Skill library', icon: Layers3 }, { id: 'console', label: 'Live console', icon: Terminal }, { id: 'activity', label: 'Activity', icon: History }];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -100,6 +103,7 @@ function Guardrails() { const rules = [{ icon: LockKeyhole, name: 'A small, appr
 function PageHeading({ label, title, description, children }) { return <div className="page-heading"><div><p className="eyebrow">{label}</p><h1><MotionText text={title}/></h1><p>{description}</p></div>{children}</div>; }
 
 export default function App() {
+  const [requestedExecutionId, setRequestedExecutionId] = useState("");
   const [view, setView] = useState(() => ['workbench','library','console','activity','governance'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'landing');
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem('skillforge-theme') === 'light' ? 'light' : 'dark'; } catch { return 'dark'; } }); const [mobileNav, setMobileNav] = useState(false);
   const scene = 'particle';
@@ -130,24 +134,39 @@ export default function App() {
     <LivingBackground motion={motion} />
     <CursorCompanions motion={motion} enabled={!modal} />
     <MotionVisibility motion={motion} routeKey={view} />
+    <ScrollChoreographer motion={motion} routeKey={view} />
+    <ScrollProgress />
     <div className="app-content" inert={modal ? true : undefined}>
       <header className="topbar"><div className="topbar-inner"><button className="brand" onClick={() => navigate('landing')} aria-label="SkillForge home"><span className="brand-symbol">S<span /></span><DotText text="SKILLFORGE" /><span className="brand-beta">WORKSPACE</span></button><nav className={mobileNav ? 'open' : ''} aria-label="Main navigation">{view === 'landing' ? landingNav.map(v => <button key={v.id} onClick={() => scrollLanding(v.id)}>{v.label}</button>) : views.map(v => <button key={v.id} className={view === v.id ? 'active' : ''} onClick={() => navigate(v.id)}><v.icon size={14} />{v.label}{v.id === 'console' && running && <i className="running-dot" />}</button>)}</nav><div className="header-actions">{view !== 'landing' && <button className="icon-button search-button" aria-label="Search workspace" onClick={() => { setSearch(''); setModal({ type:'search' }); }}><Search size={16} /><kbd>⌘K</kbd></button>}<button className="icon-button theme-button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button><button className={`icon-button motion-button ${motion ? 'on' : ''}`} aria-label={motion ? 'Pause animations' : 'Resume animations'} aria-pressed={!motion} onClick={() => setMotion(m => !m)}>{motion ? <AudioLines size={17} /> : <Pause size={17} />}</button>{view === 'landing' ? <button className="header-enter" onClick={() => navigate('workbench')}>Open workspace <ArrowUpRight size={14} /></button> : <button className="profile-avatar" onClick={() => setModal({type:'runtime'})} aria-label="Workspace details">H<span /></button>}<button className="icon-button mobile-menu" aria-label="Toggle navigation" aria-expanded={mobileNav} onClick={() => setMobileNav(o => !o)}>{mobileNav ? <X size={18} /> : <Menu size={18} />}</button></div></div></header>
       {view === 'landing' ? <Landing onLibrary={() => navigate('library')} motion={motion} onEnter={() => navigate('workbench')} onDemo={() => { navigate('console'); startRun(); }} onToast={notify} /> : <main className="main-content" key={view}>
         <div className="workspace-line"><div><span className="tiny-block" />HARDIK’S PLAYGROUND<span className="workspace-divider">/</span><span>{view === 'workbench' ? 'WORKSPACE 001' : view.toUpperCase()}</span></div><button onClick={() => setModal({ type: 'runtime' })}><Status>LOCAL WORKSPACE</Status><ChevronRight size={12} /></button></div>
         {view === 'workbench' && <>
           <section className="hero"><div className="hero-copy"><div className="hero-kicker"><span className="kicker-line" />A WORKSPACE THAT GROWS WITH YOU<PixelSpark /></div><h1><DotText text="ALWAYS EVOLVING." /><MotionText text="Your next idea, unlocked."/></h1><p>Give your agents a task. Let them discover, build, and repair<br className="desktop-break" /> the skills to do it. <strong>Every run leaves them a little smarter.</strong></p><div className="hero-actions"><Button className="lime" icon={Play} onClick={() => { consoleRef.current?.scrollIntoView({ behavior: motion ? 'smooth' : 'auto', block: 'center' }); startRun(); }} disabled={running}>{running ? 'The crew is on it...' : 'Let’s make something happen'}</Button><button className="quiet-button" onClick={() => setModal({ type: 'lifecycle' })}>How it works<ArrowUpRight size={15} /></button></div><div className="hero-bottom"><div className="tiny-crew">{crew.map(c => <PixelSprite kind={c.kind} key={c.kind} />)}</div><span>SMALL TEAM. NEVER-ENDING POTENTIAL.</span><span className="hero-arrow">↝</span></div></div><EvolvingCore compact running={running} onInteract={() => notify("The forge is listening. Give it a task to learn from.")} /></section>
-          <SkillForgeProcessView />
+          <SkillForgeProcessView requestedExecutionId={requestedExecutionId} onOpenRequestHandled={setRequestedExecutionId} />
           <div className="section-meta"><span><i /> A LITTLE MOMENTUM</span><span>DEMO WORKSPACE · SAMPLE METRICS</span></div><Metrics skills={skills} runs={runs} repairs={repairs} />
           <div className="work-grid"><div ref={consoleRef}><Console {...consoleProps} /></div><CrewPanel mode={mode} onSelect={member => setModal({ type: 'crew', member })} /></div>
           <section className="skills-section"><div className="section-heading"><div><p className="eyebrow"><span className="tiny-block lavender" />YOUR GROWING COLLECTION</p><h2>Learn it once. <span>Use it forever.</span></h2></div><Button className="outline small" onClick={() => navigate('library')}>Explore the skill library</Button></div><div className="skills-grid">{skills.filter(s => !s.draft).slice(0, 3).map((skill, i) => <SkillCard key={skill.id} skill={skill} onInspect={showSkill} mode={mode} index={i} />)}</div></section>
-          <section className="recent-panel panel motion-panel"><PanelTop label="recent_adventures.log"><button className="text-link" onClick={() => navigate('activity')}>All activity <ArrowUpRight size={12} /></button></PanelTop><ActivityTable runs={runs} onSelect={run => setModal({ type: 'run', run })} /></section>
+          <section className="recent-panel panel motion-panel">
+            <PanelTop label="saved_tasks.log">
+              <button className="text-link" onClick={() => navigate('activity')}>Open activity <ArrowUpRight size={12} /></button>
+            </PanelTop>
+            <div style={{ padding: '20px' }}>
+              <p>Browse saved task runs, their current status, and recorded results.</p>
+              <Button className="outline small" onClick={() => navigate('activity')}>View task history</Button>
+            </div>
+          </section>
           <div className="closing-strip"><PixelSpark /><DotText text="DISCOVER. CREATE. REPAIR. REPEAT." /><PixelSpark /><button onClick={() => navigate('governance')}><ShieldCheck size={14} />PLAYFUL OUTSIDE. GOVERNED INSIDE.<ArrowUpRight size={13} /></button></div>
         </>}
         {view === 'library' && (
           <SkillRegistryView onOpenWorkbench={() => navigate('workbench')} />
         )}
         {view === 'console' && <><PageHeading label="ONE TASK. A WHOLE LEARNING LOOP." title="Let’s see what happens." description="A missing column is not the end of the story. It is where the learning starts." /><Console {...consoleProps} expanded /><div className="console-explain"><article><span>01 / THE PLOT TWIST</span><h3>Your CSV says “Sales”.<br />The skill expects “revenue”.</h3><p>Evaluation catches the mismatch. Patch diagnoses it, adjusts the mapping, and runs the tests again.</p></article><article><span>02 / THE HAPPY ENDING</span><h3>Three tests pass.<br />A better skill stays with you.</h3><p>Version 1.1 joins the registry. Run the same task again and the agent reuses what it already learned.</p></article></div></>}
-        {view === 'activity' && <><PageHeading label="EVERY LITTLE ADVENTURE, REMEMBERED" title="Look how far we’ve come." description="The runs, the repairs, the small wins. It is all here." /><section className="recent-panel panel"><PanelTop label="execution_history.log"><span className="mono">{runs.length} DEMO RUNS</span></PanelTop><ActivityTable runs={runs} all onSelect={run => setModal({ type: 'run', run })} /></section></>}
+        {view === 'activity' && (
+          <ExecutionHistory onOpen={(id) => {
+            setRequestedExecutionId(id);
+            navigate('workbench');
+          }} />
+        )}
         {view === 'governance' && <Guardrails />}
         <footer className="site-footer"><span><i />BUILT FOR THE NEXT “WHAT IF?”</span><div><button onClick={() => navigate('landing')}>Home</button><button onClick={() => navigate('governance')}>Guardrails</button><button onClick={() => setModal({ type: 'runtime' })}>Under the hood <ArrowUpRight size={11} /></button><span>FRONTEND PLAYGROUND / V.03</span></div></footer>
       </main>}

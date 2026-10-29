@@ -1,0 +1,156 @@
+/*
+ * The API-backed views (process, registry, history) were styled on their own
+ * palette. This brings them onto the workspace theme tokens: glass panels,
+ * Space Mono labels, Pixelify headlines, and the achromatic accent.
+ */
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) {
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(input, select, textarea) {
+  min-height: 46px; margin-top: 8px; padding: 11px 14px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--glass-inset); color: var(--text);
+  font: 14px 'Space Grotesk', sans-serif;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(input, textarea)::placeholder { color: var(--faint); }
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(input, select, textarea):hover { border-color: var(--muted); }
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(input, select, textarea):focus {
+  outline: none; border-color: var(--text); box-shadow: 0 0 0 4px var(--soft); background: var(--glass-panel);
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) label,
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(dt, .sf-process__eyebrow, .sf-registry__eyebrow) {
+  color: var(--muted); font: 9px 'Space Mono', monospace; letter-spacing: 1px; text-transform: uppercase;
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(.sf-process__eyebrow, .sf-registry__eyebrow) {
+  display: flex; align-items: center; gap: 9px; margin-bottom: 14px;
+}
+.app .main-content :is(.sf-process__eyebrow, .sf-registry__eyebrow)::before {
+  content: ''; width: 7px; height: 7px; background: var(--text); box-shadow: 2px 2px 0 var(--line);
+}
+
+/* Buttons follow .button / .button.lime */
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 44px; padding: 12px 18px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--text);
+  font: 500 13px 'Space Grotesk', sans-serif; cursor: pointer;
+  transition: transform .25s cubic-bezier(.2,.7,.2,1), border-color .2s, background .2s, color .2s;
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) button:not(:disabled):hover { border-color: var(--text); transform: translateY(-2px); }
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) button:not(:disabled):active { transform: translateY(0); }
+.app .main-content .sf-process button:not(.sf-process__secondary),
+.app .main-content .sf-registry__actions > button:first-child,
+.app .main-content .sf-history__header > button {
+  background: var(--lime); color: var(--ink); border-color: var(--lime);
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) button:disabled { opacity: .45; cursor: default; }
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+/* Status chips: achromatic, with a state dot instead of a hue. */
+.app .main-content :is(.sf-process__badge, .sf-registry__badge, .sf-history__badge) {
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px;
+  border: 1px solid var(--glass-edge); border-radius: 99px; background: var(--glass-raised);
+  color: var(--muted); font: 9px 'Space Mono', monospace; letter-spacing: 1px; text-transform: uppercase;
+}
+.app .main-content :is(.sf-process__badge, .sf-registry__badge, .sf-history__badge)::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; border: 1px solid currentColor;
+}
+.app .main-content :is(.sf-registry__badge[data-status=validated], .sf-history__badge[data-status=succeeded]) { color: var(--text); border-color: var(--muted); }
+.app .main-content :is(.sf-registry__badge[data-status=validated], .sf-history__badge[data-status=succeeded])::before { background: currentColor; box-shadow: 0 0 0 3px var(--soft); }
+.app .main-content .sf-history__badge[data-status=failed] { color: var(--text); border-style: dashed; }
+.app .main-content .sf-process__badge::before { background: currentColor; animation: sf-harmony-pulse 2s ease-in-out infinite; }
+@keyframes sf-harmony-pulse { 50% { opacity: .25; } }
+
+/* Alerts and empty states */
+.app .main-content :is(.sf-process__error, .sf-registry__error, .sf-history__error, .sf-registry__empty, .sf-history__empty) {
+  position: relative; padding: 20px 22px 20px 26px;
+  border: 1px dashed var(--line); border-radius: 14px;
+  background: var(--glass-inset); color: var(--text);
+}
+.app .main-content :is(.sf-process__error, .sf-registry__error, .sf-history__error)::before {
+  content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 3px 3px 0; background: var(--text);
+}
+.app .main-content :is(.sf-registry__error, .sf-history__error) > button { margin-top: 12px; }
+.app .main-content .sf-process__notice {
+  border-left: 3px solid var(--text); background: var(--glass-inset); color: var(--muted);
+  padding: 12px 16px; border-radius: 0 10px 10px 0; font-size: 13px;
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(code, pre) { font-family: 'Space Mono', monospace; }
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) pre {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--glass-inset); color: var(--muted);
+}
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) summary { color: var(--muted); font: 10px 'Space Mono', monospace; letter-spacing: .6px; text-transform: uppercase; }
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) summary:hover { color: var(--text); }
+.app .main-content :is(.sf-process, .sf-registry, .sf-history) :is(.sf-process__muted, .sf-registry__count, .sf-history__muted) { color: var(--faint); }
+
+/* ---------- Process view: a full-width workbench panel ---------- */
+.app .main-content .sf-process {
+  position: relative; overflow: hidden;
+  max-width: none; margin: 0 0 30px; padding: 0;
+  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  border: 1px solid var(--glass-edge); border-radius: 20px;
+  background: var(--glass-panel);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 8px 28px rgba(0,0,0,.04);
+  font-size: 15px;
+}
+.app .main-content .sf-process > * { grid-column: 1 / -1; margin-left: 0; margin-right: 0; }
+.app .main-content .sf-process > .sf-process__header {
+  margin: 0; padding: 26px 30px 22px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--glass-raised), transparent);
+}
+.app .main-content .sf-process > .sf-process__header h2 {
+  font: 400 clamp(30px, 3.4vw, 42px)/1.1 'Pixelify Sans', monospace; letter-spacing: -.4px; margin-bottom: 10px;
+}
+.app .main-content .sf-process > .sf-process__header p:not(.sf-process__eyebrow) { color: var(--muted); margin: 0; }
+.app .main-content .sf-process > .sf-process__error { margin: 22px 30px 0; }
+.app .main-content .sf-process > form:not(.sf-process__restore) { grid-column: 1; padding: 26px 30px 28px; }
+.app .main-content .sf-process > .sf-process__restore {
+  grid-column: 2; margin: 0; padding: 26px 30px 28px;
+  border-top: 0; border-left: 1px solid var(--line); background: var(--glass-inset);
+}
+.app .main-content .sf-process > .sf-process__execution { margin: 0; padding: 26px 30px 30px; border-top: 1px solid var(--line); }
+.app .main-content .sf-process .sf-process__execution h3 { font: 400 22px 'Pixelify Sans', monospace; }
+.app .main-content .sf-process .sf-process__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.app .main-content .sf-process .sf-process__facts > div { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--glass-inset); }
+.app .main-content .sf-process .sf-process__facts dd { font-size: 17px; margin-top: 6px; }
+.app .main-content .sf-process .sf-process__timeline > li { position: relative; }
+.app .main-content .sf-process .sf-process__timeline > li:not(:last-child)::before {
+  content: ''; position: absolute; left: 14px; top: 32px; bottom: 4px; width: 1px; background: var(--line);
+}
+.app .main-content .sf-process .sf-process__sequence {
+  border-color: var(--glass-edge); border-radius: 7px; background: var(--glass-raised); font: 11px 'Space Mono', monospace;
+}
+.app .main-content .sf-process .sf-process__id { color: var(--muted); }
+
+/* ---------- Registry and history: page heading + glass cards ---------- */
+.app .main-content :is(.sf-registry, .sf-history) { padding: 34px 0 10px; }
+.app .main-content :is(.sf-registry, .sf-history) h1 {
+  font: 400 clamp(38px, 5.4vw, 64px)/1.05 'Pixelify Sans', monospace; letter-spacing: -1px; margin-bottom: 16px;
+}
+.app .main-content :is(.sf-registry__header, .sf-history__header) > div > p:not(.sf-registry__eyebrow) { color: var(--muted); max-width: 560px; }
+.app .main-content :is(.sf-registry__filters, .sf-history__filters) {
+  padding: 18px; border: 1px solid var(--glass-edge); border-radius: 16px; background: var(--glass-panel);
+}
+.app .main-content .sf-registry__card,
+.app .main-content .sf-history__item {
+  border: 1px solid var(--glass-edge); border-radius: 20px; background: var(--glass-panel);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 8px 28px rgba(0,0,0,.04);
+  transition: transform .3s cubic-bezier(.2,.7,.2,1), border-color .25s;
+}
+.app .main-content .sf-history__item { border-radius: 14px; }
+.app .main-content :is(.sf-registry__card, .sf-history__item):hover { border-color: var(--muted); transform: translateY(-3px); }
+.app .main-content .sf-registry__card h2 { font: 400 22px 'Pixelify Sans', monospace; text-transform: none; }
+.app .main-content .sf-registry__version { color: var(--muted); font: 10px 'Space Mono', monospace; letter-spacing: .8px; }
+.app .main-content .sf-registry dl > div { padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.app .main-content .sf-registry details, .app .main-content .sf-history--compact { border-color: var(--line); }
+.app .main-content .sf-history .sf-history__requirement { font-size: 16px; }
+
+@media (max-width: 860px) {
+  .app .main-content .sf-process { grid-template-columns: 1fr; }
+  .app .main-content .sf-process > :is(form, .sf-process__restore) { grid-column: 1; }
+  .app .main-content .sf-process > .sf-process__restore { border-left: 0; border-top: 1px solid var(--line); }
+  .app .main-content .sf-process > * { padding-left: 20px !important; padding-right: 20px !important; }
+}

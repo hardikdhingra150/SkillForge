@@ -1,0 +1,184 @@
+/*
+ * Scroll choreography. Entrances use the individual translate/scale/rotate
+ * properties so they compose with the ambient transform loops already running
+ * on the same elements. Nothing is hidden unless JS has armed the page.
+ */
+:root { --sf-ease-out: cubic-bezier(.16, 1, .3, 1); --sf-ease-spring: cubic-bezier(.34, 1.4, .5, 1); }
+
+/* ---------- Entrances ---------- */
+html body .app.reveal-armed [data-reveal] {
+  transition:
+    opacity .9s var(--sf-ease-out) var(--reveal-delay, 0ms),
+    translate 1.1s var(--sf-ease-out) var(--reveal-delay, 0ms),
+    scale 1.1s var(--sf-ease-out) var(--reveal-delay, 0ms),
+    rotate 1.1s var(--sf-ease-out) var(--reveal-delay, 0ms),
+    filter .9s var(--sf-ease-out) var(--reveal-delay, 0ms),
+    clip-path 1.2s var(--sf-ease-out) var(--reveal-delay, 0ms),
+    mask-position 1.2s var(--sf-ease-out) var(--reveal-delay, 0ms),
+    -webkit-mask-position 1.2s var(--sf-ease-out) var(--reveal-delay, 0ms);
+}
+html body .app.reveal-armed [data-reveal]:not(.is-revealed) { opacity: 0; }
+html body .app.reveal-armed [data-reveal=up]:not(.is-revealed) { translate: 0 34px; }
+html body .app.reveal-armed [data-reveal=left]:not(.is-revealed) { translate: -30px 0; }
+html body .app.reveal-armed [data-reveal=rise]:not(.is-revealed) { translate: 0 70px; scale: .965; filter: blur(4px); }
+html body .app.reveal-armed [data-reveal=scale]:not(.is-revealed) { scale: .88; filter: blur(6px); }
+html body .app.reveal-armed [data-reveal=pop]:not(.is-revealed) { scale: .72; translate: 0 12px; }
+html body .app.reveal-armed [data-reveal=pop] { transition-timing-function: var(--sf-ease-spring); }
+html body .app.reveal-armed [data-reveal=flip]:not(.is-revealed) { translate: 0 46px; rotate: x 18deg; transform-origin: 50% 0; }
+html body .app.reveal-armed [data-reveal=line]:not(.is-revealed) { translate: -14px 0; }
+html body .app.reveal-armed [data-reveal=line] > i {
+  transform-origin: 0 50%;
+  transition: scale 1.4s var(--sf-ease-out) calc(var(--reveal-delay, 0ms) + 150ms);
+}
+html body .app.reveal-armed [data-reveal=line]:not(.is-revealed) > i { scale: 0 1; }
+
+/* Headlines wipe in from the top edge while they lift and come into focus. */
+html body .app.reveal-armed [data-reveal=mask] {
+  -webkit-mask-image: linear-gradient(180deg, #000 42%, transparent 58%);
+  mask-image: linear-gradient(180deg, #000 42%, transparent 58%);
+  -webkit-mask-size: 100% 260%; mask-size: 100% 260%;
+  -webkit-mask-position: 0 0; mask-position: 0 0;
+}
+html body .app.reveal-armed [data-reveal=mask]:not(.is-revealed) {
+  -webkit-mask-position: 0 100%; mask-position: 0 100%;
+  translate: 0 .35em; filter: blur(10px);
+}
+
+/* The finale opens like a curtain. */
+html body .app.reveal-armed [data-reveal=curtain] { clip-path: inset(0 0 round 18px); }
+html body .app.reveal-armed [data-reveal=curtain]:not(.is-revealed) { clip-path: inset(14% 9% round 40px); scale: .97; opacity: .2; }
+
+.app .principle-grid, .app .guard-grid { perspective: 1400px; }
+
+/* Workspace surfaces already play a mount animation; the scroll entrance replaces it. */
+html body .app.reveal-armed .main-content :is(.panel, .metric-card, .skill-card, .guard-card)[data-reveal] { animation-name: none; }
+
+/* ---------- Scroll-linked depth ---------- */
+.app:not(.motion-paused) .forge-hero .forge-hero-copy {
+  translate: 0 calc(var(--scene-out, 0) * -80px);
+  opacity: calc(1 - var(--scene-out, 0) * .85);
+}
+.app:not(.motion-paused) .forge-hero .hero-product {
+  translate: 0 calc(var(--scene-out, 0) * 60px);
+  rotate: x calc(var(--scene-out, 0) * 9deg);
+  scale: calc(1 - var(--scene-out, 0) * .05);
+  transform-origin: 50% 0;
+}
+.app .forge-hero-grid { perspective: 1600px; }
+.app:not(.motion-paused) .forge-hero .forge-capability-strip { translate: 0 calc(var(--scene-out, 0) * -30px); }
+.app:not(.motion-paused) .main-content > .hero .hero-copy {
+  translate: 0 calc(var(--scene-out, 0) * -50px);
+  opacity: calc(1 - var(--scene-out, 0) * .7);
+}
+
+/* Oversized chapter numbers drift behind each landing section. */
+.app .landing-final :is(#idea, #learning-loop, #capabilities, #boundaries) { position: relative; isolation: isolate; }
+.app .landing-final :is(#idea, #learning-loop, #capabilities, #boundaries)::after {
+  position: absolute; z-index: -1; right: -.04em; bottom: -.12em;
+  font: 400 clamp(150px, 22vw, 320px)/1 'Pixelify Sans', monospace;
+  letter-spacing: -.04em;
+  color: var(--soft); -webkit-text-stroke: 1px var(--glass-edge);
+  opacity: calc(.35 + var(--scene, 0) * .65);
+  translate: 0 calc((var(--scene, .5) - .5) * -240px);
+  pointer-events: none; user-select: none;
+}
+.app .landing-final #idea::after { content: '01'; }
+.app .landing-final #learning-loop::after { content: '02'; }
+.app .landing-final #capabilities::after { content: '03'; }
+.app .landing-final #boundaries::after { content: '04'; }
+
+/* ---------- Page progress ---------- */
+.scroll-progress { position: fixed; inset: 0 0 auto; height: 2px; z-index: 60; pointer-events: none; }
+.scroll-progress > i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, transparent, var(--text) 30%, var(--text));
+  box-shadow: 0 0 12px var(--motion-glint, rgba(255,255,255,.5));
+  transform-origin: 0 50%; transform: scaleX(var(--sf-scroll, 0));
+}
+
+/* ---------- Landing chapter rail ---------- */
+.section-rail {
+  position: fixed; right: 22px; top: 50%; z-index: 25;
+  display: flex; flex-direction: column; gap: 4px;
+  translate: 0 -50%;
+  animation: sf-rail-in .9s .6s var(--sf-ease-out) both;
+}
+.section-rail-track { position: absolute; right: 5px; top: 14px; bottom: 14px; width: 1px; background: var(--line); }
+.section-rail-track > i {
+  position: absolute; inset: 0 0 auto; height: 100%;
+  background: var(--text); transform-origin: 50% 0;
+  transform: scaleY(calc(var(--rail-index) / max(1, var(--rail-count) - 1)));
+  transition: transform .6s var(--sf-ease-out);
+}
+.section-rail button {
+  position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  min-height: 28px; padding: 0 18px 0 0;
+  color: var(--faint); font: 9px 'Space Mono', monospace; letter-spacing: 1px; text-transform: uppercase;
+}
+.section-rail button::after {
+  content: ''; position: absolute; right: 2px; width: 7px; height: 7px;
+  background: var(--bg); border: 1px solid var(--line);
+  transition: background .3s, border-color .3s, scale .3s var(--sf-ease-spring);
+}
+.section-rail button.active { color: var(--text); }
+.section-rail button.active::after { background: var(--text); border-color: var(--text); scale: 1.35; }
+.section-rail-label {
+  padding: 5px 9px; border: 1px solid var(--glass-edge); border-radius: 6px;
+  background: var(--glass); white-space: nowrap;
+  opacity: 0; translate: 8px 0; pointer-events: none;
+  transition: opacity .25s, translate .35s var(--sf-ease-out);
+}
+.section-rail:hover .section-rail-label, .section-rail button:focus-visible .section-rail-label { opacity: 1; translate: 0 0; }
+.section-rail-index { display: none; }
+.section-rail:hover .section-rail-index { display: inline; }
+.section-rail button.active .section-rail-index { color: var(--text); }
+@media (max-width: 1180px) { .section-rail { display: none; } }
+@keyframes sf-rail-in { from { opacity: 0; translate: 16px -50%; } }
+
+/* ---------- Loop marquee ---------- */
+.forge-marquee {
+  position: relative; overflow: hidden; margin: 54px 0 0; padding: 16px 0;
+  border-block: 1px solid var(--line);
+  color: var(--faint); font: 11px 'Space Mono', monospace; letter-spacing: 4px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.forge-marquee-track {
+  display: flex; width: max-content;
+  animation: sf-marquee 42s linear infinite;
+  translate: calc(var(--sf-scroll, 0) * -900px) 0;
+}
+.forge-marquee.reverse .forge-marquee-track { animation-direction: reverse; }
+.forge-marquee-run { display: flex; }
+.forge-marquee-run > span { display: inline-flex; align-items: center; gap: 34px; padding-right: 34px; white-space: nowrap; }
+.forge-marquee-run > span:nth-child(even) { color: var(--text); }
+.forge-marquee-run i { font-style: normal; color: var(--muted); display: inline-block; animation: sf-marquee-spin 6s linear infinite; }
+@keyframes sf-marquee { to { transform: translateX(-50%); } }
+@keyframes sf-marquee-spin { to { rotate: 360deg; } }
+
+/* ---------- Learning loop autoplay ---------- */
+.app .learning-studio.is-autoplaying .studio-progress > i.current { position: relative; overflow: hidden; background: var(--line); }
+.app .learning-studio.is-autoplaying .studio-progress > i.current::after {
+  content: ''; position: absolute; inset: 0; background: var(--stage-accent, var(--text));
+  transform-origin: 0 50%; animation: sf-step-fill var(--step-ms, 2.6s) linear forwards;
+}
+.app .learning-studio.is-autoplaying .studio-instruction::before { content: '● AUTOPLAY · '; color: var(--text); }
+@keyframes sf-step-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.app .studio-steps > button.selected { transition: background .35s, color .35s, border-color .35s; }
+
+/* ---------- Pointer light and magnetic calls to action ---------- */
+@property --spot { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.app :is(.hero-product, .forge-system, .learning-studio, .application-panel, .principle-grid > article, .forge-capability-strip > div, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item).is-lit {
+  background-image: radial-gradient(var(--spot) circle at var(--mx, 50%) var(--my, 50%), var(--soft), transparent 70%);
+  animation: sf-spot-in .5s var(--sf-ease-out) forwards;
+}
+@keyframes sf-spot-in { from { --spot: 0px; } to { --spot: 340px; } }
+.app .is-magnetic { transition: translate .35s var(--sf-ease-out), transform .25s, box-shadow .25s, background .2s; }
+
+/* ---------- Pause and reduced motion ---------- */
+.app.motion-paused .forge-marquee-track { translate: none; }
+.app.motion-paused .section-rail { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .forge-marquee-track { animation: none; translate: none; }
+  .app .landing-final :is(#idea, #learning-loop, #capabilities, #boundaries)::after { translate: none; }
+}

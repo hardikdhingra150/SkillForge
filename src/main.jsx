@@ -15,5 +15,7 @@ import './workspace-polish.css';
 import './unified-motion.css';
 import './neutral-theme.css';
 import './automatic-motion.css';
+import './frontend-harmony.css';
+import './scroll-choreography.css';
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
