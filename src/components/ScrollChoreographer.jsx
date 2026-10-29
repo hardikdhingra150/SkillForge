@@ -6,25 +6,7 @@ import { useEffect } from 'react';
  * then plays its entrance once. Siblings in the same group enter in sequence.
  */
 const REVEALS = [
-  // Landing
-  // The hero animates on load, not on scroll, so it is never waiting offstage.
-  ['.hx-stats > div', 'up'],
-  ['.forge-marquee', 'fade'],
-  ['.cinema-section-label, .section-meta', 'line'],
-  ['.cinema-section h2, .cinema-finale h2', 'mask'],
-  ['.idea-layout > div:first-child > p, .idea-layout > div:first-child > .inline-action', 'up'],
-  ['.forge-system', 'rise'],
-  ['.forge-system > .system-header, .forge-system > .system-unit, .forge-system > .system-connection, .forge-system > .system-memory', 'left'],
-  ['.cinema-section-heading > div, .cinema-section-heading > p', 'up'],
-  ['.learning-studio', 'rise'],
-  ['.studio-steps > button', 'left'],
-  ['.application-tabs > button', 'pop'],
-  ['.application-panel', 'rise'],
-  ['.principle-grid > article', 'flip'],
-  ['.foundation-row > span', 'fade'],
-  ['.foundation-row > div > span', 'pop'],
-  ['.cinema-finale', 'curtain'],
-  ['.finale-pet, .cinema-finale > .cinema-label, .cinema-finale > .forge-cta, .finale-note', 'up'],
+  // Landing: sections spring in through <Pop>; only the footer is tagged here.
   ['.cinema-footer', 'up'],
   // Workspace
   ['.workspace-line', 'fade'],
@@ -50,8 +32,8 @@ const REVEALS = [
 const REVEAL_SELECTOR = REVEALS.map(([selector]) => selector).join(',');
 
 // Sections that publish their scroll position as CSS variables for parallax.
-const SCENES = '.forge-hero, .cinema-section, .cinema-finale, .main-content > .hero, .page-heading';
-const SPOTLIGHT = '.hx-stage, .forge-system, .learning-studio, .application-panel, .principle-grid > article, .forge-capability-strip > div, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item';
+const SCENES = '.forge-hero, .main-content > .hero, .page-heading';
+const SPOTLIGHT = '.hx-stage, .lx-card, .lx-finale, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item';
 const MAGNETIC = '.forge-cta, .header-enter, .button.lime, .hx-try';
 const MAX_STAGGER = 9;
 const settle = 1400;

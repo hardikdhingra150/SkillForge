@@ -1,19 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, Check, CheckCheck, Code2, Database, FileText, GitBranch, Layers3, LockKeyhole, Pause, Play, Search, ShieldCheck, Sparkles, Terminal, Zap } from 'lucide-react';
-import { DotText, PixelSpark, PixelSprite } from './PixelArt';
-import KineticType from './KineticType';
-import { Marquee, SectionRail } from './ScrollStory';
-import HeroForge from './HeroForge';
-
-const loop = [
-  { name: 'Discover', title: 'Start with what you already know.', description: 'The orchestrator looks for a validated skill that fits. Reuse comes first, so good work does not get done twice.', code: 'registry.find("analyze sales CSV")', output: 'No matching skill. A new opportunity.', color: 'mint' },
-  { name: 'Create', title: 'Give a new idea a working shape.', description: 'SkillSmith creates a focused candidate with a clear input contract, executable code, and approved tools.', code: 'candidate.create("sales_analysis", v1.0)', output: 'Contract + tools + code → ready to evaluate.', color: 'blue' },
-  { name: 'Execute', title: 'Put the capability to work.', description: 'The candidate reads the sample CSV and runs through the tool manager, within the boundaries you set.', code: 'tools.read_csv("quarterly_sales.csv")', output: '24 rows · Product, Sales, OrderDate', color: 'mint' },
-  { name: 'Evaluate', title: 'A failure is useful information.', description: 'The skill expects “revenue”, but the CSV calls it “Sales”. Evaluation catches the mismatch before the skill is trusted.', code: 'assert "revenue" in csv.columns', output: 'Column mismatch. Diagnosis required.', color: 'amber' },
-  { name: 'Repair', title: 'Fix the cause. Keep the lesson.', description: 'The repair maps the column aliases and checks the result. All three tests must pass before the skill moves forward.', code: 'column_map["revenue"] = "Sales"', output: '3 / 3 checks passed. Candidate validated.', color: 'amber' },
-  { name: 'Version', title: 'Make progress something you can trace.', description: 'The passing artifact becomes version 1.1, with its contract, test results, and repair history attached.', code: 'registry.promote("sales_analysis", v1.1)', output: 'A new capability has joined the library.', color: 'blue' },
-  { name: 'Reuse', title: 'The next run starts a step ahead.', description: 'A matching task can use the saved skill immediately. One solved problem becomes a lasting capability.', code: 'registry.execute("sales_analysis", v1.1)', output: 'Revenue: $18,420 · no new repair needed.', color: 'mint' },
-];
+import React from 'react';
+import { ArrowUpRight, Code2, Database, FlaskConical, GitBranch, Layers3, LockKeyhole, RotateCcw, ShieldCheck } from 'lucide-react';
+import { DotText, PixelSprite } from './PixelArt';
+import { SectionRail } from './ScrollStory';
+import HeroForge, { CountUp } from './HeroForge';
+import Pop, { Burst, PopWords, useInView } from './Pop';
 
 export function EvolvingCore({ compact = false, running = false, onInteract }) {
   const [charge, setCharge] = useState(0);
@@ -26,59 +16,93 @@ export function EvolvingCore({ compact = false, running = false, onInteract }) {
   </div>;
 }
 
-const chapters = [{ id: 'top', label: 'Intro' }, { id: 'idea', label: 'Inside the forge' }, { id: 'learning-loop', label: 'How it learns' }, { id: 'capabilities', label: 'Possibilities' }, { id: 'boundaries', label: 'Guardrails' }, { id: 'finale', label: 'Begin' }];
-const STEP_MS = 2600;
+const chapters = [{ id: 'top', label: 'Intro' }, { id: 'how', label: 'How it learns' }, { id: 'trust', label: 'Guardrails' }, { id: 'start', label: 'Begin' }];
 
-const applications = {
-  'Data & insight': { icon: Database, title: 'Messy input. Clear answers.', copy: 'Read a sales file, resolve a column mismatch, and turn the numbers into a report. Keep the capability for the next file.', prompt: 'Show revenue by product from this CSV.', skills: ['read_csv', 'normalize_columns', 'aggregate_revenue'], result: '$18,420', note: 'TOTAL REVENUE / SAMPLE RESULT', kind: 'byte' },
-  'Software': { icon: Code2, title: 'A second pair of eyes. Every time.', copy: 'Review a change, check the contract, and generate useful tests. Build a toolkit that gets stronger with your development process.', prompt: 'Review the authentication flow and its tests.', skills: ['inspect_diff', 'check_contract', 'run_tests'], result: '8 / 8', note: 'CHECKS PASSED / SAMPLE RESULT', kind: 'patch' },
-  'Research': { icon: Search, title: 'Find the signal. Keep the evidence.', copy: 'Gather sources, compare findings, and turn a long document into a useful briefing. Save the process that made it work.', prompt: 'Summarize the findings with their sources.', skills: ['read_document', 'extract_claims', 'check_sources'], result: '04', note: 'KEY FINDINGS / SAMPLE RESULT', kind: 'scout' },
-  'Operations': { icon: Layers3, title: 'Make room for the work that needs you.', copy: 'Organize requests, extract actions, and make everyday workflows repeatable. Let the next run benefit from what you already learned.', prompt: 'Group these requests by topic and urgency.', skills: ['parse_request', 'classify_topic', 'route_ticket'], result: '24', note: 'REQUESTS ORGANIZED / SAMPLE RESULT', kind: 'byte' },
-};
+const moves = [
+  { n: '01', icon: Code2, kind: 'byte', title: 'Build what’s missing.', text: 'No skill for the task? SkillSmith writes a focused one, with a clear contract and approved tools.', visual: 'build' },
+  { n: '02', icon: GitBranch, kind: 'patch', title: 'Repair what breaks.', text: 'Tests catch the failure. The repair fixes the cause, and every check has to pass again.', visual: 'repair' },
+  { n: '03', icon: Layers3, kind: 'scout', title: 'Remember what works.', text: 'The passing skill is saved as a new version. The next run starts from it, a step ahead.', visual: 'remember' },
+];
 
-export default function Landing({ onEnter, onDemo, onLibrary, motion, onToast }) {
-  const [step, setStep] = useState(4);
-  const [domain, setDomain] = useState('Data & insight');
-  const goTo = id => document.getElementById(id)?.scrollIntoView({ behavior: motion ? 'smooth' : 'auto', block: 'start' });
-  const selected = applications[domain];
-  const studioRef = useRef();
-  const autoplay = useRef({ timer: 0, touched: false });
-  // Play the loop once, step by step, the first time the studio scrolls into view.
-  useEffect(() => {
-    const studio = studioRef.current;
-    const state = autoplay.current;
-    if (!motion || !studio || state.touched || !('IntersectionObserver' in window)) return undefined;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting || state.touched) return;
-      observer.disconnect();
-      setStep(0);
-      state.timer = setInterval(() => setStep(current => {
-        if (current >= loop.length - 1) { clearInterval(state.timer); state.touched = true; return current; }
-        return current + 1;
-      }), STEP_MS);
-    }, { threshold: 0.45 });
-    observer.observe(studio);
-    return () => { observer.disconnect(); clearInterval(state.timer); };
-  }, [motion]);
-  const setLoopStep = next => { autoplay.current.touched = true; clearInterval(autoplay.current.timer); setStep(next); };
-  const moveTab = (event, index, keys, select, prefix) => { const next = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? (index + 1) % keys.length : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? (index + keys.length - 1) % keys.length : event.key === 'Home' ? 0 : event.key === 'End' ? keys.length - 1 : null; if (next !== null) { event.preventDefault(); select(keys[next]); document.getElementById(`${prefix}${next}`)?.focus(); } };
-  return <>
-    <main className="landing landing-v4 landing-final">
-      <SectionRail sections={chapters} onJump={goTo} />
-      <HeroForge motion={motion} onEnter={onEnter} onDemo={onDemo} onLearn={() => goTo('learning-loop')} onToast={onToast} />
-      <Marquee words={loop.map(s => s.name.toUpperCase())} />
+const rules = [
+  { icon: LockKeyhole, label: 'Approved tools only' },
+  { icon: FlaskConical, label: 'Tests before trust' },
+  { icon: RotateCcw, label: 'Bounded repair budget' },
+  { icon: Database, label: 'Every version traced' },
+];
 
-      <section className="cinema-section idea-v4" id="idea"><div className="cinema-section-label"><span>01 / INSIDE THE FORGE</span><i /><span>CAPABILITY THAT COMPOUNDS.</span></div><div className="idea-layout"><div><h2>An answer ends.<br /><em>A skill stays.</em></h2><p>Most agents can only use the tools they were given. SkillForge is designed to turn unfamiliar work into a capability they can use again.</p><p>A missing skill becomes a candidate. A failure becomes feedback. A passing test becomes progress worth keeping.</p><button className="inline-action" onClick={onEnter}>Meet your workspace <ArrowUpRight size={17} /></button></div><div className="forge-system"><div className="system-header"><span>THE TWO HALVES OF A SMARTER LOOP</span><Sparkles size={15} /></div><div className="system-unit"><span className="unit-icon"><Layers3 size={25} /></span><div><small>THE STEADY HAND</small><h3>SkillForge Core</h3><p>Plans the task, chooses tools, and keeps every step within your rules.</p></div><span className="unit-index">01</span></div><div className="system-connection"><i /><span>ORCHESTRATE ⇄ LEARN</span><i /></div><div className="system-unit"><span className="unit-icon engine"><GitBranch size={25} /></span><div><small>THE CURIOUS MIND</small><h3>SkillSmith Engine</h3><p>Creates skills, diagnoses failures, and repairs what needs another try.</p></div><span className="unit-index">02</span></div><div className="system-memory"><Database size={15} /><span>One shared, versioned memory.</span><span>SQLite registry</span></div></div></div></section>
+const stats = [
+  { value: 7, pad: 2, label: 'stages in every learning loop' },
+  { value: 100, suffix: '%', label: 'of new skills tested before reuse' },
+  { value: 0, pad: 2, label: 'raw shell commands, ever' },
+  { display: '∞', label: 'reuses for every solved problem' },
+];
 
-      <section className="cinema-section" id="learning-loop"><div className="cinema-section-label"><span>02 / SEE IT THINK</span><i /><span>A FAILURE WITH A HAPPY ENDING.</span></div><div className="cinema-section-heading"><h2>From “that broke”<br />to <em>“I’ve got this.”</em></h2><div><p>One sales file. One unexpected column.<br />Explore how a small mistake becomes a useful memory.</p><button className="inline-action" onClick={onDemo}>Try the repair demo <ArrowUpRight size={17} /></button></div></div><div className={`learning-studio ${autoplay.current.touched ? '' : 'is-autoplaying'}`} ref={studioRef} style={{ '--step-ms': `${STEP_MS}ms` }}><div className="studio-toolbar"><span><Terminal size={15} />the_learning_loop</span><span className="studio-live"><i />INTERACTIVE WALKTHROUGH</span><span className="studio-instruction">Choose a step to explore</span></div><div className="studio-body"><div className="studio-steps" role="tablist" aria-label="Explore the learning lifecycle" aria-orientation="vertical">{loop.map((s,i)=><button key={s.name} role="tab" id={`studio-tab-${i}`} aria-selected={step===i} aria-controls="studio-panel" tabIndex={step===i?0:-1} className={step===i?'selected':''} onClick={()=>setLoopStep(i)} onKeyDown={e=>moveTab(e,i,[0,1,2,3,4,5,6],setLoopStep,'studio-tab-')}><span>{String(i+1).padStart(2,'0')}</span><b>{s.name}</b>{step===i?<ArrowRight size={15}/>:step>i?<Check size={13}/>:<i/>}</button>)}</div><div className={`studio-panel ${loop[step].color}`} role="tabpanel" id="studio-panel" aria-labelledby={`studio-tab-${step}`}><div className="studio-narrative" key={`n-${step}`}><span className="cinema-label">{String(step+1).padStart(2,'0')} / {loop[step].name.toUpperCase()}</span><h3>{loop[step].title}</h3><p>{loop[step].description}</p></div><div className="studio-code"><div><span><i/>sales_analysis</span><small>{step>=5?'VALIDATED / v1.1':'CANDIDATE / v1.0'}</small></div><code key={step}><span>›</span>{loop[step].code}<b className="cursor">_</b></code><div className="studio-outcome"><span className="outcome-icon">{step===3?<GitBranch size={19}/>:<CheckCheck size={19}/>}</span><p>{loop[step].output}</p><PixelSprite kind={step===3||step===4?'patch':step===0||step===6?'scout':'byte'}/></div></div><div className="studio-progress">{loop.map((_,i)=><i key={i===step?`now-${step}`:i} className={`${i<=step?'complete':''} ${i===step?'current':''}`}/>)}</div></div></div><div className="studio-footer"><ShieldCheck size={14}/><span>Test before trust. Every new version earns its place.</span><button onClick={onDemo}>Open live console <ArrowUpRight size={15}/></button></div></div></section>
-
-      <section className="cinema-section" id="capabilities"><div className="cinema-section-label"><span>03 / PUT IT TO WORK</span><i/><span>YOUR NEXT “CAN YOU?” STARTS HERE.</span></div><div className="cinema-section-heading"><h2>Small skills.<br /><em>Real possibilities.</em></h2><p>Start with the work in front of you.<br />Keep the capability you build along the way.</p></div><div className="application-tabs" role="tablist" aria-label="SkillForge application domains">{Object.entries(applications).map(([name,d],i)=><button role="tab" id={`app-tab-${i}`} aria-controls="application-panel" aria-selected={domain===name} tabIndex={domain===name?0:-1} key={name} onClick={()=>setDomain(name)} onKeyDown={e=>moveTab(e,i,Object.keys(applications),setDomain,'app-tab-')} className={domain===name?'selected':''}><d.icon size={17}/>{name}<ArrowUpRight size={13}/></button>)}</div><div className="application-panel" role="tabpanel" id="application-panel" aria-labelledby={`app-tab-${Object.keys(applications).indexOf(domain)}`}><div className="application-copy" key={domain}><span className="cinema-label">A CAPABILITY WORTH KEEPING</span><h3>{selected.title}</h3><p>{selected.copy}</p><button className="inline-action" onClick={onLibrary}>Explore the skill library <ArrowUpRight size={16}/></button></div><div className="application-demo"><div className="application-prompt"><span>YOU</span><p>{selected.prompt}</p></div><div className="application-skills">{selected.skills.map((s,i)=><span key={s}><i/>{s}{i<2&&<ArrowRight size={11}/>}</span>)}</div><div className="application-result"><div><strong key={selected.result}>{selected.result}</strong><small>{selected.note}</small></div><PixelSprite kind={selected.kind}/></div></div></div></section>
-
-      <section className="cinema-section governance-v4" id="boundaries"><div className="cinema-section-label"><span>04 / FREEDOM WITH A FRAMEWORK</span><i/><ShieldCheck size={17}/></div><div className="cinema-section-heading"><h2>A curious mind.<br /><em>A clear set of rules.</em></h2><p>Give your agents room to learn.<br />Keep control over how they do it.</p></div><div className="principle-grid">{[{icon:LockKeyhole,title:'An approved toolkit.',text:'Explicit tool allowlists. No raw shell access. Capabilities stay within their scope.',tag:'CONTROL'},{icon:FlaskIcon,title:'Trust is earned.',text:'New and repaired skills must pass validation before they become reusable.',tag:'VALIDATION'},{icon:GitBranch,title:'A way to step in.',text:'A bounded repair budget prevents endless retries and makes room for human review.',tag:'GOVERNANCE'},{icon:Database,title:'Nothing gets lost.',text:'Contracts, executions, test results, and version history stay connected.',tag:'TRACEABILITY'}].map(p=><article key={p.title}><div><p.icon size={21}/><span>{p.tag}</span></div><h3>{p.title}</h3><p>{p.text}</p></article>)}</div><div className="foundation-row"><span>THE FOUNDATION</span><div>{['React + Vite','FastAPI','SkillSmith','Ollama','SQLite','Pytest'].map(t=><span key={t}>{t}</span>)}</div></div></section>
-
-      <section className="cinema-finale" id="finale"><span className="finale-pet"><PixelSprite kind="byte"/><span>Ready when you are.</span></span><p className="cinema-label">YOUR NEXT IDEA DESERVES A FIRST TRY.</p><h2><KineticType text="MAKE IT" dotted/><KineticType text="a little smarter."/></h2><button className="forge-cta" onClick={onEnter}>Let’s build a capability <ArrowUpRight size={18}/></button><p className="finale-note">Explore the workspace. Meet the crew. Run the learning loop.</p></section>
-      <footer className="cinema-footer"><button className="footer-brand" onClick={()=>goTo('top')}><DotText text="SKILLFORGE"/><span>BUILT FOR THE NEXT “WHAT IF?”</span></button><div><span>SKILLFORGE / BUILT TO KEEP LEARNING</span><button className="footer-workspace" onClick={onEnter}>Open workspace <ArrowUpRight size={14}/></button><button onClick={()=>goTo('top')} aria-label="Back to top"><ArrowUpRight size={20}/></button></div></footer>
-    </main>
-  </>;
+function MoveVisual({ type }) {
+  if (type === 'build') return <div className="lx-visual lx-build" aria-hidden="true">
+    <span><b>def</b> sales_analysis(csv):</span><span>  rows = read_csv(csv)</span><span>  return by_product(rows)</span><i className="lx-caret" />
+  </div>;
+  if (type === 'repair') return <div className="lx-visual lx-repair" aria-hidden="true">
+    <span className="lx-bad">− column = "revenue"</span><span className="lx-good">+ column = "Sales"</span>
+    <div className="lx-checks"><i /><i /><i /><b>3 / 3</b></div>
+  </div>;
+  return <div className="lx-visual lx-remember" aria-hidden="true">
+    <span className="lx-chip">v1.0</span><span className="lx-arrow" /><span className="lx-chip now">v1.1</span><span className="lx-saved">SAVED TO REGISTRY</span>
+  </div>;
 }
-function FlaskIcon(props){return <CheckCheck {...props}/>;}
+
+export default function Landing({ onEnter, onDemo, motion, onToast }) {
+  const goTo = id => document.getElementById(id)?.scrollIntoView({ behavior: motion ? 'smooth' : 'auto', block: 'start' });
+  return <main className="landing landing-v4 landing-final landing-lx">
+    <SectionRail sections={chapters} onJump={goTo} />
+    <HeroForge motion={motion} onEnter={onEnter} onDemo={onDemo} onLearn={() => goTo('how')} onToast={onToast} />
+
+    <section className="lx-section" id="how">
+      <Pop className="lx-head">
+        <span className="lx-label pop" style={{ '--i': 0 }}><i />01 / HOW IT LEARNS</span>
+        <h2><PopWords text="Three moves." start={1} /><br /><em><PopWords text="One lasting skill." start={3} /></em></h2>
+      </Pop>
+      <Pop className="lx-moves" threshold={0.2}>
+        <span className="lx-thread" aria-hidden="true" />
+        {moves.map((m, i) => <article key={m.n} className="lx-card pop" style={{ '--i': i * 2 }}>
+          <span className="lx-pet pop-hop" style={{ '--i': i * 2 + 3 }}><PixelSprite kind={m.kind} /><Burst /></span>
+          <div className="lx-card-top"><span className="lx-icon pop" style={{ '--i': i * 2 + 2 }}><m.icon size={18} /></span><span className="lx-num">{m.n}</span></div>
+          <h3>{m.title}</h3>
+          <p>{m.text}</p>
+          <MoveVisual type={m.visual} />
+        </article>)}
+      </Pop>
+    </section>
+
+    <section className="lx-section lx-trust" id="trust">
+      <Pop className="lx-head">
+        <span className="lx-label pop" style={{ '--i': 0 }}><i />02 / FREEDOM WITH A FRAMEWORK</span>
+        <h2><PopWords text="A curious mind." start={1} /><br /><em><PopWords text="A clear set of rules." start={4} /></em></h2>
+      </Pop>
+      <Pop className="lx-rules">
+        {rules.map((r, i) => <span key={r.label} className="lx-rule pop" style={{ '--i': i }}><r.icon size={15} />{r.label}</span>)}
+      </Pop>
+      <Stats motion={motion} />
+    </section>
+
+    <Pop as="section" className="lx-finale" id="start" threshold={0.3}>
+      <span className="lx-finale-pets" aria-hidden="true">{['scout', 'byte', 'patch'].map((k, i) => <span key={k} className="pop-hop" style={{ '--i': i + 4 }}><PixelSprite kind={k} /></span>)}</span>
+      <Burst className="lx-finale-burst" />
+      <span className="lx-label pop" style={{ '--i': 0 }}><i />YOUR NEXT IDEA DESERVES A FIRST TRY</span>
+      <h2><PopWords text="Make your agents" start={1} /><br /><span className="lx-pixel pop" style={{ '--i': 4 }}>a little smarter.</span></h2>
+      <div className="lx-finale-actions pop" style={{ '--i': 6 }}>
+        <button className="forge-cta" onClick={onEnter}>Open your workspace <ArrowUpRight size={18} /></button>
+        <button className="hx-try" onClick={onDemo}>Watch a repair run <ArrowUpRight size={14} /></button>
+      </div>
+    </Pop>
+
+    <footer className="cinema-footer"><button className="footer-brand" onClick={() => goTo('top')}><DotText text="SKILLFORGE" /><span>BUILT FOR THE NEXT “WHAT IF?”</span></button><div><span>REACT · FASTAPI · SKILLSMITH · OLLAMA · SQLITE</span><button className="footer-workspace" onClick={onEnter}>Open workspace <ArrowUpRight size={14} /></button><button onClick={() => goTo('top')} aria-label="Back to top"><ArrowUpRight size={20} /></button></div></footer>
+  </main>;
+}
+
+function Stats({ motion }) {
+  const [ref, inView] = useInView(0.4);
+  return <dl ref={ref} className={`lx-stats pop-scope ${inView ? 'is-in' : ''}`}>
+    {stats.map((s, i) => <div key={s.label} className="pop" style={{ '--i': i }}><dt>{s.label}</dt><dd><CountUp {...s} run={motion && inView} /></dd></div>)}
+  </dl>;
+}

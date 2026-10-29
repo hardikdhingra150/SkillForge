@@ -128,7 +128,7 @@ export default function App() {
   const consoleProps = { logs, running, runComplete, stage, reused, onRun: startRun };
   const matchedSkills = skills.filter(s => (filter === 'All' || s.category === filter) && `${s.name} ${s.description} ${s.id}`.toLowerCase().includes(query.toLowerCase()));
   const showSkill = skill => setModal({ type: 'skill', skill });
-  const landingNav = [{id:'idea',label:'Inside the forge'}, {id:'learning-loop',label:'How it learns'}, {id:'capabilities',label:'Possibilities'}];
+  const landingNav = [{id:'how',label:'How it learns'}, {id:'trust',label:'Guardrails'}, {id:'start',label:'Get started'}];
   const scrollLanding = id => { setMobileNav(false); document.getElementById(id)?.scrollIntoView({behavior:motion ? 'smooth' : 'auto'}); };
   return <div data-theme={theme} data-scene={scene} className={`app ${view === 'landing' ? 'is-landing' : 'is-workspace'} ${motion ? '' : 'motion-paused'}`}>
     <LivingBackground motion={motion} />

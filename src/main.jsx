@@ -18,5 +18,6 @@ import './automatic-motion.css';
 import './frontend-harmony.css';
 import './scroll-choreography.css';
 import './hero-forge.css';
+import './landing-lx.css';
 
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);

@@ -34,9 +34,3 @@ export function SectionRail({ sections, onJump }) {
     </button>)}
   </nav>;
 }
-
-/** A slow, endless band of the learning loop's verbs. Decorative. */
-export function Marquee({ words, reverse = false }) {
-  const run = <span className="forge-marquee-run">{words.map(w => <span key={w}>{w}<i>✳</i></span>)}</span>;
-  return <div className={`forge-marquee ${reverse ? 'reverse' : ''}`} aria-hidden="true"><div className="forge-marquee-track">{run}{run}</div></div>;
-}

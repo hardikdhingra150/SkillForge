@@ -4,6 +4,8 @@ const MOTION_ROOTS = [
   '.forge-hero',
   '.cinema-section',
   '.cinema-finale',
+  '.lx-section',
+  '.lx-finale',
   '.hero',
   '.metrics',
   '.work-grid',

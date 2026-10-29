@@ -59,22 +59,6 @@ html body .app.reveal-armed .main-content :is(.panel, .metric-card, .skill-card,
   opacity: calc(1 - var(--scene-out, 0) * .7);
 }
 
-/* Oversized chapter numbers drift behind each landing section. */
-.app .landing-final :is(#idea, #learning-loop, #capabilities, #boundaries) { position: relative; isolation: isolate; }
-.app .landing-final :is(#idea, #learning-loop, #capabilities, #boundaries)::after {
-  position: absolute; z-index: -1; right: -.04em; bottom: -.12em;
-  font: 400 clamp(150px, 22vw, 320px)/1 'Pixelify Sans', monospace;
-  letter-spacing: -.04em;
-  color: var(--soft); -webkit-text-stroke: 1px var(--glass-edge);
-  opacity: calc(.35 + var(--scene, 0) * .65);
-  translate: 0 calc((var(--scene, .5) - .5) * -240px);
-  pointer-events: none; user-select: none;
-}
-.app .landing-final #idea::after { content: '01'; }
-.app .landing-final #learning-loop::after { content: '02'; }
-.app .landing-final #capabilities::after { content: '03'; }
-.app .landing-final #boundaries::after { content: '04'; }
-
 /* ---------- Page progress ---------- */
 .scroll-progress { position: fixed; inset: 0 0 auto; height: 2px; z-index: 60; pointer-events: none; }
 .scroll-progress > i {
@@ -123,40 +107,9 @@ html body .app.reveal-armed .main-content :is(.panel, .metric-card, .skill-card,
 @media (max-width: 1180px) { .section-rail { display: none; } }
 @keyframes sf-rail-in { from { opacity: 0; translate: 16px -50%; } }
 
-/* ---------- Loop marquee ---------- */
-.forge-marquee {
-  position: relative; overflow: hidden; margin: 54px 0 0; padding: 16px 0;
-  border-block: 1px solid var(--line);
-  color: var(--faint); font: 11px 'Space Mono', monospace; letter-spacing: 4px;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-}
-.forge-marquee-track {
-  display: flex; width: max-content;
-  animation: sf-marquee 42s linear infinite;
-  translate: calc(var(--sf-scroll, 0) * -900px) 0;
-}
-.forge-marquee.reverse .forge-marquee-track { animation-direction: reverse; }
-.forge-marquee-run { display: flex; }
-.forge-marquee-run > span { display: inline-flex; align-items: center; gap: 34px; padding-right: 34px; white-space: nowrap; }
-.forge-marquee-run > span:nth-child(even) { color: var(--text); }
-.forge-marquee-run i { font-style: normal; color: var(--muted); display: inline-block; animation: sf-marquee-spin 6s linear infinite; }
-@keyframes sf-marquee { to { transform: translateX(-50%); } }
-@keyframes sf-marquee-spin { to { rotate: 360deg; } }
-
-/* ---------- Learning loop autoplay ---------- */
-.app .learning-studio.is-autoplaying .studio-progress > i.current { position: relative; overflow: hidden; background: var(--line); }
-.app .learning-studio.is-autoplaying .studio-progress > i.current::after {
-  content: ''; position: absolute; inset: 0; background: var(--stage-accent, var(--text));
-  transform-origin: 0 50%; animation: sf-step-fill var(--step-ms, 2.6s) linear forwards;
-}
-.app .learning-studio.is-autoplaying .studio-instruction::before { content: '● AUTOPLAY · '; color: var(--text); }
-@keyframes sf-step-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.app .studio-steps > button.selected { transition: background .35s, color .35s, border-color .35s; }
-
 /* ---------- Pointer light and magnetic calls to action ---------- */
 @property --spot { syntax: '<length>'; inherits: false; initial-value: 0px; }
-.app :is(.hx-stage, .forge-system, .learning-studio, .application-panel, .principle-grid > article, .forge-capability-strip > div, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item).is-lit {
+.app :is(.hx-stage, .lx-card, .lx-finale, .metric-card, .skill-card, .guard-card, .panel, .sf-process, .sf-registry__card, .sf-history__item).is-lit {
   background-image: radial-gradient(var(--spot) circle at var(--mx, 50%) var(--my, 50%), var(--soft), transparent 70%);
   animation: sf-spot-in .5s var(--sf-ease-out) forwards;
 }
@@ -164,9 +117,4 @@ html body .app.reveal-armed .main-content :is(.panel, .metric-card, .skill-card,
 .app .is-magnetic { transition: translate .35s var(--sf-ease-out), transform .25s, box-shadow .25s, background .2s; }
 
 /* ---------- Pause and reduced motion ---------- */
-.app.motion-paused .forge-marquee-track { translate: none; }
 .app.motion-paused .section-rail { animation: none; }
-@media (prefers-reduced-motion: reduce) {
-  .forge-marquee-track { animation: none; translate: none; }
-  .app .landing-final :is(#idea, #learning-loop, #capabilities, #boundaries)::after { translate: none; }
-}

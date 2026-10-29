@@ -26,14 +26,8 @@ const RUN = [
   { stage: 6, tag: 'REUSE', text: 'next run: 0 repairs  ·  revenue $18,420', tone: 'ok', ms: 3600 },
 ];
 
-const STATS = [
-  { value: 7, pad: 2, label: 'stages in every learning loop' },
-  { value: 100, suffix: '%', label: 'of new skills tested before reuse' },
-  { value: 0, pad: 2, label: 'raw shell commands, ever' },
-  { value: null, display: '∞', label: 'reuses for every solved problem' },
-];
 
-function CountUp({ value, pad = 0, suffix = '', display, run }) {
+export function CountUp({ value, pad = 0, suffix = '', display, run }) {
   const [shown, setShown] = useState(run ? 0 : value);
   useEffect(() => {
     if (value == null) return undefined;
@@ -131,15 +125,6 @@ function ForgeConsole({ motion }) {
 }
 
 export default function HeroForge({ motion, onEnter, onDemo, onLearn, onToast }) {
-  const statsRef = useRef();
-  const [statsSeen, setStatsSeen] = useState(false);
-  useEffect(() => {
-    const node = statsRef.current;
-    if (!node || !('IntersectionObserver' in window)) { setStatsSeen(true); return undefined; }
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setStatsSeen(true); observer.disconnect(); } }, { threshold: 0.4 });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
   return <section className="forge-hero hx" id="top">
     <div className="hx-backdrop" aria-hidden="true"><i className="hx-grid" /><i className="hx-glow" /></div>
     <div className="forge-hero-overline"><span><i />SELF-EVOLVING SKILL INFRASTRUCTURE</span><span>BUILT TO LEARN. MADE TO LAST.</span></div>
@@ -164,10 +149,7 @@ export default function HeroForge({ motion, onEnter, onDemo, onLearn, onToast })
 
     <div className="hx-stage-wrap"><ForgeConsole motion={motion} /></div>
 
-    <dl className="hx-stats" ref={statsRef}>
-      {STATS.map((s, i) => <div key={s.label} style={{ '--i': i }}><dt>{s.label}</dt><dd><CountUp {...s} run={motion && statsSeen} /></dd></div>)}
-    </dl>
-    <button className="hx-scroll-cue" onClick={onLearn} aria-label="See how it learns"><span>SCROLL TO SEE IT THINK</span><ArrowDown size={14} /></button>
+    <button className="hx-scroll-cue" onClick={onLearn} aria-label="See how it learns"><span>SCROLL TO SEE HOW IT LEARNS</span><ArrowDown size={14} /></button>
   </section>;
 }
 
