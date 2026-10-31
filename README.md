@@ -1,43 +1,115 @@
 # SkillForge
 
-Vite + React frontend preview for self-evolving skill infrastructure. The interface pairs dot-matrix and pixel typography with a moving particle background, stable cards, and dark/light themes.
+Self-evolving skill infrastructure for AI agents: **build what's missing, repair what breaks, remember what works.**
 
-## Run
+SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale particle background, in dark and light themes) with a FastAPI + PostgreSQL backend. The backend reviews a requirement, takes a CSV input, runs a validated skill from a versioned registry, and records every step.
+
+> **Status:** early. The full backend pipeline works today for one built-in skill (`revenue_by_product`). The **create** and **repair** stages shown on the landing page and in the Live console demo are still simulated in the frontend. See [CHANGES_AND_ROADMAP.md](CHANGES_AND_ROADMAP.md).
+
+## What's real and what's simulated
+
+| Area | Status |
+|---|---|
+| Requirement review (keyword rules, `keyword_rules_v1`) | ✅ Backend |
+| CSV upload, column mapping, confirmation, SHA-256 integrity checks | ✅ Backend |
+| Queue + background worker, execution timeline events | ✅ Backend |
+| Versioned skill registry with validation evidence and implementation hash | ✅ Backend |
+| Execution history: search, filter, reopen | ✅ Backend |
+| SkillSmith skill **creation** (LLM / Ollama) | 🚧 Not built yet |
+| Automatic **repair** loop and version promotion | 🚧 Not built yet (simulated in the Live console demo) |
+| Workbench metrics, crew panel, sample skill cards | 🎭 Sample data |
+
+## Quick start
+
+### Frontend only
+
+The landing page and the demo work without the backend.
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:5173/. Production check: `npm run build`.
+Open <http://127.0.0.1:5173/>. For a production build, run `npm run build`.
 
-## Experience
+### Full stack
 
-- Product-led landing page with a concrete sales skill repair preview, architecture overview, applications, and guardrails.
-- Seven-stage walkthrough stays on the selected step. There is no autoplay or walkthrough pause/resume control.
-- The same greyscale particle background and neutral palette continue across every page. Light mode uses silver glass and charcoal text; dark mode uses translucent graphite surfaces and silver accents. Colour is reserved for the pixel characters.
-- Workspace includes an overview, skill library, console, activity, contracts, version history, and local draft creation.
-- Cursor companions Byte and Scout appear automatically, float at their perch, trail desktop pointers, and sparkle on clicks. They never intercept input. Paused motion, reduced motion, and touch retain a stationary perch.
-- Card frames remain steady while title words visibly float and tilt automatically, icons bob, and edge highlights travel. Extra hover responses supplement the continuous motion. Page transitions and button feedback use transforms and opacity, without animated blur or layout changes.
-- Offscreen sections and hidden tabs pause decorative motion. Cursor movement is frame-scheduled, and the background is a seamless 60 fps loop. The global motion control and reduced-motion preference are supported.
-- The sales demo simulates the revenue/Sales mismatch, repairs the mapping, validates three tests, and saves version 1.1 for reuse.
-- Storybook and all particle film playback/download controls have been removed. The MP4 remains an ambient background asset.
+**Prerequisites:** Node 20+, Python 3.12+, and Docker (for Postgres).
 
-## Source map
+1. **Environment files.** Copy each example and edit the values:
 
-- `src/App.jsx`: workspace state, routing, demo lifecycle, dialogs, and theme.
-- `src/components/Landing.jsx`: product landing page and manual lifecycle explorer.
-- `src/components/KineticType.jsx`: letter reveals and hover motion.
-- `src/components/MotionText.jsx`: responsive word-level text animation.
-- `src/components/MotionVisibility.jsx`: offscreen and hidden-tab animation suspension.
-- `src/components/CursorCompanions.jsx`: desktop pointer-following pets.
-- `src/components/LivingBackground.jsx`: ambient video surface.
-- `src/components/ParticleFilm.jsx`: background video playback lifecycle.
-- `src/final-polish.css`: final landing composition, palettes, and dialog refinements.
-- `src/workspace-polish.css`: stable responsive workspace surfaces and readable type.
-- `src/unified-motion.css`: shared translucent surfaces, route-consistent colours, and smooth motion.
-- `src/neutral-theme.css`: graphite/silver colour correction across both themes and every route.
-- `src/automatic-motion.css`: continuous floating titles and decorative movement without pointer interaction.
-- `public/video/`: 12-second, 60 fps particle loop and poster.
+   ```sh
+   cp .env.example .env.local                    # frontend → API URL
+   cp .env.postgres.example .env.postgres        # Postgres credentials (set a real password)
+   cp backend/.env.example backend/.env          # backend settings
+   ```
 
-Backend execution, AI calls, validation, and metrics are simulated. Drafts and demo progress reset on reload. Theme preferences persist locally. Fonts and assets are bundled; no backend is needed.
+2. **Start Postgres:**
+
+   ```sh
+   docker compose up -d postgres
+   ```
+
+3. **Set up the backend**, from `backend/`:
+
+   ```sh
+   python -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt
+   alembic upgrade head
+   python -m app.register_builtin_skills         # registers revenue_by_product after its self-tests pass
+   ```
+
+4. **Run the API and the worker** (two terminals, both in `backend/` with the venv active):
+
+   ```sh
+   uvicorn app.main:app --reload --port 8000
+   python -m app.worker
+   ```
+
+5. **Run the frontend** from the project root with `npm run dev`.
+
+**Health check:** <http://127.0.0.1:8000/api/v1/health/ready>
+
+### Try the pipeline
+
+1. Open **Workbench**.
+2. Submit "Show revenue by product".
+3. Upload a sales CSV (for example `demo_data/step10_sales.csv`) and confirm the product and revenue columns.
+4. Watch the timeline in the Process view. Finished runs appear under **Activity**, and the skill version appears under **Skill library**.
+
+### Tests
+
+Run from `backend/` with the venv active:
+
+```sh
+python -m unittest discover tests
+```
+
+## Project layout
+
+```text
+src/
+  App.jsx                     workspace routes, demo run, dialogs, theme
+  api/skillforgeProcess.js    API client (VITE_API_BASE_URL)
+  hooks/useSkillForgeProcess.js  submit / poll / reopen an execution
+  components/
+    Landing.jsx               4-section landing page
+    HeroForge.jsx             hero + self-playing learning-loop console
+    Pop.jsx                   spring pop-in, word reveals, pixel bursts
+    ScrollChoreographer.jsx   scroll reveals, parallax, spotlight
+    SkillForgeProcessView.jsx · SkillRegistryView.jsx · ExecutionHistory.jsx · CSVInputPanel.jsx
+  *.css                       theme layers (neutral-theme.css holds the palette)
+backend/
+  app/main.py                 FastAPI app and routers (/api/v1)
+  app/worker.py               polling worker: requirement review + execution
+  app/services/               requirement_review, csv_inputs, execution_queue, builtin_sales
+  app/database/               SQLAlchemy models; migrations/ holds Alembic
+  tests/                      unittest suites
+compose.yaml                  local Postgres
+```
+
+## Motion and accessibility
+
+- Decorative motion pauses when it's off screen or the tab is hidden.
+- The header has a pause control, and the system "reduce motion" setting is respected; both show all content without animation.
+- Byte and Scout follow a mouse pointer on desktop and never intercept input.

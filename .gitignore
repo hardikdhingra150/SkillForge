@@ -1,5 +1,24 @@
+# Dependencies and builds
 node_modules/
 dist/
 work/
-.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Local environment files: commit the *.example versions instead
+.env
+.env.local
+.env.*.local
 .env.postgres
+backend/.env
+
+# Large generated media
+outputs/*.mp4
+
+# OS / editor
+.DS_Store
