@@ -10,8 +10,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.database.connection import engine
 from app.database.session import SessionLocal
-from app.services.request_queue import review_next
 from app.services.execution_queue import execute_next
+from app.services.request_queue import review_next
 
 logger = logging.getLogger("skillforge.worker")
 

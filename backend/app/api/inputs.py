@@ -1,6 +1,6 @@
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -126,7 +126,7 @@ def upload_input(
             item.row_count = len(rows)
             item.mapping_json = None
             item.confirmed_at = None
-            item.uploaded_at = datetime.now(timezone.utc)
+            item.uploaded_at = datetime.now(UTC)
             execution.current_stage = "column_mapping"
             append_event(
                 db, execution_id, event_key=f"input.csv_uploaded.v{item.version}",
@@ -170,7 +170,7 @@ def confirm_input(execution_id: UUID, body: MappingConfirm, db: DB):
             except ValueError as error:
                 raise HTTPException(422, str(error)) from None
             item.mapping_json = mapping
-            item.confirmed_at = datetime.now(timezone.utc)
+            item.confirmed_at = datetime.now(UTC)
             task.requirements_json = {
                 **(task.requirements_json or {}),
                 "confirmed_operation": "revenue_by_product",

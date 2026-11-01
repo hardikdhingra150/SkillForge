@@ -142,182 +142,8 @@ function Status({
   );
 }
 
-function Habitat({
-  mode,
-  setMode,
-  running,
-  onToast,
-}) {
-  const [speaking, setSpeaking] = useState(null);
-  const [energy, setEnergy] = useState(72);
-  const [burst, setBurst] = useState(0);
-
-  const speechTimer = useRef();
-
-  useEffect(() => (
-    () => clearTimeout(speechTimer.current)
-  ), []);
-
-  const poke = (member) => {
-    clearTimeout(speechTimer.current);
-
-    setSpeaking({
-      kind: member.kind,
-      text: member.speech[
-        Math.floor(Math.random() * member.speech.length)
-      ],
-    });
-
-    speechTimer.current = setTimeout(
-      () => setSpeaking(null),
-      2800,
-    );
-  };
-
-  return (
-    <div
-      className={`habitat motion-panel ${
-        running ? 'working' : ''
-      }`}
-    >
-      <PanelTop label="agent_habitat.live">
-        <Status>ALL SYSTEMS CURIOUS</Status>
-      </PanelTop>
-
-      <div className="habitat-stage">
-        <div className="habitat-grid" />
-        <div className="habitat-orbit orbit-a" />
-        <div className="habitat-orbit orbit-b" />
-
-        <div className="habitat-coord top">
-          X: 128 / Y: 064
-        </div>
-
-        <div className="habitat-coord bottom">
-          HOVER TO EXPLORE · CLICK TO SAY HI
-        </div>
-
-        <div className="floating-file">
-          <FileText size={12} />
-          sales.csv
-          <span>↗</span>
-        </div>
-
-        <div className="floating-version">
-          <Check size={12} />
-          v1.1 unlocked
-        </div>
-
-        <PixelSpark className="scene-spark spark-one" />
-        <PixelSpark className="scene-spark spark-two" />
-        <PixelSpark className="scene-spark spark-three" />
-
-        {crew.map((member, index) => (
-          <div
-            className={`habitat-agent agent-${member.kind}`}
-            key={member.kind}
-            style={{ '--i': index }}
-          >
-            {speaking?.kind === member.kind && (
-              <div className="speech-bubble">
-                {speaking.text}
-              </div>
-            )}
-
-            <PixelSprite
-              kind={member.kind}
-              mode={mode}
-              interactive
-              onPoke={() => poke(member)}
-              title={`Say hello to ${member.name}`}
-            />
-
-            <span className="agent-ground" />
-
-            <span className="agent-name">
-              {member.name}
-              <i />
-            </span>
-          </div>
-        ))}
-
-        {burst > 0 && (
-          <div
-            className="energy-burst"
-            key={burst}
-          >
-            {Array.from(
-              { length: 10 },
-              (_, index) => (
-                <i
-                  key={index}
-                  style={{
-                    '--angle': `${index * 36}deg`,
-                  }}
-                />
-              ),
-            )}
-          </div>
-        )}
-
-        <div className="scene-caption">
-          <span className="pixel-heart">♥</span>
-          {' '}
-          A LITTLE PERSONALITY. A LOT OF POTENTIAL.
-        </div>
-      </div>
-
-      <div className="habitat-controls">
-        <button
-          className="feed-button"
-          onClick={() => {
-            setEnergy((value) => (
-              value >= 100
-                ? 72
-                : Math.min(100, value + 7)
-            ));
-
-            setBurst((value) => value + 1);
-
-            onToast(
-              'Creative energy restored. The crew says thanks!',
-            );
-          }}
-        >
-          <Zap size={12} />
-
-          <span>{energy}% ENERGY</span>
-
-          <div className="energy-track">
-            <i style={{ width: `${energy}%` }} />
-          </div>
-        </button>
-
-        <div
-          className="segment-control"
-          aria-label="Sprite rendering style"
-        >
-          {['pixel', 'dots', 'voxel'].map((value) => (
-            <button
-              key={value}
-              aria-pressed={mode === value}
-              className={
-                mode === value ? 'selected' : ''
-              }
-              onClick={() => setMode(value)}
-            >
-              {value === 'voxel' ? '3D' : value}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function Metrics({
   skills,
-  runs,
   repairs,
 }) {
   const metrics = [
@@ -746,68 +572,6 @@ function CrewPanel({
   );
 }
 
-function ActivityTable({
-  runs,
-  onSelect,
-  all = false,
-}) {
-  return (
-    <div className="activity-table">
-      <div className="activity-row activity-labels">
-        <span>THE MISSION</span>
-        <span>RESULT</span>
-        <span>WHEN</span>
-        <span>TIME</span>
-      </div>
-
-      {runs
-        .slice(0, all ? runs.length : 3)
-        .map((run) => (
-          <button
-            key={run.id}
-            className="activity-row"
-            onClick={() => onSelect(run)}
-          >
-            <span>
-              <PixelSprite kind={run.kind} />
-
-              <span>
-                {run.name}
-
-                <small>
-                  {run.skill} / v{run.version}
-                </small>
-              </span>
-            </span>
-
-            <span
-              className={`result-pill ${
-                run.result === 'Repaired'
-                  ? 'repaired'
-                  : ''
-              }`}
-            >
-              {run.result === 'Repaired'
-                ? <GitBranch size={11} />
-                : <Check size={11} />}
-
-              {run.result}
-            </span>
-
-            <span className="run-when">
-              {run.time}
-            </span>
-
-            <span className="run-duration">
-              {run.duration}
-              <ArrowUpRight size={13} />
-            </span>
-          </button>
-        ))}
-    </div>
-  );
-}
-
 function Modal({
   children,
   title,
@@ -865,6 +629,8 @@ function Modal({
       document.removeEventListener('keydown', handle);
       before?.focus();
     };
+    // Mount-only on purpose: the focus trap and scroll lock live for the modal's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -1345,14 +1111,12 @@ export default function App() {
     ).matches
   ));
 
-  const [mode, setMode] = useState('voxel');
+  const [mode] = useState('voxel');
   const [skills, setSkills] = useState(initialSkills);
   const [runs, setRuns] = useState(initialRuns);
 
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('All');
 
   const [logs, setLogs] = useState([]);
   const [running, setRunning] = useState(false);
@@ -1675,16 +1439,6 @@ export default function App() {
     reused,
     onRun: startRun,
   };
-
-  const matchedSkills = skills.filter((skill) => (
-    (
-      filter === 'All'
-      || skill.category === filter
-    )
-    && `${skill.name} ${skill.description} ${skill.id}`
-      .toLowerCase()
-      .includes(query.toLowerCase())
-  ));
 
   const showSkill = (skill) => {
     setModal({
@@ -2301,8 +2055,6 @@ export default function App() {
             ]);
 
             setModal(null);
-            setQuery('');
-            setFilter('All');
 
             notify(
               `${skill.name} is taking its first little steps.`,

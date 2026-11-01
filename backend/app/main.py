@@ -6,12 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import router as tasks_router
+from app.api.activity import router as activity_router
 from app.api.inputs import router as inputs_router
 from app.api.skills import router as skills_router
+from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.database.connection import engine
-from app.api.activity import router as activity_router
 
 logger = logging.getLogger("uvicorn.error")
 

@@ -77,13 +77,27 @@ Open <http://127.0.0.1:5173/>. For a production build, run `npm run build`.
 3. Upload a sales CSV (for example `demo_data/step10_sales.csv`) and confirm the product and revenue columns.
 4. Watch the timeline in the Process view. Finished runs appear under **Activity**, and the skill version appears under **Skill library**.
 
-### Tests
+### Developer commands
 
-Run from `backend/` with the venv active:
+A `Makefile` wraps the common tasks. Run `make help` to list them.
 
-```sh
-python -m unittest discover tests
-```
+| Command | What it does |
+|---|---|
+| `make setup` | `npm install`, create `backend/.venv`, install the backend and dev requirements |
+| `make db` / `make migrate` / `make seed` | Start Postgres, apply migrations, register the built-in skills |
+| `make api` / `make worker` / `make web` | Run the API (:8000), the worker, and the frontend (:5173) |
+| `make lint` | Run `ruff` (backend) and ESLint (frontend) |
+| `make test` | Backend unit tests |
+| `make check` | Lint, tests and the production build: everything CI runs |
+
+### CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on every pull request:
+
+- **Backend:** `ruff check` and the unit tests on Python 3.14.
+- **Frontend:** ESLint with zero warnings allowed, then `vite build`.
+
+> `backend/app/services/builtin_sales.py` and `csv_inputs.py` are hashed into the registered skill's `IMPLEMENTATION_HASH`. Editing them, even with `ruff --fix`, requires registering a new skill version.
 
 ## Project layout
 

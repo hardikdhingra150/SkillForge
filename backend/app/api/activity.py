@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -19,7 +19,6 @@ from app.api.tasks import (
     require_development,
 )
 from app.database.models import Execution, Task
-
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -68,11 +67,11 @@ def utc(value):
 
     if value.tzinfo is None:
         return value.replace(
-            tzinfo=timezone.utc
+            tzinfo=UTC
         )
 
     return value.astimezone(
-        timezone.utc
+        UTC
     )
 
 

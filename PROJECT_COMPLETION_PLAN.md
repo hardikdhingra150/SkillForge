@@ -19,7 +19,7 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-The very next action is **Phase 0**: commit the cleanup you just reviewed.
+**Phases 0 and 1 are done.** The next action is **Phase 2**: the skill platform.
 
 ---
 
@@ -38,7 +38,10 @@ The very next action is **Phase 0**: commit the cleanup you just reviewed.
 
 ---
 
-## Phase 1: developer foundations (1–2 days)
+## Phase 1: developer foundations (1–2 days) ✅ Done
+
+_Shipped: a `Makefile`, `ruff` (in `backend/pyproject.toml` and `requirements-dev.txt`), ESLint 9 (`eslint.config.js`, `npm run lint`) and GitHub Actions CI (`.github/workflows/ci.yml`). Prettier was left out on purpose: reformatting every file would bury real changes in a huge diff. Add it when you split `App.jsx` in Phase 7._
+
 
 So that every later change is safe to make.
 

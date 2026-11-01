@@ -1,6 +1,6 @@
 """Short transactional queue review. Do not add file or model calls here."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -47,7 +47,7 @@ def review_next(
 
     execution.status = "running"
     execution.current_stage = "requirement_review"
-    execution.started_at = execution.started_at or datetime.now(timezone.utc)
+    execution.started_at = execution.started_at or datetime.now(UTC)
     db.flush()
 
     append_event(

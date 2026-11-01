@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,7 +8,11 @@ from app.database.input_models import ExecutionCSVInput
 from app.database.models import Execution, Task
 from app.database.skill_models import SkillVersion
 from app.services.builtin_sales import (
-    IMPLEMENTATION_HASH, SKILL_ID, VERSION, run_sales, validate_sales_result,
+    IMPLEMENTATION_HASH,
+    SKILL_ID,
+    VERSION,
+    run_sales,
+    validate_sales_result,
 )
 from app.services.events import append_event
 from app.services.request_queue import DEV_WORKSPACE_ID
@@ -38,7 +42,7 @@ def execute_next(db):
         )
 
     execution.status = "running"
-    execution.started_at = execution.started_at or datetime.now(timezone.utc)
+    execution.started_at = execution.started_at or datetime.now(UTC)
     db.flush()
     emit("execution_started", "skill_discovery", "A worker started processing the confirmed input.")
 
@@ -106,6 +110,6 @@ def execute_next(db):
         execution.result_json = {"error": {"code": "EXECUTION_FAILED", "message": message}}
         emit("execution_failed", "failed", message, {"code": "EXECUTION_FAILED"})
 
-    execution.finished_at = datetime.now(timezone.utc)
+    execution.finished_at = datetime.now(UTC)
     db.flush()
     return execution.id

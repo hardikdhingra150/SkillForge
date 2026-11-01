@@ -38,12 +38,14 @@ export default function SkillForgeProcessView({
     process.pending?.requirement ?? draft
   );
 
+  const { openExecution } = process;
+
   useEffect(() => {
     if (!requestedExecutionId) {
       return;
     }
 
-    process.openExecution(requestedExecutionId);
+    openExecution(requestedExecutionId);
     onOpenRequestHandled?.("");
 
     panelRef.current?.scrollIntoView?.({
@@ -52,7 +54,7 @@ export default function SkillForgeProcessView({
     });
   }, [
     requestedExecutionId,
-    process.openExecution,
+    openExecution,
     onOpenRequestHandled,
   ]);
 

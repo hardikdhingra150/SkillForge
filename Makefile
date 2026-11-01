@@ -1,0 +1,56 @@
+# SkillForge developer commands. Run `make help` for the list.
+
+PY      ?= python3
+VENV    := backend/.venv
+VPY     := $(VENV)/bin/python
+BACKEND := cd backend &&
+
+.DEFAULT_GOAL := help
+.PHONY: help setup db db-down migrate seed api worker web test test-backend lint lint-backend lint-web build check
+
+help: ## Show available commands
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
+
+setup: ## Install frontend and backend dependencies (creates backend/.venv)
+	npm install
+	test -x $(VPY) || $(PY) -m venv $(VENV)
+	$(VPY) -m pip install -q -r backend/requirements.txt -r backend/requirements-dev.txt
+
+db: ## Start local Postgres (needs .env.postgres)
+	docker compose up -d postgres
+
+db-down: ## Stop local Postgres
+	docker compose down
+
+migrate: ## Apply database migrations
+	$(BACKEND) .venv/bin/alembic upgrade head
+
+seed: ## Register the built-in skills (runs their self-tests first)
+	$(BACKEND) .venv/bin/python -m app.register_builtin_skills
+
+api: ## Run the API on :8000 with reload
+	$(BACKEND) .venv/bin/uvicorn app.main:app --reload --port 8000
+
+worker: ## Run the background worker
+	$(BACKEND) .venv/bin/python -m app.worker
+
+web: ## Run the frontend dev server on :5173
+	npm run dev
+
+test-backend: ## Run backend unit tests
+	$(BACKEND) .venv/bin/python -m unittest discover tests
+
+lint-backend: ## Lint backend Python with ruff
+	$(BACKEND) .venv/bin/ruff check .
+
+lint-web: ## Lint frontend with ESLint
+	npm run lint
+
+lint: lint-backend lint-web ## Lint everything
+
+build: ## Production build of the frontend
+	npm run build
+
+test: test-backend ## Run all tests
+
+check: lint test build ## Everything CI runs

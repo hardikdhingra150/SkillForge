@@ -1,0 +1,18 @@
+# Note: builtin_sales.py and csv_inputs.py are hashed into the registered
+# skill's IMPLEMENTATION_HASH. Any edit to them (including `ruff --fix`)
+# requires registering a new skill version.
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+extend-exclude = ["migrations/versions", ".venv"]
+
+[tool.ruff.lint]
+# Pyflakes, pycodestyle errors, import order, bugbear, and pyupgrade.
+select = ["F", "E", "I", "B", "UP"]
+ignore = [
+  "E501",  # long lines are left to review; the formatter is not enforced yet
+  "B008",  # FastAPI uses function calls (Depends, Query) in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
