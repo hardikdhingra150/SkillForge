@@ -63,6 +63,7 @@ import {
 
 import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
 import { getMetricsSummary } from './api/skillforgeProcess.js';
+import { LIVE_FILE, runLive } from './api/liveRun.js';
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
 import ChatView from './components/ChatView.jsx';
@@ -370,12 +371,44 @@ function SkillCard({
   );
 }
 
+function LiveResult({ result }) {
+  const products = [...(result.products || [])]
+    .sort((a, b) => Number(b.revenue) - Number(a.revenue))
+    .slice(0, 4);
+  const top = Math.max(...products.map((item) => Math.abs(Number(item.revenue))), 1);
+  const money = (value) => Number(value).toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'USD',
+  });
+
+  return (
+    <div className="demo-result">
+      <span>
+        <Check size={13} />
+        {money(result.total_revenue)} total revenue
+        {' · '}
+        {result.skill?.id} v{result.skill?.version}
+      </span>
+
+      {products.map((item) => (
+        <div key={item.product}>
+          <b style={{ '--width': `${Math.round((100 * Math.abs(Number(item.revenue))) / top)}%` }} />
+          {item.product}
+          <em>{money(item.revenue)}</em>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Console({
   logs,
   running,
   runComplete,
   stage,
   reused,
+  live = false,
+  result = null,
   onRun,
   expanded = false,
 }) {
@@ -437,9 +470,9 @@ function Console({
       <div className="file-chip">
         <FileText size={11} />
 
-        <span>quarterly_sales.csv</span>
-        <span>24 rows · sample data</span>
-        <span className="demo-text">DEMO</span>
+        <span>{live ? LIVE_FILE.name : 'quarterly_sales.csv'}</span>
+        <span>{live ? `${LIVE_FILE.rows} rows · messy amounts` : '24 rows · sample data'}</span>
+        <span className="demo-text">{live ? 'LIVE' : 'DEMO'}</span>
       </div>
 
       <div className="lifecycle">
@@ -511,7 +544,9 @@ function Console({
           ))
         )}
 
-        {runComplete && (
+        {runComplete && result && <LiveResult result={result} />}
+
+        {runComplete && !result && (
           <div className="demo-result">
             <span>
               <Check size={13} />
@@ -542,7 +577,7 @@ function Console({
       <div className="console-footer">
         <span>
           <LockKeyhole size={11} />
-          SIMULATED · SAFE TO PLAY
+          {live ? 'REAL RUN · SANDBOXED' : 'SIMULATED · SAFE TO PLAY'}
         </span>
 
         <Button
@@ -560,7 +595,7 @@ function Console({
           {running
             ? 'Working on it...'
             : runComplete
-              ? 'Run again · reuse v1.1'
+              ? (live ? 'Run again · reuse the skill' : 'Run again · reuse v1.1')
               : 'Let’s run it'}
         </Button>
       </div>
@@ -1188,6 +1223,9 @@ export default function App() {
   const [stage, setStage] = useState(-1);
   const [learned, setLearned] = useState(false);
   const [reused, setReused] = useState(false);
+  // The console runs for real against the API; the scripted demo is only a fallback.
+  const [consoleLive, setConsoleLive] = useState(true);
+  const [liveResult, setLiveResult] = useState(null);
   const [repairs, setRepairs] = useState(8);
   const [metricsSummary, setMetricsSummary] = useState(null);
 
@@ -1334,7 +1372,7 @@ export default function App() {
     });
   };
 
-  const startRun = async () => {
+  const playDemo = async () => {
     if (inFlight.current) {
       return;
     }
@@ -1521,12 +1559,113 @@ export default function App() {
     );
   };
 
+  const runController = useRef(null);
+
+  useEffect(() => () => runController.current?.abort(), []);
+
+  const startRun = async () => {
+    if (inFlight.current) {
+      return;
+    }
+
+    inFlight.current = true;
+
+    const started = Date.now();
+    const controller = new AbortController();
+    let lines = 0;
+
+    runController.current = controller;
+
+    const push = (line) => {
+      if (!alive.current) {
+        return;
+      }
+
+      lines += 1;
+      setStage(line.stage);
+      setLogs((previous) => [
+        ...previous,
+        {
+          ...line,
+          time: `00:${String(Math.floor((Date.now() - started) / 1000)).padStart(2, '0')}`,
+        },
+      ]);
+    };
+
+    setRunning(true);
+    setRunComplete(false);
+    setReused(false);
+    setLiveResult(null);
+    setLogs([]);
+    setStage(0);
+
+    try {
+      const { execution, repaired } = await runLive({
+        onLine: push,
+        onWaiting: () => push({
+          stage: 0,
+          tag: 'WAIT',
+          type: '',
+          message: 'No worker has picked this up yet. Start one with make worker.',
+        }),
+        signal: controller.signal,
+      });
+
+      if (!alive.current) {
+        return;
+      }
+
+      const ok = execution?.status === 'succeeded';
+      const version = execution?.result?.skill?.version;
+
+      setConsoleLive(true);
+      setReused(ok && !repaired);
+      setLiveResult(ok ? execution.result : null);
+      setRunComplete(ok);
+      setStage(ok ? 6 : 4);
+
+      if (ok && repaired) {
+        setRepairs((value) => value + 1);
+      }
+
+      notify(
+        !ok
+          ? 'The run needs a human. Open Review to retry or reject it.'
+          : repaired
+            ? `Repaired and saved revenue_by_product v${version}.`
+            : `Reused revenue_by_product v${version}. No repair needed.`,
+      );
+    } catch (error) {
+      if (!alive.current || error.name === 'AbortError') {
+        return;
+      }
+
+      // No API at all: fall back to the scripted demo.
+      if (error.status === 0 && !lines) {
+        setConsoleLive(false);
+        inFlight.current = false;
+        setRunning(false);
+        await playDemo();
+        return;
+      }
+
+      push({ stage: 4, tag: 'FAIL', type: 'error', message: error.message });
+    } finally {
+      if (runController.current === controller) {
+        inFlight.current = false;
+        setRunning(false);
+      }
+    }
+  };
+
   const consoleProps = {
     logs,
     running,
     runComplete,
     stage,
     reused,
+    live: consoleLive,
+    result: liveResult,
     onRun: startRun,
   };
 
