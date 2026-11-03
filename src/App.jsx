@@ -2001,15 +2001,15 @@ export default function App() {
                     <span>01 / THE PLOT TWIST</span>
 
                     <h3>
-                      Your CSV says “Sales”.
+                      Your CSV says “$1,200.50”.
                       <br />
-                      The skill expects “revenue”.
+                      The skill expects a plain number.
                     </h3>
 
                     <p>
-                      Evaluation catches the mismatch. Patch
-                      diagnoses it, adjusts the mapping,
-                      and runs the tests again.
+                      v1.0.0 fails with BAD_NUMBER. Patch
+                      diagnoses it, switches to parse_amount,
+                      and proves the fix on the failing input.
                     </p>
                   </article>
 
@@ -2017,15 +2017,15 @@ export default function App() {
                     <span>02 / THE HAPPY ENDING</span>
 
                     <h3>
-                      Three tests pass.
+                      Every test passes.
                       <br />
                       A better skill stays with you.
                     </h3>
 
                     <p>
-                      Version 1.1 joins the registry. Run
-                      the same task again and the agent
-                      reuses what it already learned.
+                      v1.1.0 joins the registry. Run the
+                      same task again and the worker
+                      reuses it with no repair.
                     </p>
                   </article>
                 </div>
