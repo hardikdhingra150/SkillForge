@@ -1,4 +1,6 @@
 import logging
+import time
+from collections.abc import Callable, Iterator
 from typing import Annotated
 from uuid import UUID, uuid5
 
@@ -10,6 +12,7 @@ from fastapi import (
     Query,
     Response,
 )
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -22,7 +25,7 @@ from app.database.models import (
     Task,
     Workspace,
 )
-from app.database.session import get_db
+from app.database.session import SessionLocal, get_db
 from app.schemas.process import (
     EventOut,
     EventPage,
@@ -291,4 +294,68 @@ def get_events(
         events=events,
         next_after=events[-1].sequence if events else after,
         has_more=len(rows) > limit,
+    )
+
+STREAM_MAX_SECONDS = 15 * 60
+STREAM_POLL_SECONDS = 1.0
+FINISHED = {"succeeded", "failed", "cancelled", "expired"}
+
+
+def stream_frames(
+    load: Callable[[int], tuple[ExecutionOut, list[EventOut]]],
+    after: int = 0,
+    *,
+    sleep: Callable[[float], None] = time.sleep,
+    max_seconds: float = STREAM_MAX_SECONDS,
+    clock: Callable[[], float] = time.monotonic,
+) -> Iterator[str]:
+    """Server-sent event frames: the run when it changes, each new event once, then `done` when it finishes.
+
+    The worker is a separate process, so this polls the database (cheap: one indexed read per second).
+    """
+    started, last, cursor = clock(), None, after
+    while clock() - started < max_seconds:
+        execution, events = load(cursor)
+        for event in events:
+            cursor = event.sequence
+            yield f"id: {event.sequence}\nevent: event\ndata: {event.model_dump_json()}\n\n"
+        payload = execution.model_dump_json()
+        if payload != last:
+            last = payload
+            yield f"event: execution\ndata: {payload}\n\n"
+        if execution.status in FINISHED:
+            yield "event: done\ndata: {}\n\n"
+            return
+        yield ": keep-alive\n\n"
+        sleep(STREAM_POLL_SECONDS)
+
+
+@router.get("/executions/{execution_id}/stream")
+def stream_execution(
+    execution_id: UUID,
+    after: Annotated[int, Query(ge=0)] = 0,
+):
+    """Live updates for one run over server-sent events; the Process view falls back to polling."""
+    with SessionLocal() as db:
+        if lookup_execution(db, execution_id) is None:
+            raise HTTPException(status_code=404, detail="Execution not found.")
+
+    def load(cursor: int):
+        with SessionLocal() as db:
+            execution, task = lookup_execution(db, execution_id)
+            rows = db.scalars(
+                select(ExecutionEvent)
+                .where(ExecutionEvent.execution_id == execution_id, ExecutionEvent.sequence > cursor)
+                .order_by(ExecutionEvent.sequence)
+                .limit(100)
+            ).all()
+            return (
+                execution_output(execution, task),
+                [EventOut.model_validate(row) for row in rows],
+            )
+
+    return StreamingResponse(
+        stream_frames(load, after),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
