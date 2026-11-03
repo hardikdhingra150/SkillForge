@@ -19,6 +19,7 @@ import {
   Layers3,
   LockKeyhole,
   Menu,
+  MessagesSquare,
   Moon,
   Sun,
   Pause,
@@ -62,12 +63,18 @@ import {
 import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
+import ChatView from './components/ChatView.jsx';
 
 const views = [
   {
     id: 'workbench',
     label: 'Workbench',
     icon: Box,
+  },
+  {
+    id: 'chat',
+    label: 'Chat',
+    icon: MessagesSquare,
   },
   {
     id: 'library',
@@ -1081,6 +1088,7 @@ export default function App() {
   const [view, setView] = useState(() => (
     [
       'workbench',
+      'chat',
       'library',
       'console',
       'activity',
@@ -1157,6 +1165,7 @@ export default function App() {
       setView(
         [
           'workbench',
+          'chat',
           'library',
           'console',
           'activity',
@@ -1910,6 +1919,10 @@ export default function App() {
                   </button>
                 </div>
               </>
+            )}
+
+            {view === 'chat' && (
+              <ChatView onOpenLibrary={() => navigate('library')} />
             )}
 
             {view === 'library' && (

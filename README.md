@@ -2,9 +2,11 @@
 
 Self-evolving skill infrastructure for AI agents: **build what's missing, repair what breaks, remember what works.**
 
-SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale particle background, in dark and light themes) with a FastAPI + PostgreSQL backend. The backend reviews a requirement, takes a CSV input, runs a validated skill from a versioned registry, and records every step.
+SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale particle background, in dark and light themes) with a FastAPI + PostgreSQL backend.
 
-> **Status:** the backend runs the real **execute → evaluate → repair → version → reuse** loop for the built-in `revenue_by_product` skill. **Create** (SkillSmith generating new skills with an LLM) is not built yet, and the Live console on the Workbench is still a scripted demo. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
+**Chat** with Claude, Codex or a local model. Repeatable tasks become tested, versioned skills that later messages reuse. When a skill fails or gives a wrong answer, SkillSmith repairs it and saves a new version. The **Workbench** runs the same loop on uploaded CSV files.
+
+> **Status:** create, execute, verify, repair, version and reuse all run for real, from chat (any text task) and from the Workbench (CSV sales analysis). The Live console on the Workbench is still a scripted demo. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
 
 ## What's real and what's simulated
 
@@ -17,7 +19,12 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | Skills stored as source + contract, run in a sandbox (static policy, approved tools, CPU/time limits, no env or file writes) | ✅ Backend |
 | Host-side contract checks against independent reference calculations | ✅ Backend |
 | Execution history: search, filter, reopen | ✅ Backend |
-| SkillSmith skill **creation** (LLM / Ollama) | 🚧 Not built yet |
+| **Chat** with Claude (Claude Code CLI), Codex (Codex CLI) or a local Ollama model | ✅ |
+| Planner: answer directly, reuse a skill, or create one | ✅ LLM, structured JSON |
+| SkillSmith **creation**: contract, source and worked examples, proven in the sandbox | ✅ |
+| Independent **cross-model verifier** (a different model checks the answer) and example arbitration | ✅ |
+| **LLM repair** of a skill that crashes or gives a wrong answer, promoted as a new version | ✅ |
+| **Escalation** from the local model to a stronger one when it cannot produce a proven skill | ✅ |
 | Automatic **repair**: classify the failure, patch the skill, prove it on the failing input + lineage regression fixtures + strategy proof fixtures, promote a new version | ✅ Backend (one strategy so far: `normalize_amounts`) |
 | Repair budget, then `waiting_approval` for human review | ✅ Backend (the approval UI is Phase 6) |
 | Workbench metrics, crew panel, sample skill cards | 🎭 Sample data |
@@ -73,6 +80,25 @@ Open <http://127.0.0.1:5173/>. For a production build, run `npm run build`.
 
 **Health check:** <http://127.0.0.1:8000/api/v1/health/ready>
 
+### Connect the models (Chat)
+
+Chat uses the command-line tools already installed on your machine, so your own subscriptions are used and no API keys are stored. Each call runs in an empty temporary folder, with tools disabled or a read-only sandbox, and without the app's environment variables.
+
+| Provider | Setup | Check |
+|---|---|---|
+| Claude | Install Claude Code, run `claude`, then `/login` | `claude auth status` |
+| Codex | Install the Codex CLI, then `codex login` | `codex login status` |
+| Local | Install Ollama, then `ollama pull qwen2.5-coder:3b` | `ollama list` |
+
+The Chat page shows each provider's live status. Use the refresh button after you log in.
+
+**How a chat message flows:**
+1. The planner decides whether to answer directly or use a skill.
+2. If a skill fits, the latest validated version runs in the sandbox, and an independent verifier checks the answer.
+3. If no skill fits, SkillSmith writes one. It must reproduce its worked examples in the sandbox and pass the verifier before it's saved.
+4. If a skill crashes or gives a wrong answer, SkillSmith rewrites it. The fix must also pass every earlier example, and it's saved as a new version.
+5. If the local model can't produce a proven skill, the task escalates to Codex or Claude.
+
 ### Try the pipeline
 
 1. Open **Workbench**.
@@ -122,12 +148,15 @@ src/
     HeroForge.jsx             hero + self-playing learning-loop console
     Pop.jsx                   spring pop-in, word reveals, pixel bursts
     ScrollChoreographer.jsx   scroll reveals, parallax, spotlight
+    ChatView.jsx              chat with provider picker, live agent steps, skill result cards
     SkillForgeProcessView.jsx · SkillRegistryView.jsx · ExecutionHistory.jsx · CSVInputPanel.jsx
   *.css                       theme layers (neutral-theme.css holds the palette)
 backend/
   app/main.py                 FastAPI app and routers (/api/v1)
   app/worker.py               polling worker: requirement review + execution
-  app/services/               requirement_review, csv_inputs, execution_queue, checks, skill_registry, repair
+  app/services/               requirement_review, csv_inputs, execution_queue, checks, skill_registry, repair, agent
+  app/llm/                    providers: Claude Code CLI, Codex CLI, Ollama (status + complete)
+  app/api/chat.py             providers, conversations, messages (agent runs in the background)
   app/sandbox/                policy (static checks), tools (approved toolkit), runner + child process
   app/skills/                 built-in skill source files, contracts and fixtures
   app/schemas/skill_contract.py  the contract every stored skill declares

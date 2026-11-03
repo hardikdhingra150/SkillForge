@@ -3,6 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 
 from app.database import (
+    chat_models,  # noqa: F401  (registers tables on Base.metadata)
     input_models,  # noqa: F401  (registers tables on Base.metadata)
     skill_models,  # noqa: F401  (registers tables on Base.metadata)
 )

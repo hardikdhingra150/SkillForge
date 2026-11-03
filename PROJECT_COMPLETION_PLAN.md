@@ -19,7 +19,7 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-**Phases 0–3 are done.** The next action is **Phase 4**: SkillSmith creating new skills with an LLM.
+**Phases 0–4 are done** (plus chat with Claude, Codex and a local model). Next: Phase 6 items (approval UI, live updates over SSE, real metrics), then deploy.
 
 ---
 
@@ -157,7 +157,17 @@ Make "revenue vs Sales → repaired → v1.1 → reused" real.
 
 ---
 
-## Phase 4: SkillSmith, creating new skills with an LLM (5–7 days)
+## Phase 4: SkillSmith, creating new skills with an LLM (5–7 days) ✅ Done, with chat
+
+_Shipped:_
+- _**Providers:** Claude Code CLI, Codex CLI and Ollama, all CLI-based, using your subscriptions with no stored API keys (`app/llm/`)._
+- _**Chat:** conversations and messages (migration `a41f6c2e9b07`), with the agent running in the background and live step logs (`app/services/agent.py`, `app/api/chat.py`, `ChatView.jsx`)._
+- _**Planner:** answers directly, reuses a skill, or creates one._
+- _**SkillSmith:** writes the contract, source and examples, then proves them (sandbox policy, examples reproduced exactly, the user's input, the contract, and an independent verifier)._
+- _**Model safeguards:** cross-model verification and example arbitration; LLM repair of crashing or wrong skills, promoted as new versions; escalation from the local model to a stronger one._
+- _**Text tools:** `regex_*`, `parse_json` and `to_json`._
+- _**Verified:** real runs with Codex (create, reuse, repair) and with local qwen2.5-coder:3b (create, reuse), plus the full UI in the browser._
+
 
 1. **An LLM client** in `backend/app/services/llm.py`:
    - Ollama HTTP (`OLLAMA_URL`, `OLLAMA_MODEL`, for example `qwen2.5-coder` or `llama3.1`), behind a small interface so a hosted API can be swapped in for production.

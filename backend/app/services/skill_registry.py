@@ -17,6 +17,15 @@ class SkillIntegrityError(ValueError):
     pass
 
 
+class ExampleMismatch(ValueError):
+    """A worked example's expected output disagrees with what the code returned."""
+
+    def __init__(self, name, inputs, output, expected):
+        wrong = {key: output.get(key) for key in expected if output.get(key) != expected[key]}
+        super().__init__(f"Example {name} returned {wrong}, expected { {k: expected[k] for k in wrong} }.")
+        self.name, self.inputs, self.output, self.expected = name, inputs, output, expected
+
+
 def canonical_contract(contract: dict) -> bytes:
     return json.dumps(contract, sort_keys=True, separators=(",", ":")).encode()
 
@@ -68,6 +77,11 @@ def run_fixture_tests(source: str, contract_data: dict, fixtures) -> dict:
             raise ValueError(f"Fixture {name} failed: {result.error['message']}")
         run_checks(contract, files, inputs, result.output)
         if expected == "checks":  # recorded real input: the contract checks are the oracle
+            evidence.append({"name": name, "passed": True})
+            continue
+        if "output" in expected:  # worked example: every expected field must match exactly
+            if any(result.output.get(key) != value for key, value in expected["output"].items()):
+                raise ExampleMismatch(name, inputs, result.output, expected["output"])
             evidence.append({"name": name, "passed": True})
             continue
         totals = {item["product"]: Decimal(item["revenue"]) for item in result.output.get("products", [])}

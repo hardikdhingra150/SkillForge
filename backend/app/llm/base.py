@@ -1,0 +1,102 @@
+import json
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+import time
+from dataclasses import asdict, dataclass, field
+
+# Only what a CLI needs to find its own login; never app settings or database secrets.
+PASSTHROUGH_ENV = ("HOME", "PATH", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "SHELL", "TERM")
+STATUS_TTL = 30.0
+
+
+class LLMError(RuntimeError):
+    """The provider could not produce an answer (not installed, not logged in, timed out, refused)."""
+
+
+@dataclass(frozen=True)
+class ProviderStatus:
+    id: str
+    label: str
+    kind: str  # "cli" or "local"
+    available: bool
+    detail: str
+    models: list[str] = field(default_factory=list)
+    default_model: str | None = None
+
+    def payload(self):
+        return asdict(self)
+
+
+class Provider:
+    id = ""
+    label = ""
+    kind = "cli"
+    _cached: tuple[float, ProviderStatus] | None = None
+
+    def status(self, refresh: bool = False) -> ProviderStatus:
+        if not refresh and self._cached and time.monotonic() - self._cached[0] < STATUS_TTL:
+            return self._cached[1]
+        try:
+            status = self._status()
+        except Exception as error:  # status must never take the API down
+            status = ProviderStatus(self.id, self.label, self.kind, False, f"Status check failed: {error}")
+        self._cached = (time.monotonic(), status)
+        return status
+
+    def _status(self) -> ProviderStatus:
+        raise NotImplementedError
+
+    def complete(self, prompt: str, *, system: str | None = None, model: str | None = None, timeout: float = 180) -> str:
+        raise NotImplementedError
+
+
+def minimal_env(extra: dict | None = None) -> dict:
+    env = {key: os.environ[key] for key in PASSTHROUGH_ENV if key in os.environ}
+    return {**env, **(extra or {})}
+
+
+def run_cli(args: list[str], *, stdin: str, timeout: float, cwd: str) -> subprocess.CompletedProcess:
+    if shutil.which(args[0]) is None:
+        raise LLMError(f"`{args[0]}` is not installed on this machine.")
+    try:
+        return subprocess.run(args, input=stdin, capture_output=True, text=True, timeout=timeout,
+                              cwd=cwd, env=minimal_env(), check=False)
+    except subprocess.TimeoutExpired:
+        raise LLMError(f"`{args[0]}` did not answer within {timeout:g} seconds.") from None
+
+
+def scratch_dir():
+    return tempfile.TemporaryDirectory(prefix="skillforge-llm-")
+
+
+FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
+
+
+def extract_json(text: str):
+    """Pull the first JSON object out of a model reply (tolerates ``` fences and chatter)."""
+    candidates = [match.group(1) for match in FENCE.finditer(text)] + [text]
+    for candidate in candidates:
+        start = candidate.find("{")
+        while start != -1:
+            try:
+                value, _ = json.JSONDecoder().raw_decode(candidate[start:])
+                if isinstance(value, dict):
+                    return value
+            except ValueError:
+                pass
+            start = candidate.find("{", start + 1)
+    raise ValueError("The reply did not contain a JSON object.")
+
+
+def complete_json(provider: Provider, prompt: str, *, system: str, model: str | None = None, timeout: float = 180) -> dict:
+    """Ask for a JSON object; on unparseable output, retry once with the parse error."""
+    reply = provider.complete(prompt, system=system, model=model, timeout=timeout)
+    try:
+        return extract_json(reply)
+    except ValueError:
+        retry = (f"{prompt}\n\nYour previous reply was not a valid JSON object. "
+                 "Reply with ONLY the JSON object, no prose and no code fences.")
+        return extract_json(provider.complete(retry, system=system, model=model, timeout=timeout))

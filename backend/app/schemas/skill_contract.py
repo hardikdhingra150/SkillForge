@@ -15,7 +15,7 @@ class ContractField(BaseModel):
 
     name: str = Identifier
     # csv: a confirmed CSV input; column: a header name bound from the confirmed mapping.
-    type: Literal["csv", "column", "text", "integer", "decimal_string", "list", "object"]
+    type: Literal["csv", "column", "text", "integer", "number", "boolean", "decimal_string", "list", "object"]
     required: bool = True
     description: str = Field(default="", max_length=300)
 

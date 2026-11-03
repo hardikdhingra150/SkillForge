@@ -6,6 +6,7 @@ sees only the tools its contract lists, as plain functions on a namespace.
 
 import csv
 import io
+import json
 import re
 from decimal import Decimal, InvalidOperation, localcontext
 from types import SimpleNamespace
@@ -102,9 +103,30 @@ def make_tools(files: dict[str, bytes], allowed) -> Toolbox:
     def format_decimal(value):
         return format(value, "f")
 
+    def regex_findall(pattern, text):
+        """All non-overlapping matches of a regular expression (groups become tuples as lists)."""
+        return [list(m) if isinstance(m, tuple) else m for m in re.findall(pattern, str(text))]
+
+    def regex_sub(pattern, replacement, text):
+        return re.sub(pattern, replacement, str(text))
+
+    def regex_split(pattern, text):
+        return re.split(pattern, str(text))
+
+    def parse_json(text):
+        try:
+            return json.loads(text)
+        except ValueError as error:
+            raise ToolError("BAD_JSON", f"Not valid JSON: {error}") from None
+
+    def to_json(value):
+        return json.dumps(value, sort_keys=True)
+
     available = {
         "read_csv": read_csv, "column": column, "to_decimal": to_decimal, "parse_amount": parse_amount,
         "decimal_sum": decimal_sum, "group_sum": group_sum, "format_decimal": format_decimal,
+        "regex_findall": regex_findall, "regex_sub": regex_sub, "regex_split": regex_split,
+        "parse_json": parse_json, "to_json": to_json,
     }
     unknown = set(allowed) - set(available)
     if unknown:
@@ -112,4 +134,21 @@ def make_tools(files: dict[str, bytes], allowed) -> Toolbox:
     return Toolbox(**{name: available[name] for name in allowed})
 
 
-TOOL_NAMES = ("read_csv", "column", "to_decimal", "parse_amount", "decimal_sum", "group_sum", "format_decimal")
+TOOL_NAMES = ("read_csv", "column", "to_decimal", "parse_amount", "decimal_sum", "group_sum", "format_decimal",
+              "regex_findall", "regex_sub", "regex_split", "parse_json", "to_json")
+
+# One-line docs shown to SkillSmith when it writes a new skill.
+TOOL_DOCS = {
+    "read_csv": "read_csv(name) -> (headers, rows) for a CSV input",
+    "column": "column(headers, rows, name) -> list of that column's string values",
+    "to_decimal": "to_decimal(text) -> Decimal, plain numbers only",
+    "parse_amount": "parse_amount(text) -> Decimal, also $1,200.50 / (300) / -€100",
+    "decimal_sum": "decimal_sum(values) -> Decimal sum",
+    "group_sum": "group_sum(keys, values) -> {key: {'total': Decimal, 'count': int}}",
+    "format_decimal": "format_decimal(value) -> plain string of a Decimal",
+    "regex_findall": "regex_findall(pattern, text) -> list of matches",
+    "regex_sub": "regex_sub(pattern, replacement, text) -> str",
+    "regex_split": "regex_split(pattern, text) -> list of str",
+    "parse_json": "parse_json(text) -> value",
+    "to_json": "to_json(value) -> str with sorted keys",
+}

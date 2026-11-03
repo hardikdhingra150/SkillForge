@@ -7,17 +7,25 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.activity import router as activity_router
+from app.api.chat import fail_interrupted_turns
+from app.api.chat import router as chat_router
 from app.api.inputs import router as inputs_router
 from app.api.skills import router as skills_router
 from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.database.connection import engine
+from app.database.session import SessionLocal
 
 logger = logging.getLogger("uvicorn.error")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    try:
+        with SessionLocal.begin() as db:
+            fail_interrupted_turns(db)
+    except SQLAlchemyError as error:
+        logger.warning("Could not reset interrupted chat replies: %s", getattr(error, "orig", error))
     try:
         yield
     finally:
@@ -34,7 +42,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Idempotency-Key"],
 )
 
@@ -42,6 +50,7 @@ app.include_router(tasks_router)
 app.include_router(inputs_router)
 app.include_router(skills_router)
 app.include_router(activity_router)
+app.include_router(chat_router)
 
 
 @app.get("/api/v1/health/live")
