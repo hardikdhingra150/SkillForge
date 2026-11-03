@@ -2,6 +2,7 @@
 // columns, and follow the worker's recorded events. The first run on a fresh registry fails on
 // "$1,200.50"-style amounts, repairs the skill and saves a new version; later runs reuse it.
 import demoCsv from "../../demo_data/sales_formatted_amounts.csv?raw";
+import recordedRun from "../fixtures/recordedRepairRun.json";
 
 import {
   confirmCSVMapping,
@@ -49,6 +50,19 @@ export function consoleLine(event, repaired) {
   const line = LINES[event.event_type];
 
   return line && { stage: line[0], tag: line[1], type: line[2] || "", message: event.message };
+}
+
+// Console lines for the recorded real run, timed as they were recorded.
+export function replayLines() {
+  let repaired = false;
+
+  return recordedRun.events.flatMap((event) => {
+    repaired ||= event.event_type === "skill_promoted";
+    const line = consoleLine(event, repaired);
+    const seconds = Math.floor(event.at_ms / 1000);
+
+    return line ? [{ ...line, time: `00:${String(seconds).padStart(2, "0")}` }] : [];
+  });
 }
 
 // Follow the run's stream until `until(execution)` holds; reconnects when the server rotates it.

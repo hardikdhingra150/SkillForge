@@ -63,7 +63,8 @@ import {
 
 import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
 import { getMetricsSummary } from './api/skillforgeProcess.js';
-import { LIVE_FILE, runLive } from './api/liveRun.js';
+import { LIVE_FILE, replayLines, runLive } from './api/liveRun.js';
+import recordedRun from './fixtures/recordedRepairRun.json';
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
 import ChatView from './components/ChatView.jsx';
@@ -470,9 +471,9 @@ function Console({
       <div className="file-chip">
         <FileText size={11} />
 
-        <span>{live ? LIVE_FILE.name : 'quarterly_sales.csv'}</span>
-        <span>{live ? `${LIVE_FILE.rows} rows · messy amounts` : '24 rows · sample data'}</span>
-        <span className="demo-text">{live ? 'LIVE' : 'DEMO'}</span>
+        <span>{LIVE_FILE.name}</span>
+        <span>{LIVE_FILE.rows} rows · messy amounts</span>
+        <span className="demo-text">{live ? 'LIVE' : 'REPLAY'}</span>
       </div>
 
       <div className="lifecycle">
@@ -546,38 +547,12 @@ function Console({
 
         {runComplete && result && <LiveResult result={result} />}
 
-        {runComplete && !result && (
-          <div className="demo-result">
-            <span>
-              <Check size={13} />
-              $18,420 total revenue
-            </span>
-
-            <div>
-              <b style={{ '--width': '50%' }} />
-              Studio kit
-              <em>$9,240</em>
-            </div>
-
-            <div>
-              <b style={{ '--width': '32%' }} />
-              Desk light
-              <em>$5,880</em>
-            </div>
-
-            <div>
-              <b style={{ '--width': '18%' }} />
-              Cable set
-              <em>$3,300</em>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="console-footer">
         <span>
           <LockKeyhole size={11} />
-          {live ? 'REAL RUN · SANDBOXED' : 'SIMULATED · SAFE TO PLAY'}
+          {live ? 'REAL RUN · SANDBOXED' : 'RECORDED RUN · API OFFLINE'}
         </span>
 
         <Button
@@ -595,7 +570,7 @@ function Console({
           {running
             ? 'Working on it...'
             : runComplete
-              ? (live ? 'Run again · reuse the skill' : 'Run again · reuse v1.1')
+              ? (live ? 'Run again · reuse the skill' : 'Replay again')
               : 'Let’s run it'}
         </Button>
       </div>
@@ -1212,7 +1187,7 @@ export default function App() {
 
   const [mode] = useState('voxel');
   const [skills, setSkills] = useState(initialSkills);
-  const [runs, setRuns] = useState(initialRuns);
+  const [runs] = useState(initialRuns);
 
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
@@ -1221,7 +1196,6 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [runComplete, setRunComplete] = useState(false);
   const [stage, setStage] = useState(-1);
-  const [learned, setLearned] = useState(false);
   const [reused, setReused] = useState(false);
   // The console runs for real against the API; the scripted demo is only a fallback.
   const [consoleLive, setConsoleLive] = useState(true);
@@ -1372,191 +1346,40 @@ export default function App() {
     });
   };
 
+  // Offline: replay a recorded real run (src/fixtures/recordedRepairRun.json) at a readable pace.
   const playDemo = async () => {
     if (inFlight.current) {
       return;
     }
 
     inFlight.current = true;
-
-    const isReuse = learned;
-
     setRunning(true);
     setRunComplete(false);
-    setReused(isReuse);
+    setReused(false);
+    setLiveResult(null);
     setLogs([]);
+    setStage(0);
 
-    const started = Date.now();
-
-    const script = isReuse
-      ? [
-          [
-            0,
-            'FOUND',
-            'sales_analysis v1.1 is ready. Let’s put it to work.',
-            '',
-            850,
-          ],
-          [
-            2,
-            'RUN',
-            'Saved column mapping applied. No new repair needed.',
-            '',
-            950,
-          ],
-          [
-            3,
-            'TEST',
-            '3/3 checks passed. Same great result, less work.',
-            'success',
-            900,
-          ],
-          [
-            6,
-            'REUSE',
-            'Your skill already knows the way.',
-            'success',
-            600,
-          ],
-        ]
-      : [
-          [
-            0,
-            'LOOKUP',
-            'Fresh demo task. No matching skill in this run.',
-            '',
-            950,
-          ],
-          [
-            1,
-            'CREATE',
-            'Built sales_analysis v1.0 with an approved toolkit.',
-            '',
-            1100,
-          ],
-          [
-            2,
-            'RUN',
-            'Reading Product, Sales, OrderDate · 24 rows.',
-            '',
-            1000,
-          ],
-          [
-            3,
-            'OOPS',
-            'Expected “revenue”. Found “Sales”. A column mismatch.',
-            'error',
-            1600,
-          ],
-          [
-            4,
-            'PATCH',
-            'Mapped revenue → Sales. Normalized the aliases.',
-            'repair',
-            1100,
-          ],
-          [
-            4,
-            'TEST',
-            '3/3 checks passed: aliases, totals, missing values.',
-            'success',
-            1200,
-          ],
-          [
-            5,
-            'SAVE',
-            'Promoted sales_analysis v1.1. Lesson remembered.',
-            'success',
-            900,
-          ],
-          [
-            6,
-            'REUSE',
-            'One solved problem. A skill for the next hundred.',
-            'success',
-            500,
-          ],
-        ];
-
-    for (
-      const [
-        nextStage,
-        tag,
-        message,
-        type,
-        delay,
-      ] of script
-    ) {
+    for (const line of replayLines()) {
       if (!alive.current) {
         return;
       }
 
-      setStage(nextStage);
-
-      setLogs((previous) => [
-        ...previous,
-        {
-          tag,
-          message,
-          type,
-          time: `00:${
-            String(
-              Math.floor(
-                (Date.now() - started) / 1000,
-              ),
-            ).padStart(2, '0')
-          }`,
-        },
-      ]);
-
-      await sleep(delay);
+      setStage(line.stage);
+      setLogs((previous) => [...previous, line]);
+      await sleep(line.type === 'error' ? 1400 : 800);
     }
 
     if (!alive.current) {
       return;
     }
 
-    setRunning(false);
+    setLiveResult(recordedRun.result);
     setRunComplete(true);
-    setLearned(true);
+    setStage(6);
+    setRunning(false);
     inFlight.current = false;
-
-    if (!isReuse) {
-      setRepairs((value) => value + 1);
-    }
-
-    setSkills((previous) => (
-      previous.map((skill) => (
-        skill.id === 'sales_analysis'
-          ? {
-              ...skill,
-              runs: skill.runs + 1,
-            }
-          : skill
-      ))
-    ));
-
-    setRuns((previous) => [
-      {
-        id: `run-${Date.now()}`,
-        name: 'Analyze quarterly sales',
-        skill: 'sales_analysis',
-        result: isReuse ? 'Passed' : 'Repaired',
-        version: '1.1',
-        time: 'Just now',
-        duration: `${
-          ((Date.now() - started) / 1000).toFixed(1)
-        }s`,
-        kind: 'byte',
-      },
-      ...previous,
-    ]);
-
-    notify(
-      isReuse
-        ? 'Another happy run. v1.1 remembered what to do.'
-        : 'New level unlocked: sales_analysis v1.1.',
-    );
+    notify('That was a recorded real run. Start the API and worker to run it live.');
   };
 
   const runController = useRef(null);
