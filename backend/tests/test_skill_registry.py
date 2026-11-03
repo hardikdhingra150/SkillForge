@@ -26,7 +26,9 @@ class SkillRegistryTests(unittest.TestCase):
                 CREATE TABLE skill_versions (
                     skill_id TEXT, version TEXT, capability TEXT,
                     status TEXT, implementation_hash TEXT,
-                    validation_json JSON, created_at DATETIME,
+                    validation_json JSON, source_code TEXT, contract_json JSON,
+                    origin TEXT DEFAULT 'builtin', parent_version TEXT, change_json JSON,
+                    created_at DATETIME,
                     PRIMARY KEY (skill_id, version)
                 )
             """))
@@ -37,8 +39,9 @@ class SkillRegistryTests(unittest.TestCase):
                 ("literal_%", "1.0.0", "literal", "draft"),
             ]:
                 db.execute(text("""
-                    INSERT INTO skill_versions VALUES
-                    (:id, :version, :capability, :status, :hash, :validation, :created)
+                    INSERT INTO skill_versions
+                    (skill_id, version, capability, status, implementation_hash, validation_json, created_at)
+                    VALUES (:id, :version, :capability, :status, :hash, :validation, :created)
                 """), {
                     "id": skill_id, "version": version, "capability": capability,
                     "status": status, "hash": "a" * 64,

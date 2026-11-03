@@ -6,16 +6,39 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.database.input_models import ExecutionCSVInput
 from app.database.models import Execution, Task
-from app.database.skill_models import SkillVersion
-from app.services.builtin_sales import (
-    IMPLEMENTATION_HASH,
-    SKILL_ID,
-    VERSION,
-    run_sales,
-    validate_sales_result,
-)
+from app.sandbox import PolicyViolation, run_skill
+from app.services.checks import CheckFailed, run_checks
 from app.services.events import append_event
 from app.services.request_queue import DEV_WORKSPACE_ID
+from app.services.skill_registry import latest_validated, verify
+
+
+class SkillRunError(ValueError):
+    """The skill itself failed inside the sandbox."""
+
+    def __init__(self, error: dict):
+        super().__init__(f"The skill failed: {error['message']}")
+        self.error = error
+
+
+def bind_inputs(contract, item):
+    """Map the confirmed CSV and column mapping onto the contract's declared inputs.
+
+    A `csv` input receives the confirmed file; a `<key>_column` input receives
+    mapping[key] (e.g. product_column <- mapping["product"]).
+    """
+    inputs, files = {}, {}
+    for field in contract.inputs:
+        if field.type == "csv":
+            files[field.name] = item.content_bytes
+        elif field.type == "column":
+            key = field.name.removesuffix("_column")
+            if key not in item.mapping_json:
+                raise ValueError(f"The confirmed mapping has no column for {field.name}.")
+            inputs[field.name] = item.mapping_json[key]
+        elif field.required:
+            raise ValueError(f"The contract input {field.name} ({field.type}) cannot be bound from a CSV task.")
+    return inputs, files
 
 
 def execute_next(db):
@@ -50,10 +73,9 @@ def execute_next(db):
         task = db.get(Task, execution.task_id)
         item = db.get(ExecutionCSVInput, execution.id)
         confirmed = (task.requirements_json or {}).get("confirmed_input", {})
+        capability = (task.requirements_json or {}).get("confirmed_operation")
         if item is None or item.confirmed_at is None:
             raise ValueError("A confirmed CSV is required.")
-        if (task.requirements_json or {}).get("confirmed_operation") != SKILL_ID:
-            raise ValueError("The confirmed operation is unsupported.")
         if (
             hashlib.sha256(item.content_bytes).hexdigest() != item.sha256
             or confirmed.get("sha256") != item.sha256
@@ -62,52 +84,58 @@ def execute_next(db):
         ):
             raise ValueError("The stored CSV no longer matches its confirmed input.")
 
-        skill = db.scalars(
-            select(SkillVersion).where(
-                SkillVersion.skill_id == SKILL_ID,
-                SkillVersion.version == VERSION,
-                SkillVersion.capability == SKILL_ID,
-                SkillVersion.status == "validated",
-                SkillVersion.implementation_hash == IMPLEMENTATION_HASH,
-            ).with_for_update(read=True)
-        ).first()
-        if skill is None or skill.validation_json.get("passed") is not True:
-            raise ValueError("A validated installed revenue-by-product skill is unavailable.")
+        skill = latest_validated(db, capability) if capability else None
+        if skill is None:
+            raise ValueError(f"No validated skill is registered for {capability or 'this operation'}.")
+        contract = verify(skill)
+        inputs, files = bind_inputs(contract, item)
 
         selected = {"id": skill.skill_id, "version": skill.version, "implementation_hash": skill.implementation_hash}
-        emit("skill_selected", "skill_discovery", f"Selected {SKILL_ID} v{VERSION} from the validated registry.", {
-            **selected, "reason": "Supports the confirmed revenue-by-product operation and column mapping.",
-            "source": "existing_registry", "registration_tests": skill.validation_json["test_count"],
+        emit("skill_selected", "skill_discovery", f"Selected {skill.skill_id} v{skill.version} from the validated registry.", {
+            **selected, "reason": f"Latest validated version for {capability}.",
+            "source": "existing_registry", "origin": skill.origin,
+            "registration_tests": skill.validation_json.get("test_count"),
         })
         execution.plan_json = {
             "skill": selected,
             "input": {"sha256": item.sha256, "version": item.version, "column_mapping": item.mapping_json},
-            "steps": ["read_csv", "group_and_sum", "validate_result"],
+            "steps": ["sandbox_run", *contract.checks],
+            "tools": contract.tools,
         }
-        emit("plan_created", "planning", "Prepared the CSV reading, aggregation, and validation plan.", execution.plan_json)
-        emit("step_started", "execution", "Reading the CSV and aggregating revenue by product.")
-        result = run_sales(item.content_bytes, item.mapping_json)
-        emit("step_completed", "execution", f"Processed {result['rows_processed']} rows into {len(result['products'])} product groups.")
-        emit("validation_started", "validation", "Checking row counts and calculated totals.")
-        validation = validate_sales_result(item.content_bytes, item.mapping_json, result)
-        emit("validation_passed", "validation", "Row counts, product totals, and the overall total passed validation.", validation)
-        execution.result_json = {
-            **result, "skill": selected, "input_sha256": item.sha256, "validation": validation,
-        }
+        emit("plan_created", "planning", "Prepared the sandboxed run and its validation checks.", execution.plan_json)
+
+        emit("step_started", "execution", f"Running {skill.skill_id} v{skill.version} in the sandbox.")
+        run = run_skill(skill.source_code, inputs=inputs, files=files, tools=contract.tools)
+        if not run.ok:
+            raise SkillRunError(run.error)
+        output = run.output
+        rows = output.get("rows_processed")
+        summary = f"Processed {rows} rows" if isinstance(rows, int) else "The skill finished"
+        emit("step_completed", "execution", f"{summary} in {run.duration_ms:g} ms.", {"duration_ms": run.duration_ms})
+
+        emit("validation_started", "validation", "Checking the output against the contract and reference calculations.")
+        validation = run_checks(contract, files, inputs, output)
+        emit("validation_passed", "validation", "All contract checks passed.", validation)
+        execution.result_json = {**output, "skill": selected, "input_sha256": item.sha256, "validation": validation}
         execution.status = "succeeded"
-        emit("execution_completed", "completed", "Revenue-by-product analysis completed successfully.", {
-            "rows_processed": result["rows_processed"], "total_revenue": result["total_revenue"],
+        emit("execution_completed", "completed", f"{capability} completed successfully.", {
+            key: output[key] for key in ("rows_processed", "total_revenue") if key in output
         })
     except SQLAlchemyError:
         raise
     except Exception as error:
         message = str(error) if isinstance(error, ValueError) else "Skill execution or output validation failed."
+        detail = {"code": "OUTPUT_VALIDATION_FAILED", "check": error.check} if isinstance(error, CheckFailed) else {}
+        if isinstance(error, SkillRunError):
+            detail = {"code": "SKILL_STEP_FAILED", "error": error.error}
+        elif isinstance(error, PolicyViolation):
+            detail = {"code": "SKILL_POLICY_VIOLATION"}
         if execution.current_stage == "validation":
-            emit("validation_failed", "validation", message, {"code": "OUTPUT_VALIDATION_FAILED"})
+            emit("validation_failed", "validation", message, detail or {"code": "OUTPUT_VALIDATION_FAILED"})
         elif execution.current_stage == "execution":
-            emit("step_failed", "execution", message, {"code": "SKILL_STEP_FAILED"})
+            emit("step_failed", "execution", message, detail or {"code": "SKILL_STEP_FAILED"})
         execution.status = "failed"
-        execution.result_json = {"error": {"code": "EXECUTION_FAILED", "message": message}}
+        execution.result_json = {"error": {"code": "EXECUTION_FAILED", "message": message, **({"detail": detail} if detail else {})}}
         emit("execution_failed", "failed", message, {"code": "EXECUTION_FAILED"})
 
     execution.finished_at = datetime.now(UTC)

@@ -14,6 +14,8 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | CSV upload, column mapping, confirmation, SHA-256 integrity checks | ✅ Backend |
 | Queue + background worker, execution timeline events | ✅ Backend |
 | Versioned skill registry with validation evidence and implementation hash | ✅ Backend |
+| Skills stored as source + contract, run in a sandbox (static policy, approved tools, CPU/time limits, no env or file writes) | ✅ Backend |
+| Host-side contract checks against independent reference calculations | ✅ Backend |
 | Execution history: search, filter, reopen | ✅ Backend |
 | SkillSmith skill **creation** (LLM / Ollama) | 🚧 Not built yet |
 | Automatic **repair** loop and version promotion | 🚧 Not built yet (simulated in the Live console demo) |
@@ -56,7 +58,7 @@ Open <http://127.0.0.1:5173/>. For a production build, run `npm run build`.
    python -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt
    alembic upgrade head
-   python -m app.register_builtin_skills         # registers revenue_by_product after its self-tests pass
+   python -m app.register_builtin_skills         # runs each built-in skill's fixtures in the sandbox, then registers it
    ```
 
 4. **Run the API and the worker** (two terminals, both in `backend/` with the venv active):
@@ -97,7 +99,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on 
 - **Backend:** `ruff check` and the unit tests on Python 3.14.
 - **Frontend:** ESLint with zero warnings allowed, then `vite build`.
 
-> `backend/app/services/builtin_sales.py` and `csv_inputs.py` are hashed into the registered skill's `IMPLEMENTATION_HASH`. Editing them, even with `ruff --fix`, requires registering a new skill version.
+> A registered skill version is immutable. Its `implementation_hash` covers its stored source and contract, and the worker refuses to run a version whose stored source no longer matches. To change a built-in skill (`backend/app/skills/`), bump its version and run `make seed`.
 
 ## Project layout
 
@@ -116,7 +118,10 @@ src/
 backend/
   app/main.py                 FastAPI app and routers (/api/v1)
   app/worker.py               polling worker: requirement review + execution
-  app/services/               requirement_review, csv_inputs, execution_queue, builtin_sales
+  app/services/               requirement_review, csv_inputs, execution_queue, checks, skill_registry
+  app/sandbox/                policy (static checks), tools (approved toolkit), runner + child process
+  app/skills/                 built-in skill source files, contracts and fixtures
+  app/schemas/skill_contract.py  the contract every stored skill declares
   app/database/               SQLAlchemy models; migrations/ holds Alembic
   tests/                      unittest suites
 compose.yaml                  local Postgres

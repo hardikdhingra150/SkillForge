@@ -26,6 +26,11 @@ class SkillVersionOut(BaseModel):
     status: str
     implementation_hash: str
     validation: dict[str, Any] = Field(validation_alias="validation_json")
+    origin: str
+    parent_version: str | None
+    contract: dict[str, Any] | None = Field(validation_alias="contract_json")
+    change: dict[str, Any] | None = Field(validation_alias="change_json")
+    source_code: str | None
     created_at: datetime
 
 

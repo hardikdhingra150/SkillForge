@@ -19,7 +19,7 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-**Phases 0 and 1 are done.** The next action is **Phase 2**: the skill platform.
+**Phases 0–2 are done.** The next action is **Phase 3**: the real repair loop.
 
 ---
 
@@ -64,7 +64,16 @@ So that every later change is safe to make.
 
 ---
 
-## Phase 2: a skill platform that can hold more than one skill (3–4 days)
+## Phase 2: a skill platform that can hold more than one skill (3–4 days) ✅ Done
+
+_Shipped:_
+- _**Contract and storage:** a `SkillContract` schema, and a migration (`7c2d9e4b1a30`) adding `source_code`, `contract_json`, `origin`, `parent_version` and `change_json`._
+- _**Sandbox:** `app/sandbox/`: an AST policy, an approved toolkit, and a child process with no environment variables, no site-packages, CPU and wall-clock limits, and no file writes._
+- _**Checks and registry:** host-side contract checks (`app/services/checks.py`) and a registry service with integrity verification._
+- _**The sales skill:** stored as source in `app/skills/`, with legacy rows backfilled once on `make seed`._
+- _**Generic executor:** runs the latest validated version through the sandbox and checks._
+- _**Tests:** 53 tests, plus an end-to-end run on real Postgres (upgrade path and fresh install)._
+
 
 Today `SkillVersion` only points at Python code that lives in the repo (`builtin_sales.py`). Generated and repaired skills need their **code, contract and history stored in the database**.
 

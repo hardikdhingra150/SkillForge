@@ -1,6 +1,6 @@
-# Note: builtin_sales.py and csv_inputs.py are hashed into the registered
-# skill's IMPLEMENTATION_HASH. Any edit to them (including `ruff --fix`)
-# requires registering a new skill version.
+# Note: app/skills/*.py are skill *source*, hashed into each registered
+# version. Editing one (including `ruff --fix`) means bumping its version
+# and re-running `make seed`.
 [tool.ruff]
 line-length = 140
 target-version = "py312"
