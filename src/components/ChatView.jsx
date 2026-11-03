@@ -29,7 +29,7 @@ const STEP_ICON = {
 
 const EVENT_LABEL = { created: "New skill", reused: "Reused", repaired: "Repaired", pipeline: "Multi-step" };
 
-const PROVIDER_LABEL = { auto: "Auto", claude: "Claude", codex: "Codex", anthropic: "Claude API", openai: "OpenAI API", ollama: "Local" };
+const PROVIDER_LABEL = { auto: "Auto", claude: "Claude", codex: "Codex", ollama: "Local" };
 
 /** "Auto" lets the scoreboard pick the model per task; it is available whenever any model is. */
 function withAuto(list) {

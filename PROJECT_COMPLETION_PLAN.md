@@ -190,7 +190,7 @@ _Shipped:_
 ## Beyond the plan: platform features ✅ Done
 
 _Shipped:_
-- _**Routing and providers:** the model scoreboard with **Auto** routing (migration `b8e3d1f04c52`); the Anthropic and OpenAI API-key providers._
+- _**Routing and providers:** the model scoreboard with **Auto** routing (migration `b8e3d1f04c52`). The API-key providers were added, then removed by choice: SkillForge uses the Claude Code and Codex CLIs plus a local model._
 - _**Chat:** CSV files in chat (`c5a92e7d13f8`); multi-step tasks with `$stepN` references; live streaming over SSE._
 - _**Skill lifecycle:** the review queue with retry and reject; retire and restore versions (rollback), where retired code is never resurrected; export and import bundles, re-proven on import (`d7f30b9a6e21`)._
 - _**MCP:** the MCP server (`app/mcp_server.py`), verified with the official MCP client and with Claude Code calling a skill._

@@ -5,7 +5,6 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from app.llm.api_providers import AnthropicAPI, OpenAIAPI
 from app.llm.base import LLMError, Provider, ProviderStatus, minimal_env, run_cli, scratch_dir
 
 OLLAMA_URL = "http://127.0.0.1:11434"
@@ -135,7 +134,7 @@ class Ollama(Provider):
         return reply.get("message", {}).get("content", "")
 
 
-PROVIDERS: dict[str, Provider] = {p.id: p for p in (ClaudeCLI(), CodexCLI(), AnthropicAPI(), OpenAIAPI(), Ollama())}
+PROVIDERS: dict[str, Provider] = {p.id: p for p in (ClaudeCLI(), CodexCLI(), Ollama())}
 
 
 def get_provider(provider_id: str) -> Provider:

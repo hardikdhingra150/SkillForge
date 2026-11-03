@@ -51,7 +51,7 @@ from app.services.skill_registry import (
 
 MAX_HISTORY = 10
 # Strongest first: used to pick an independent verifier and an escalation target.
-STRENGTH_ORDER = ["anthropic", "claude", "codex", "openai", "ollama"]
+STRENGTH_ORDER = ["claude", "codex", "ollama"]
 LOCAL = "ollama"
 SMITH_ATTEMPTS = 3
 CHAT_TOOLS = [name for name in TOOL_NAMES if name not in ("read_csv", "column")]  # value-only skills

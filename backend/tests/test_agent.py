@@ -109,7 +109,7 @@ class SmithProofTests(unittest.TestCase):
 class JudgeChoiceTests(unittest.TestCase):
     def available(self, *ids):
         statuses = {pid: type("S", (), {"available": pid in ids, "default_model": None})()
-                    for pid in ("anthropic", "claude", "codex", "openai", "ollama")}
+                    for pid in ("claude", "codex", "ollama")}
         return patch.multiple("app.llm.registry.Provider", status=lambda self, refresh=False: statuses[self.id])
 
     def test_local_author_is_judged_by_a_stronger_model(self):

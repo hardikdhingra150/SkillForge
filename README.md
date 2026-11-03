@@ -19,7 +19,7 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | Skills stored as source + contract, run in a sandbox (static policy, approved tools, CPU/time limits, no env or file writes) | ✅ Backend |
 | Host-side contract checks against independent reference calculations | ✅ Backend |
 | Execution history: search, filter, reopen | ✅ Backend |
-| **Chat** with Claude (Claude Code CLI), Codex (Codex CLI), the Claude API, the OpenAI API, or a local Ollama model | ✅ |
+| **Chat** with Claude (Claude Code CLI), Codex (Codex CLI) or a local Ollama model | ✅ |
 | **Auto** provider: routes each capability to the cheapest model that has proven itself (model scoreboard) | ✅ |
 | **Files in chat**: attach a CSV; file skills such as `revenue_by_product` are reused and repaired | ✅ |
 | **Multi-step tasks**: 1–4 chained skills, a step can use an earlier step's output (`$step1.field`) | ✅ |
@@ -124,16 +124,6 @@ The Chat page shows each provider's live status. A provider that isn't connected
 3. If no skill fits, SkillSmith writes one. It must reproduce its worked examples in the sandbox and pass the verifier before it's saved.
 4. If a skill crashes or gives a wrong answer, SkillSmith rewrites it. The fix must also pass every earlier example, and it's saved as a new version.
 5. If the local model can't produce a proven skill, the task escalates to Codex or Claude.
-
-### API-key providers (for deployment)
-
-The CLIs use your own logins, so they're for local use. A deployed SkillForge uses API keys, which are set only in `backend/.env` and never stored or sent to the browser:
-
-```bash
-ANTHROPIC_API_KEY=sk-ant-...      # Claude API (claude-opus-5-5, with refusal fallbacks on)
-OPENAI_API_KEY=sk-...             # OpenAI API
-OPENAI_MODEL=gpt-5                # optional
-```
 
 ### Use SkillForge skills from other agents (MCP)
 

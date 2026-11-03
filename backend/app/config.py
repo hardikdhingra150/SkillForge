@@ -28,11 +28,6 @@ class Settings(BaseSettings):
     # How many repair strategies the worker may try before asking a person to review.
     repair_budget: int = Field(default=2, ge=0, le=5)
 
-    # Optional API-key providers (for deployment). Never sent to the browser or stored in the database.
-    anthropic_api_key: SecretStr | None = None
-    openai_api_key: SecretStr | None = None
-    openai_model: str = "gpt-5"
-
     model_config = SettingsConfigDict(
         env_file=(
             PROJECT_DIR / ".env.postgres",
