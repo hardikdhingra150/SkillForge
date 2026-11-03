@@ -62,6 +62,7 @@ import {
 } from './components/ScrollStory';
 
 import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
+import { getMetricsSummary } from './api/skillforgeProcess.js';
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
 import ChatView from './components/ChatView.jsx';
@@ -162,11 +163,51 @@ function Status({
   );
 }
 
+function liveMetrics(summary) {
+  const count = (value) => String(value).padStart(2, '0');
+
+  return [
+    {
+      name: 'Skills in your toolkit',
+      value: count(summary.skills),
+      sub: 'VALIDATED AND READY',
+      icon: Layers3,
+      color: 'lime',
+    },
+    {
+      name: 'Successful runs',
+      value: summary.success_rate === null ? '—' : String(summary.success_rate),
+      unit: summary.success_rate === null ? '' : '%',
+      sub: `${summary.succeeded} OF ${summary.runs} RUNS`,
+      icon: CheckCheck,
+      color: 'lavender',
+    },
+    {
+      name: 'Problems → progress',
+      value: count(summary.repairs),
+      sub: 'REPAIRED VERSIONS SAVED',
+      icon: GitBranch,
+      color: 'peach',
+    },
+    {
+      name: 'Skills reused',
+      value: count(summary.reuses),
+      sub: summary.average_seconds === null
+        ? 'NO TIMED RUNS YET'
+        : `AVERAGE RUN ${summary.average_seconds < 0.1 ? 'UNDER 0.1' : summary.average_seconds}S`,
+      icon: Zap,
+      color: 'blue',
+    },
+  ];
+}
+
 function Metrics({
   skills,
   repairs,
+  summary,
 }) {
-  const metrics = [
+  const metrics = summary ? liveMetrics(summary) : [
+
     {
       name: 'Skills in your toolkit',
       value: String(
@@ -204,7 +245,7 @@ function Metrics({
   return (
     <section
       className="metrics"
-      aria-label="Illustrative workspace metrics"
+      aria-label={summary ? 'Workspace metrics' : 'Illustrative workspace metrics'}
     >
       {metrics.map((metric, index) => (
         <article
@@ -1148,6 +1189,29 @@ export default function App() {
   const [learned, setLearned] = useState(false);
   const [reused, setReused] = useState(false);
   const [repairs, setRepairs] = useState(8);
+  const [metricsSummary, setMetricsSummary] = useState(null);
+
+  // Real metrics while the Workbench is open; the sample cards stay when the API is offline.
+  useEffect(() => {
+    if (view !== 'workbench') {
+      return undefined;
+    }
+
+    const controller = new AbortController();
+
+    const load = () => getMetricsSummary(controller.signal)
+      .then(setMetricsSummary)
+      .catch(() => {});
+
+    load();
+
+    const timer = setInterval(load, 20000);
+
+    return () => {
+      clearInterval(timer);
+      controller.abort();
+    };
+  }, [view]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -1826,7 +1890,9 @@ export default function App() {
                   </span>
 
                   <span>
-                    DEMO WORKSPACE · SAMPLE METRICS
+                    {metricsSummary
+                      ? 'LIVE · FROM YOUR RECORDED RUNS'
+                      : 'DEMO WORKSPACE · SAMPLE METRICS'}
                   </span>
                 </div>
 
@@ -1834,6 +1900,7 @@ export default function App() {
                   skills={skills}
                   runs={runs}
                   repairs={repairs}
+                  summary={metricsSummary}
                 />
 
                 <div className="work-grid">

@@ -353,3 +353,8 @@ export function submitClarification(executionId, answer) {
     body: JSON.stringify({ answer }),
   });
 }
+
+// Real workspace numbers for the Workbench metric cards.
+export function getMetricsSummary(signal) {
+  return request("/metrics/summary", { signal });
+}
