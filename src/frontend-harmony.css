@@ -154,3 +154,11 @@
   .app .main-content .sf-process > .sf-process__restore { border-left: 0; border-top: 1px solid var(--line); }
   .app .main-content .sf-process > * { padding-left: 20px !important; padding-right: 20px !important; }
 }
+
+/* Repaired versions: what changed */
+.app .main-content .sf-registry details.sf-registry__change { margin-bottom: 14px; }
+.app .main-content .sf-registry__change p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.app .main-content .sf-registry__failure code { padding: 2px 6px; border: 1px dashed var(--line); border-radius: 5px; }
+.app .main-content pre.sf-registry__diff { padding: 12px; overflow-x: auto; white-space: pre; font-size: 11.5px; line-height: 1.55; }
+.app .main-content .sf-registry__diff span[data-kind=add] { color: var(--text); background: var(--soft); }
+.app .main-content .sf-registry__diff span[data-kind=del] { color: var(--faint); text-decoration: line-through; }

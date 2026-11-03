@@ -12,7 +12,8 @@ class BuiltinSkill:
     version: str
     source_file: str
     contract: dict
-    # (name, inputs, files, expected) where expected is a dict of output fields, or None when the run must fail.
+    # (name, inputs, files, expected): expected is a dict of output fields, "checks" (contract checks
+    # only), or None when the run must fail.
     fixtures: list = field(default_factory=list)
 
     @property

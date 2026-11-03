@@ -67,6 +67,9 @@ def run_fixture_tests(source: str, contract_data: dict, fixtures) -> dict:
         if not result.ok:
             raise ValueError(f"Fixture {name} failed: {result.error['message']}")
         run_checks(contract, files, inputs, result.output)
+        if expected == "checks":  # recorded real input: the contract checks are the oracle
+            evidence.append({"name": name, "passed": True})
+            continue
         totals = {item["product"]: Decimal(item["revenue"]) for item in result.output.get("products", [])}
         want = {key: Decimal(value) for key, value in expected.get("totals", {}).items()}
         if totals != want or Decimal(result.output["total_revenue"]) != Decimal(expected["total_revenue"]):

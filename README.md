@@ -4,7 +4,7 @@ Self-evolving skill infrastructure for AI agents: **build what's missing, repair
 
 SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale particle background, in dark and light themes) with a FastAPI + PostgreSQL backend. The backend reviews a requirement, takes a CSV input, runs a validated skill from a versioned registry, and records every step.
 
-> **Status:** early. The full backend pipeline works today for one built-in skill (`revenue_by_product`). The **create** and **repair** stages shown on the landing page and in the Live console demo are still simulated in the frontend. See [CHANGES_AND_ROADMAP.md](CHANGES_AND_ROADMAP.md).
+> **Status:** the backend runs the real **execute → evaluate → repair → version → reuse** loop for the built-in `revenue_by_product` skill. **Create** (SkillSmith generating new skills with an LLM) is not built yet, and the Live console on the Workbench is still a scripted demo. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
 
 ## What's real and what's simulated
 
@@ -18,7 +18,8 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | Host-side contract checks against independent reference calculations | ✅ Backend |
 | Execution history: search, filter, reopen | ✅ Backend |
 | SkillSmith skill **creation** (LLM / Ollama) | 🚧 Not built yet |
-| Automatic **repair** loop and version promotion | 🚧 Not built yet (simulated in the Live console demo) |
+| Automatic **repair**: classify the failure, patch the skill, prove it on the failing input + lineage regression fixtures + strategy proof fixtures, promote a new version | ✅ Backend (one strategy so far: `normalize_amounts`) |
+| Repair budget, then `waiting_approval` for human review | ✅ Backend (the approval UI is Phase 6) |
 | Workbench metrics, crew panel, sample skill cards | 🎭 Sample data |
 
 ## Quick start
@@ -79,6 +80,14 @@ Open <http://127.0.0.1:5173/>. For a production build, run `npm run build`.
 3. Upload a sales CSV (for example `demo_data/step10_sales.csv`) and confirm the product and revenue columns.
 4. Watch the timeline in the Process view. Finished runs appear under **Activity**, and the skill version appears under **Skill library**.
 
+**See a real self-repair:**
+
+1. Run the same task with `demo_data/sales_formatted_amounts.csv`. Its amounts look like `$1,200.50` and `(120.00)`.
+2. v1.0.0 fails with `BAD_NUMBER`. The worker patches it to use `parse_amount`, proves the fix, and saves **v1.1.0** (repaired from v1.0.0).
+3. Every later run reuses v1.1.0 with no repair. The Skill library shows the diff, the failure it fixed, and the new tests.
+
+`REPAIR_BUDGET` (default `2`, in `backend/.env`) caps the attempts. When none succeeds, the run waits in `waiting_approval` for a person.
+
 ### Developer commands
 
 A `Makefile` wraps the common tasks. Run `make help` to list them.
@@ -118,7 +127,7 @@ src/
 backend/
   app/main.py                 FastAPI app and routers (/api/v1)
   app/worker.py               polling worker: requirement review + execution
-  app/services/               requirement_review, csv_inputs, execution_queue, checks, skill_registry
+  app/services/               requirement_review, csv_inputs, execution_queue, checks, skill_registry, repair
   app/sandbox/                policy (static checks), tools (approved toolkit), runner + child process
   app/skills/                 built-in skill source files, contracts and fixtures
   app/schemas/skill_contract.py  the contract every stored skill declares

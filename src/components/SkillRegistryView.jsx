@@ -123,10 +123,19 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
             <code>{skill.skill_id}</code>
             <dl>
               <div><dt>Capability</dt><dd>{skill.capability}</dd></div>
+              <div><dt>Origin</dt><dd>{skill.parent_version ? `${skill.origin} from v${skill.parent_version}` : skill.origin || "builtin"}</dd></div>
               <div><dt>Registered</dt><dd>{new Date(skill.created_at).toLocaleString()}</dd></div>
               <div><dt>Recorded checks</dt><dd>{checks.length}</dd></div>
               <div><dt>Validation result</dt><dd>{skill.validation?.passed === true ? "Passed" : skill.validation?.passed === false ? "Failed" : "No result recorded"}</dd></div>
             </dl>
+            {skill.change?.diff && <details className="sf-registry__change" open>
+              <summary>What changed · {skill.change.strategy?.replaceAll("_", " ")}</summary>
+              <p>{skill.change.summary}</p>
+              {skill.change.failure && <p className="sf-registry__failure">Fixed failure: <code>{skill.change.failure.code}</code> {skill.change.failure.message}</p>}
+              <pre className="sf-registry__diff">{skill.change.diff.split("\n").map((line, index) => (
+                <span key={index} data-kind={line.startsWith("+") && !line.startsWith("+++") ? "add" : line.startsWith("-") && !line.startsWith("---") ? "del" : undefined}>{line}{"\n"}</span>
+              ))}</pre>
+            </details>}
             <details>
               <summary>Validation evidence and implementation hash</summary>
               {checks.length > 0 && <ul>{checks.map((check, index) => (

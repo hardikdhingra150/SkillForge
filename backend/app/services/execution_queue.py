@@ -4,21 +4,15 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.config import settings
 from app.database.input_models import ExecutionCSVInput
 from app.database.models import Execution, Task
 from app.sandbox import PolicyViolation, run_skill
 from app.services.checks import CheckFailed, run_checks
 from app.services.events import append_event
+from app.services.repair import Exhausted, attempt_repair, classify_check, classify_run_error
 from app.services.request_queue import DEV_WORKSPACE_ID
 from app.services.skill_registry import latest_validated, verify
-
-
-class SkillRunError(ValueError):
-    """The skill itself failed inside the sandbox."""
-
-    def __init__(self, error: dict):
-        super().__init__(f"The skill failed: {error['message']}")
-        self.error = error
 
 
 def bind_inputs(contract, item):
@@ -106,15 +100,37 @@ def execute_next(db):
 
         emit("step_started", "execution", f"Running {skill.skill_id} v{skill.version} in the sandbox.")
         run = run_skill(skill.source_code, inputs=inputs, files=files, tools=contract.tools)
-        if not run.ok:
-            raise SkillRunError(run.error)
-        output = run.output
-        rows = output.get("rows_processed")
-        summary = f"Processed {rows} rows" if isinstance(rows, int) else "The skill finished"
-        emit("step_completed", "execution", f"{summary} in {run.duration_ms:g} ms.", {"duration_ms": run.duration_ms})
+        failure = output = validation = None
+        if run.ok:
+            output = run.output
+            rows = output.get("rows_processed")
+            summary = f"Processed {rows} rows" if isinstance(rows, int) else "The skill finished"
+            emit("step_completed", "execution", f"{summary} in {run.duration_ms:g} ms.", {"duration_ms": run.duration_ms})
+            emit("validation_started", "validation", "Checking the output against the contract and reference calculations.")
+            try:
+                validation = run_checks(contract, files, inputs, output)
+            except CheckFailed as error:
+                failure = classify_check(error)
+                emit("validation_failed", "validation", str(error), {"code": "OUTPUT_VALIDATION_FAILED", "check": error.check})
+        else:
+            failure = classify_run_error(run.error)
+            emit("step_failed", "execution", f"The skill failed: {failure.message}", {"code": "SKILL_STEP_FAILED", "error": run.error})
 
-        emit("validation_started", "validation", "Checking the output against the contract and reference calculations.")
-        validation = run_checks(contract, files, inputs, output)
+        if failure is not None:
+            outcome = attempt_repair(db, emit, skill, inputs, files, failure, settings.repair_budget)
+            if isinstance(outcome, Exhausted):
+                execution.status = "waiting_approval"
+                execution.result_json = {"error": {
+                    "code": "REPAIR_NEEDS_REVIEW", "message": outcome.last_failure.message,
+                    "failure": outcome.last_failure.payload(), "attempts": outcome.attempts,
+                }, "skill": selected}
+                execution.finished_at = datetime.now(UTC)
+                db.flush()
+                return execution.id
+            skill, contract, output, validation = outcome.skill, outcome.contract, outcome.output, outcome.validation
+            selected = {"id": skill.skill_id, "version": skill.version, "implementation_hash": skill.implementation_hash,
+                        "repaired_from": skill.parent_version}
+
         emit("validation_passed", "validation", "All contract checks passed.", validation)
         execution.result_json = {**output, "skill": selected, "input_sha256": item.sha256, "validation": validation}
         execution.status = "succeeded"
@@ -126,9 +142,7 @@ def execute_next(db):
     except Exception as error:
         message = str(error) if isinstance(error, ValueError) else "Skill execution or output validation failed."
         detail = {"code": "OUTPUT_VALIDATION_FAILED", "check": error.check} if isinstance(error, CheckFailed) else {}
-        if isinstance(error, SkillRunError):
-            detail = {"code": "SKILL_STEP_FAILED", "error": error.error}
-        elif isinstance(error, PolicyViolation):
+        if isinstance(error, PolicyViolation):
             detail = {"code": "SKILL_POLICY_VIOLATION"}
         if execution.current_stage == "validation":
             emit("validation_failed", "validation", message, detail or {"code": "OUTPUT_VALIDATION_FAILED"})

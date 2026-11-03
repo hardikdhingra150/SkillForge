@@ -288,6 +288,13 @@ export default function SkillForgeProcessView({
                   </p>
                 )}
 
+              {process.execution.status === "waiting_approval" && (
+                <p className="sf-process__notice">
+                  Automatic repair could not fix this run within its budget.
+                  A person needs to review the diagnosis in the history below.
+                </p>
+              )}
+
               {process.execution.status
                 === "waiting_input"
                 && (

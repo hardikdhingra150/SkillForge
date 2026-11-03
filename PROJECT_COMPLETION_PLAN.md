@@ -19,7 +19,7 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-**Phases 0–2 are done.** The next action is **Phase 3**: the real repair loop.
+**Phases 0–3 are done.** The next action is **Phase 4**: SkillSmith creating new skills with an LLM.
 
 ---
 
@@ -118,7 +118,18 @@ Today `SkillVersion` only points at Python code that lives in the repo (`builtin
 
 ---
 
-## Phase 3: the real repair loop, the story from the video (4–5 days)
+## Phase 3: the real repair loop, the story from the video (4–5 days) ✅ Done
+
+_Shipped:_
+- _**Coded failures:** tools raise coded errors (`BAD_NUMBER` and `MISSING_COLUMN`, with details)._
+- _**Repair pipeline:** a classifier, a strategy registry (`normalize_amounts`), and candidate checks (policy, the failing input, contract checks, lineage regression fixtures, strategy proof fixtures). Accepted repairs are promoted as an immutable `1.x.0` version with its diff, the failure, and stored fixtures._
+- _**Budget and review:** a `REPAIR_BUDGET` setting, with `waiting_approval` when it runs out._
+- _**Formatted amounts:** the confirm step accepts exported money formats, using a strict parser shared with the reference check._
+- _**UI:** the Skill library shows each version's lineage and diff, and the Process view explains the review state._
+- _**Verified:** on real Postgres, including repair, reuse, a plain-file regression, and the zero-budget review path._
+
+_Note: your confirm step already prevents the revenue/Sales header mismatch, so the real failure the repair handles is export-formatted amounts. The `MISSING_COLUMN` code is in place for a future column-alias strategy._
+
 
 Make "revenue vs Sales → repaired → v1.1 → reused" real.
 

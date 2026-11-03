@@ -59,8 +59,18 @@ class RunnerTests(unittest.TestCase):
             inputs={}, files={"f": b"Product,Sales\nA,1\n"}, tools=["read_csv", "column"],
         )
         self.assertFalse(result.ok)
-        self.assertEqual(result.error["type"], "ValueError")
+        self.assertEqual(result.error["code"], "MISSING_COLUMN")
+        self.assertEqual(result.error["details"], {"column": "revenue", "available": ["Product", "Sales"]})
         self.assertIn("Available columns: Product, Sales", result.error["message"])
+
+    def test_bad_number_carries_a_code_and_parse_amount_handles_exports(self):
+        files = {"f": b"P,S\nA,$1,200.50\n".replace(b"$1,200.50", b'"$1,200.50"')}
+        strict = run_skill(skill("h, r = tools.read_csv('f')\nreturn {'v': str(tools.to_decimal(tools.column(h, r, 'S')[0]))}"),
+                           inputs={}, files=files, tools=["read_csv", "column", "to_decimal"])
+        self.assertEqual((strict.error["code"], strict.error["details"]), ("BAD_NUMBER", {"value": "$1,200.50"}))
+        lenient = run_skill(skill("h, r = tools.read_csv('f')\nreturn {'v': str(tools.parse_amount(tools.column(h, r, 'S')[0]))}"),
+                            inputs={}, files=files, tools=["read_csv", "column", "parse_amount"])
+        self.assertEqual(lenient.output, {"v": "1200.50"})
 
     def test_infinite_loop_times_out(self):
         result = run_skill(skill("while True:\n    pass"), inputs={}, files={}, tools=[], timeout=1.5)

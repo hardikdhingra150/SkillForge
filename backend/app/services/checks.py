@@ -30,7 +30,7 @@ def _sales_rows(files, inputs):
     product, revenue = inputs["product_column"], inputs["revenue_column"]
     csv_inputs.validate_mapping(headers, rows, product, revenue)
     p, r = headers.index(product), headers.index(revenue)
-    return [(row[p], Decimal(row[r].strip())) for row in rows]
+    return [(row[p], csv_inputs.parse_amount(row[r])) for row in rows]
 
 
 def sales_reference_totals(contract, files, inputs, output):

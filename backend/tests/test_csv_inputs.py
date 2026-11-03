@@ -1,6 +1,7 @@
 import unittest
+from decimal import Decimal
 
-from app.services.csv_inputs import MAX_BYTES, MAX_COLUMNS, MAX_ROWS, parse_csv, validate_mapping
+from app.services.csv_inputs import MAX_BYTES, MAX_COLUMNS, MAX_ROWS, parse_amount, parse_csv, validate_mapping
 
 
 class CSVInputTests(unittest.TestCase):
@@ -47,10 +48,21 @@ class CSVInputTests(unittest.TestCase):
                     validate_mapping(["Product", "Sales"], [["Pen", "100"]], product, revenue)
 
     def test_mapping_checks_every_row_for_numeric_revenue(self):
-        for value in ("", "NaN", "Infinity", "-Infinity", "$100", "1,000", "1000000000000000000", "1.1234567"):
+        for value in ("", "NaN", "Infinity", "-Infinity", "abc", "12,00", "1,2345", "$", "1000000000000000000", "1.1234567"):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     validate_mapping(["Product", "Sales"], [["Pen", "100"], ["Book", value]], "Product", "Sales")
+
+    def test_mapping_accepts_exported_money_formats(self):
+        for value in ("$100", "1,000", "$1,200.50", "(300)", "-€1,000", "£ 2,500"):
+            with self.subTest(value=value):
+                validate_mapping(["Product", "Sales"], [["Pen", value]], "Product", "Sales")
+
+    def test_parse_amount_values(self):
+        cases = {"$1,200.50": "1200.50", "(300)": "-300", "-€1,000": "-1000", "($1,000.25)": "-1000.25", "1E3": "1E+3"}
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(parse_amount(text), Decimal(expected))
 
     def test_mapping_rejects_blank_products(self):
         with self.assertRaises(ValueError):

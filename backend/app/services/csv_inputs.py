@@ -1,5 +1,6 @@
 import csv
 import io
+import re
 from decimal import Decimal, InvalidOperation
 
 MAX_BYTES = 1024 * 1024
@@ -46,6 +47,36 @@ def parse_csv(content: bytes):
     return headers, rows
 
 
+CURRENCY_SYMBOLS = "$€£₹¥"
+GROUPED = re.compile(r"^\d{1,3}(,\d{3})+(\.\d+)?$")
+PLAIN = re.compile(r"^\d+(\.\d+)?$")
+
+
+def parse_amount(text: str) -> Decimal:
+    """Parse a money amount: plain decimals, or exports like $1,200.50, -€300 and (1,200).
+
+    Thousands separators must group by three; anything ambiguous is rejected.
+    """
+    raw = text.strip()
+    try:
+        return Decimal(raw)
+    except InvalidOperation:
+        pass
+    value, negative = raw, False
+    if value.startswith("(") and value.endswith(")"):
+        value, negative = value[1:-1].strip(), True
+    if value.startswith("-"):
+        value, negative = value[1:].strip(), not negative
+    if value[:1] and value[0] in CURRENCY_SYMBOLS:
+        value = value[1:].strip()
+    if value.startswith("-") and not negative:
+        value, negative = value[1:].strip(), True
+    if not (GROUPED.match(value) or PLAIN.match(value)):
+        raise InvalidOperation(raw)
+    amount = Decimal(value.replace(",", ""))
+    return -amount if negative else amount
+
+
 def validate_mapping(headers, rows, product_column, revenue_column):
     if product_column not in headers or revenue_column not in headers:
         raise ValueError("Choose both columns from this file's headers.")
@@ -58,7 +89,7 @@ def validate_mapping(headers, rows, product_column, revenue_column):
         if not row[product_index].strip():
             raise ValueError(f"The product value is empty on data row {row_number}.")
         try:
-            number = Decimal(row[revenue_index].strip())
+            number = parse_amount(row[revenue_index])
         except InvalidOperation:
             raise ValueError(f"The revenue value is not numeric on data row {row_number}.") from None
         if not number.is_finite() or number.adjusted() > 17 or number.as_tuple().exponent < -6:

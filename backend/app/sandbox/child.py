@@ -59,7 +59,10 @@ def main():
         if len(json.dumps(output, allow_nan=False)) > MAX_OUTPUT_BYTES:
             raise ValueError("Skill output exceeds 2 MB.")
     except Exception as error:  # every failure is reported, never raised
-        reply({"ok": False, "error": {"type": type(error).__name__, "message": str(error)[:500]},
+        detail = {"type": type(error).__name__, "message": str(error)[:500]}
+        if getattr(error, "code", None):
+            detail.update(code=error.code, details=error.details)
+        reply({"ok": False, "error": detail,
                "duration_ms": round((time.perf_counter() - started) * 1000, 2)})
         return
     reply({"ok": True, "output": output, "duration_ms": round((time.perf_counter() - started) * 1000, 2)})
