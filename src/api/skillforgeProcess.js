@@ -186,6 +186,24 @@ export async function getEventsSince(
   };
 }
 
+// Follow one run live over server-sent events. Returns a close function.
+export function streamExecution(
+  executionId,
+  after,
+  { onExecution, onEvent, onDone, onError },
+) {
+  const source = new EventSource(
+    `${BASE}/executions/${encodeURIComponent(executionId)}/stream?after=${after}`,
+  );
+
+  source.addEventListener("execution", (message) => onExecution(JSON.parse(message.data)));
+  source.addEventListener("event", (message) => onEvent(JSON.parse(message.data)));
+  source.addEventListener("done", () => { source.close(); onDone?.(); });
+  source.onerror = () => { source.close(); onError?.(); };
+
+  return () => source.close();
+}
+
 // Merge events without repeating the same sequence.
 export function mergeEvents(previous, incoming) {
   const bySequence = new Map(

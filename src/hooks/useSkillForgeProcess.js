@@ -9,6 +9,7 @@ import {
   getEventsSince,
   getExecution,
   mergeEvents,
+  streamExecution,
   submitTask,
 } from "../api/skillforgeProcess.js";
 
@@ -107,14 +108,46 @@ export function useSkillForgeProcess() {
     let disposed = false;
     let timer;
     let cursor = 0;
+    let closeStream = null;
+    // Live updates over SSE once the first page is loaded; polling if the stream fails.
+    let streamFailed = typeof EventSource === "undefined";
 
     const controller = new AbortController();
 
     setLoading(true);
 
+    function follow() {
+      closeStream = streamExecution(id, cursor, {
+        onExecution(current) {
+          if (!disposed) {
+            setExecution(current);
+            setLastSynced(new Date());
+          }
+        },
+        onEvent(event) {
+          if (!disposed) {
+            cursor = Math.max(cursor, event.sequence);
+            setEvents((previous) => mergeEvents(previous, [event]));
+          }
+        },
+        onDone() {
+          closeStream = null;
+        },
+        onError() {
+          closeStream = null;
+          streamFailed = true;
+
+          if (!disposed) {
+            timer = setTimeout(refresh, 2500);
+          }
+        },
+      });
+    }
+
     async function refresh() {
       let delay = 2500;
       let continuePolling = true;
+      let loaded = false;
 
       try {
         const current = await getExecution(
@@ -142,6 +175,7 @@ export function useSkillForgeProcess() {
 
         setLastSynced(new Date());
         setError("");
+        loaded = true;
 
         continuePolling = (
           page.hasMore
@@ -167,7 +201,9 @@ export function useSkillForgeProcess() {
         if (!disposed) {
           setLoading(false);
 
-          if (continuePolling) {
+          if (continuePolling && loaded && delay > 0 && !streamFailed) {
+            follow();
+          } else if (continuePolling) {
             timer = setTimeout(refresh, delay);
           }
         }
@@ -179,6 +215,7 @@ export function useSkillForgeProcess() {
     return () => {
       disposed = true;
       clearTimeout(timer);
+      closeStream?.();
       controller.abort();
     };
   }, [
