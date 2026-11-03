@@ -48,6 +48,7 @@ class ExecutionStreamTests(unittest.TestCase):
     def test_waiting_runs_stay_open_until_the_time_limit(self):
         out, _ = frames([(execution("waiting_input"), [])], max_seconds=3)
         self.assertNotIn("event: done\ndata: {}\n\n", out)
+        self.assertEqual(out[-1], "event: reconnect\ndata: {}\n\n")
         frame = next(f for f in out if f.startswith("event: execution"))
         self.assertEqual(json.loads(frame.split("data: ", 1)[1])["status"], "waiting_input")
 

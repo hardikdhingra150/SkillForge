@@ -296,7 +296,8 @@ def get_events(
         has_more=len(rows) > limit,
     )
 
-STREAM_MAX_SECONDS = 15 * 60
+# Short-lived streams: the browser reconnects, and a dev reload never waits on an open stream for long.
+STREAM_MAX_SECONDS = 30
 STREAM_POLL_SECONDS = 1.0
 FINISHED = {"succeeded", "failed", "cancelled", "expired"}
 
@@ -309,7 +310,8 @@ def stream_frames(
     max_seconds: float = STREAM_MAX_SECONDS,
     clock: Callable[[], float] = time.monotonic,
 ) -> Iterator[str]:
-    """Server-sent event frames: the run when it changes, each new event once, then `done` when it finishes.
+    """Server-sent event frames: the run when it changes, each new event once, then `done` when it finishes
+    (or `reconnect` when the time limit ends first).
 
     The worker is a separate process, so this polls the database (cheap: one indexed read per second).
     """
@@ -328,6 +330,7 @@ def stream_frames(
             return
         yield ": keep-alive\n\n"
         sleep(STREAM_POLL_SECONDS)
+    yield "event: reconnect\ndata: {}\n\n"
 
 
 @router.get("/executions/{execution_id}/stream")

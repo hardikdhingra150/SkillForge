@@ -133,6 +133,11 @@ export function useSkillForgeProcess() {
         onDone() {
           closeStream = null;
         },
+        onReconnect() {
+          if (!disposed) {
+            follow();
+          }
+        },
         onError() {
           closeStream = null;
           streamFailed = true;

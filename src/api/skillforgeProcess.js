@@ -190,7 +190,7 @@ export async function getEventsSince(
 export function streamExecution(
   executionId,
   after,
-  { onExecution, onEvent, onDone, onError },
+  { onExecution, onEvent, onDone, onReconnect, onError },
 ) {
   const source = new EventSource(
     `${BASE}/executions/${encodeURIComponent(executionId)}/stream?after=${after}`,
@@ -199,6 +199,8 @@ export function streamExecution(
   source.addEventListener("execution", (message) => onExecution(JSON.parse(message.data)));
   source.addEventListener("event", (message) => onEvent(JSON.parse(message.data)));
   source.addEventListener("done", () => { source.close(); onDone?.(); });
+  // The server ends each stream after 30 s; carry on from the last event.
+  source.addEventListener("reconnect", () => { source.close(); onReconnect?.(); });
   source.onerror = () => { source.close(); onError?.(); };
 
   return () => source.close();
