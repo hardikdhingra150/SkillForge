@@ -6,7 +6,7 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 
 **Chat** with Claude, Codex or a local model. Repeatable tasks become tested, versioned skills that later messages reuse. When a skill fails or gives a wrong answer, SkillSmith repairs it and saves a new version. The **Workbench** runs the same loop on uploaded CSV files.
 
-> **Status:** create, execute, verify, repair, version and reuse all run for real, from chat (any text task) and from the Workbench (CSV sales analysis). The Live console on the Workbench is still a scripted demo. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
+> **Status:** create, execute, verify, repair, version and reuse all run for real, from chat (any text task) and from the Workbench (CSV sales analysis). The Live console runs a real task too, and replays a recorded real run when the API is offline. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
 
 ## What's real and what's simulated
 
@@ -26,7 +26,9 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | **Auto** provider: routes each capability to the cheapest model that has proven itself (model scoreboard) | ✅ |
 | **Files in chat**: attach a CSV; file skills such as `revenue_by_product` are reused and repaired | ✅ |
 | **Multi-step tasks**: 1–4 chained skills, a step can use an earlier step's output (`$step1.field`) | ✅ |
-| **Live streaming** of agent steps over server-sent events, with a polling fallback | ✅ |
+| **Live streaming** of chat agent steps and Workbench runs over server-sent events, with a polling fallback | ✅ |
+| **Live console**: a real task on a messy CSV (fail → repair → v1.1.0 → reuse); a recorded real run replays when the API is offline | ✅ |
+| Workbench metrics from recorded runs (`GET /metrics/summary`); version lineage in the Skill library | ✅ |
 | **Review queue**: retry a run with a bigger repair budget, or reject it; **retire / restore** versions (instant rollback) | ✅ |
 | **Export / import** a skill as one JSON bundle; imports are re-proven (hash, sandbox policy, every fixture) | ✅ |
 | **MCP server**: validated skills become tools for Claude Code, Codex and Cursor | ✅ |
@@ -38,7 +40,7 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | **Escalation** from the local model to a stronger one when it cannot produce a proven skill | ✅ |
 | Automatic **repair**: classify the failure, patch the skill, prove it on the failing input + lineage regression fixtures + strategy proof fixtures, promote a new version | ✅ Backend (one strategy so far: `normalize_amounts`) |
 | Repair budget, then `waiting_approval` for human review | ✅ (Review page) |
-| Workbench metrics, crew panel, sample skill cards | 🎭 Sample data |
+| Crew panel and the sample skill cards on the Workbench | 🎭 Sample data |
 
 ## Quick start
 

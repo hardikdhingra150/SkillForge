@@ -12,14 +12,14 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 
 | Layer | Done | Missing |
 |---|---|---|
-| Frontend | Themed landing page, workspace, Process view, Skill library, Activity, scroll and pop animations, dark and light modes | The Live console runs a **scripted** demo; the metrics are sample data; `App.jsx` is about 2,600 lines; no tests |
+| Frontend | Themed landing page, workspace, Process view, Skill library, Activity, scroll and pop animations, dark and light modes | `App.jsx` is about 2,400 lines; the crew panel and sample skill cards are still illustrative; no frontend tests |
 | API | `POST /tasks`, `GET /executions`, `GET /executions/{id}`, `GET /executions/{id}/events`, CSV `input` / `input/confirm`, `GET /skills`, health checks | Metrics, live updates over SSE, repair approval, skill source and diffs |
 | Worker | Reviews requirements; runs the confirmed CSV with **one** built-in skill and validates the result | **Create** and **repair** stages, promoting new versions |
 | Data | `Task`, `Execution`, `ExecutionEvent`, `ExecutionCSVInput`, `SkillVersion` (hash and validation evidence) | Skill source code, contract, parent version, repair history |
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-**Phases 0–5 are done** (plus chat with Claude, Codex and a local model). Next: Phase 6 items (approval UI, live updates over SSE, real metrics), then deploy.
+**Phases 0–6 are done** (plus chat with Claude, Codex and a local model). Next: Phase 7 (frontend code health), then deploy.
 
 ---
 
@@ -216,7 +216,16 @@ _Shipped:_
 
 ---
 
-## Phase 6: wire the frontend to the real system (4–5 days)
+## Phase 6: wire the frontend to the real system (4–5 days) ✅ Done
+
+_Shipped:_
+- _**Live updates:** `GET /executions/{id}/stream` (SSE, 30 s streams that reconnect); the Process view follows runs over `EventSource` and falls back to polling._
+- _**A real Live console** (`src/api/liveRun.js`): submits a task, uploads `demo_data/sales_formatted_amounts.csv`, confirms the columns and turns each recorded event into a console line. A fresh registry repairs v1.0.0 into v1.1.0; later runs reuse it._
+- _**Demo mode:** with no API, the console replays `src/fixtures/recordedRepairRun.json`, a real recorded repair run, labelled as a replay._
+- _**Real metrics:** `GET /metrics/summary` drives the Workbench cards (sample cards only when offline)._
+- _**Version lineage** in the Skill library; the repair diff viewer and the human review queue (retry with a bigger budget, or reject) were already in place. Unproven repairs are never approved by hand: a retry must prove its fix._
+- _**Landing:** the hero demo button opens the console and starts the real run._
+
 
 1. **Live updates.** Add `GET /executions/{id}/stream` (SSE) in FastAPI, and switch `useSkillForgeProcess.js` from `setTimeout` polling to `EventSource`, falling back to polling.
 2. **A real Live console.** Replace the scripted `startRun` in `App.jsx` with a real submission that renders real events. Map the event types to the console tags (TASK, FIND, MAKE, RUN, FAIL, PATCH, TEST, SAVE, REUSE).
@@ -293,7 +302,7 @@ _Shipped:_
 - [ ] Every repair produces a **new version** with a diff, evidence and parent link (Phases 2 and 3)
 - [ ] The next matching run **reuses** the latest validated version (Phase 3)
 - [ ] Generated code runs only in a **sandbox** with approved tools (Phases 2 and 8)
-- [ ] The Workbench, console, library and activity show **only real data**, or a labelled replay (Phase 6)
+- [x] The Workbench, console, library and activity show **only real data**, or a labelled replay (Phase 6)
 - [ ] CI is green with backend, frontend and end-to-end tests (Phases 1 and 7)
 - [ ] It is deployed at a public URL with auth (Phases 8 and 9)
 
