@@ -10,6 +10,7 @@ from app.api.activity import router as activity_router
 from app.api.chat import fail_interrupted_turns
 from app.api.chat import router as chat_router
 from app.api.inputs import router as inputs_router
+from app.api.metrics import router as metrics_router
 from app.api.review import router as review_router
 from app.api.skills import router as skills_router
 from app.api.tasks import router as tasks_router
@@ -53,6 +54,7 @@ app.include_router(skills_router)
 app.include_router(activity_router)
 app.include_router(chat_router)
 app.include_router(review_router)
+app.include_router(metrics_router)
 
 
 @app.get("/api/v1/health/live")
