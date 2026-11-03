@@ -109,3 +109,14 @@
   .sf-chat__skill dl > div { grid-template-columns: 1fr; gap: 2px; }
 }
 @media (prefers-reduced-motion: reduce) { .sf-chat * { animation: none !important; } }
+
+/* Provider setup: exact commands with copy buttons */
+.sf-chat__setup { margin: 12px 22px 0; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 12px; background: var(--glass-inset); font-size: 13px; }
+.sf-chat__setup p { margin: 0 0 6px; color: var(--muted); }
+.sf-chat__setup strong { color: var(--text); font-weight: 500; }
+.sf-chat__setup ol { margin: 8px 0 10px; padding-left: 18px; display: grid; gap: 8px; color: var(--muted); }
+.sf-chat__setup li > span { display: block; margin-bottom: 4px; font: 10px 'Space Mono', monospace; letter-spacing: .6px; text-transform: uppercase; color: var(--faint); }
+.sf-chat__command { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--glass-panel); }
+.sf-chat__command code { flex: 1; overflow-x: auto; white-space: nowrap; color: var(--text); font: 12.5px 'Space Mono', monospace; }
+.sf-chat__command button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: none; }
+.sf-chat__recheck { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: none; font-size: 12px; }

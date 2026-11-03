@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ArrowUpRight, Bot, CircleCheck, LoaderCircle, MessagesSquare, Plus, RefreshCw, Send, Trash2, Wrench } from "lucide-react";
+import { ArrowUpRight, Bot, Check, CircleCheck, Copy, LoaderCircle, MessagesSquare, Plus, RefreshCw, Send, Trash2, Wrench } from "lucide-react";
 import {
   createConversation,
   deleteConversation,
@@ -74,6 +74,40 @@ function Steps({ steps, pending }) {
         {pending && <li data-kind="live"><LoaderCircle size={13} className="sf-chat__spin" /><span>Thinking…</span></li>}
       </ol>
     </details>
+  );
+}
+
+function CopyCommand({ command }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }
+  return (
+    <div className="sf-chat__command">
+      <code>{command}</code>
+      <button type="button" onClick={copy} aria-label={`Copy ${command}`}>{copied ? <Check size={13} /> : <Copy size={13} />}</button>
+    </div>
+  );
+}
+
+function SetupCard({ provider, onRecheck }) {
+  return (
+    <div className="sf-chat__setup" role="status">
+      <p><strong>{provider.label} is not connected.</strong> {provider.detail}</p>
+      <p className="sf-chat__muted">Run these in a terminal, then press Re-check:</p>
+      <ol>
+        {provider.setup.map((step) => (
+          <li key={step.command}><span>{step.label}</span><CopyCommand command={step.command} /></li>
+        ))}
+      </ol>
+      <button type="button" className="sf-chat__recheck" onClick={onRecheck}><RefreshCw size={13} /> Re-check</button>
+    </div>
   );
 }
 
@@ -237,7 +271,7 @@ export default function ChatView({ onOpenLibrary }) {
             <button className="sf-chat__icon" onClick={() => loadProviders(true)} aria-label="Refresh provider status"><RefreshCw size={14} /></button>
           </div>
         </header>
-        {provider && !provider.available && <p className="sf-chat__notice">{provider.label}: {provider.detail}</p>}
+        {provider && !provider.available && <SetupCard provider={provider} onRecheck={() => loadProviders(true)} />}
         {error && <p className="sf-chat__error" role="alert">{error}</p>}
 
         <div className="sf-chat__thread" ref={threadRef} aria-live="polite">

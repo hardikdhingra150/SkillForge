@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import tempfile
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 
 # Only what a CLI needs to find its own login; never app settings or database secrets.
 PASSTHROUGH_ENV = ("HOME", "PATH", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "SHELL", "TERM")
@@ -25,6 +25,8 @@ class ProviderStatus:
     detail: str
     models: list[str] = field(default_factory=list)
     default_model: str | None = None
+    # Exact terminal commands to install and connect this provider: [{"label", "command"}].
+    setup: list[dict] = field(default_factory=list)
 
     def payload(self):
         return asdict(self)
@@ -36,6 +38,8 @@ class Provider:
     kind = "cli"
     _cached: tuple[float, ProviderStatus] | None = None
 
+    setup: list[dict] = []
+
     def status(self, refresh: bool = False) -> ProviderStatus:
         if not refresh and self._cached and time.monotonic() - self._cached[0] < STATUS_TTL:
             return self._cached[1]
@@ -43,6 +47,7 @@ class Provider:
             status = self._status()
         except Exception as error:  # status must never take the API down
             status = ProviderStatus(self.id, self.label, self.kind, False, f"Status check failed: {error}")
+        status = replace(status, setup=self.setup)
         self._cached = (time.monotonic(), status)
         return status
 

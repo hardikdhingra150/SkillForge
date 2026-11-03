@@ -27,6 +27,7 @@ class ProviderOut(BaseModel):
     detail: str
     models: list[str]
     default_model: str | None
+    setup: list[dict[str, str]]
 
 
 class ConversationIn(BaseModel):

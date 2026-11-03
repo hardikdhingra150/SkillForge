@@ -11,8 +11,26 @@ OLLAMA_URL = "http://127.0.0.1:11434"
 PREFERRED_LOCAL_MODEL = "qwen2.5-coder:3b"
 
 
+CLAUDE_SETUP = [
+    {"label": "Install Claude Code", "command": "curl -fsSL https://claude.ai/install.sh | bash"},
+    {"label": "Log in (opens your browser)", "command": "claude auth login"},
+    {"label": "Check", "command": "claude auth status"},
+]
+CODEX_SETUP = [
+    {"label": "Install the Codex CLI", "command": "npm install -g @openai/codex"},
+    {"label": "Log in with ChatGPT (opens your browser)", "command": "codex login"},
+    {"label": "Check", "command": "codex login status"},
+]
+OLLAMA_SETUP = [
+    {"label": "Install Ollama", "command": "brew install ollama"},
+    {"label": "Start it", "command": "ollama serve"},
+    {"label": "Download the local model (about 1.9 GB)", "command": "ollama pull qwen2.5-coder:3b"},
+]
+
+
 class ClaudeCLI(Provider):
     id, label, kind = "claude", "Claude (Claude Code CLI)", "cli"
+    setup = CLAUDE_SETUP
 
     def _status(self):
         if shutil.which("claude") is None:
@@ -24,7 +42,7 @@ class ClaudeCLI(Provider):
             return ProviderStatus(self.id, self.label, self.kind, False, "Could not read `claude auth status`.")
         if not info.get("loggedIn"):
             return ProviderStatus(self.id, self.label, self.kind, False,
-                                  "Not logged in. Run `claude` in a terminal and use /login.")
+                                  "Not logged in. Run `claude auth login` in a terminal.")
         return ProviderStatus(self.id, self.label, self.kind, True, f"Logged in ({info.get('authMethod', 'account')}).",
                               ["default", "sonnet", "opus", "haiku"], "default")
 
@@ -48,6 +66,7 @@ class ClaudeCLI(Provider):
 
 class CodexCLI(Provider):
     id, label, kind = "codex", "Codex (OpenAI Codex CLI)", "cli"
+    setup = CODEX_SETUP
 
     def _status(self):
         if shutil.which("codex") is None:
@@ -76,6 +95,7 @@ class CodexCLI(Provider):
 
 class Ollama(Provider):
     id, label, kind = "ollama", "Local model (Ollama)", "local"
+    setup = OLLAMA_SETUP
 
     def _get(self, path, timeout=5):
         with urllib.request.urlopen(OLLAMA_URL + path, timeout=timeout) as response:

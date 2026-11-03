@@ -46,10 +46,11 @@ CHAT_TOOLS = [name for name in TOOL_NAMES if name not in ("read_csv", "column")]
 PLANNER_SYSTEM = """You are the planner inside SkillForge, a workspace where AI agents build reusable skills.
 Decide how to handle the user's latest message.
 
-Use "skill" when the request is a deterministic computation or transformation a small pure-Python
-function can do from values in the message: counting, converting units, extracting patterns,
-reformatting, sorting, statistics, parsing, validating. Everything else (explanations, opinions,
-creative writing, advice, questions about SkillForge) is "answer".
+Use "skill" ONLY when the message contains concrete input values AND asks to compute or transform them
+(counting, converting units, extracting patterns, reformatting, sorting, statistics, parsing, validating),
+so the same small pure-Python function could be reused later on different values.
+Everything else is "answer": greetings, explanations, opinions, creative writing, advice, questions about
+SkillForge, and ANY request to write, show, fix or explain code ("give me code to...", "write a function...").
 
 For "skill":
 - capability: snake_case name of the GENERAL operation, never the specific values
@@ -154,7 +155,8 @@ def plan(provider, model, history, registry, text):
     decision = complete_json(provider, prompt, system=PLANNER_SYSTEM, model=model)
     if decision.get("mode") == "skill":
         capability = str(decision.get("capability", "")).strip().lower()
-        if not capability or not isinstance(decision.get("inputs"), dict):
+        # A skill computes from values in the message; with nothing to compute from it is just an answer.
+        if not capability or not isinstance(decision.get("inputs"), dict) or not decision["inputs"]:
             return {"mode": "answer"}
         decision["capability"] = "".join(ch if ch.isalnum() else "_" for ch in capability).strip("_")[:60] or "skill"
     return decision
@@ -341,11 +343,13 @@ def reply_payload(skill, output, event):
 
 
 def pick_judge(author_id, author_model):
-    """Prefer a different, stronger model as the verifier, so the author never grades its own work."""
+    """Prefer a different model as the verifier, so the author never grades its own work, but never a
+    weaker one: the local model does not judge Codex or Claude. Without another strong model the author
+    checks itself."""
+    rank = STRENGTH_ORDER.index(author_id)
     for candidate in STRENGTH_ORDER:
-        if candidate != author_id and PROVIDERS[candidate].status().available:
-            status = PROVIDERS[candidate].status()
-            return PROVIDERS[candidate], status.default_model
+        if candidate != author_id and STRENGTH_ORDER.index(candidate) <= max(rank, 1) and PROVIDERS[candidate].status().available:
+            return PROVIDERS[candidate], PROVIDERS[candidate].status().default_model
     return get_provider(author_id), author_model
 
 

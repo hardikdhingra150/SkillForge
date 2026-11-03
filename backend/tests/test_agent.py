@@ -50,6 +50,11 @@ class PlannerTests(unittest.TestCase):
         provider = FakeProvider([json.dumps({"mode": "skill", "capability": "Count Words!", "inputs": {"text": "a b"}})])
         self.assertEqual(plan(provider, None, "", "", "count words")["capability"], "count_words")
 
+    def test_skill_without_input_values_is_an_answer(self):
+        # The 3B model routed "give me code to print hello world" to a skill with no inputs.
+        provider = FakeProvider([json.dumps({"mode": "skill", "capability": "print_hello_world", "inputs": {}})])
+        self.assertEqual(plan(provider, None, "", "", "give me code to print hello world")["mode"], "answer")
+
     def test_malformed_skill_plan_falls_back_to_answer(self):
         provider = FakeProvider([json.dumps({"mode": "skill", "capability": "x", "inputs": "nope"})])
         self.assertEqual(plan(provider, None, "", "", "?")["mode"], "answer")
@@ -88,6 +93,24 @@ class SmithProofTests(unittest.TestCase):
     def test_csv_skills_are_kept_out_of_chat(self):
         self.assertTrue(needs_files({"inputs": [{"name": "sales_csv", "type": "csv"}]}))
         self.assertFalse(needs_files({"inputs": [{"name": "text", "type": "text"}]}))
+
+
+class JudgeChoiceTests(unittest.TestCase):
+    def available(self, *ids):
+        statuses = {pid: type("S", (), {"available": pid in ids, "default_model": None})() for pid in ("codex", "claude", "ollama")}
+        return patch.multiple("app.llm.registry.Provider", status=lambda self, refresh=False: statuses[self.id])
+
+    def test_local_author_is_judged_by_a_stronger_model(self):
+        from app.services.agent import pick_judge
+        with self.available("codex", "ollama"):
+            self.assertEqual(pick_judge("ollama", None)[0].id, "codex")
+
+    def test_local_model_never_judges_codex(self):
+        from app.services.agent import pick_judge
+        with self.available("codex", "ollama"):
+            self.assertEqual(pick_judge("codex", None)[0].id, "codex")
+        with self.available("codex", "claude", "ollama"):
+            self.assertEqual(pick_judge("codex", None)[0].id, "claude")
 
 
 class ArbitrationTests(unittest.TestCase):

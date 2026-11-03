@@ -84,13 +84,31 @@ Open <http://127.0.0.1:5173/>. For a production build, run `npm run build`.
 
 Chat uses the command-line tools already installed on your machine, so your own subscriptions are used and no API keys are stored. Each call runs in an empty temporary folder, with tools disabled or a read-only sandbox, and without the app's environment variables.
 
-| Provider | Setup | Check |
-|---|---|---|
-| Claude | Install Claude Code, run `claude`, then `/login` | `claude auth status` |
-| Codex | Install the Codex CLI, then `codex login` | `codex login status` |
-| Local | Install Ollama, then `ollama pull qwen2.5-coder:3b` | `ollama list` |
+**Claude** (Claude Code CLI, uses your Claude subscription):
 
-The Chat page shows each provider's live status. Use the refresh button after you log in.
+```bash
+curl -fsSL https://claude.ai/install.sh | bash   # install Claude Code
+claude auth login                                # log in (opens your browser)
+claude auth status                               # check: "loggedIn": true
+```
+
+**Codex** (OpenAI Codex CLI, uses your ChatGPT plan):
+
+```bash
+npm install -g @openai/codex                     # install the Codex CLI
+codex login                                      # log in with ChatGPT (opens your browser)
+codex login status                               # check: "Logged in using ChatGPT"
+```
+
+**Local model** (Ollama, runs offline on your machine):
+
+```bash
+brew install ollama                              # install Ollama
+ollama serve                                     # start it (leave it running)
+ollama pull qwen2.5-coder:3b                     # download the model (about 1.9 GB)
+```
+
+The Chat page shows each provider's live status. A provider that isn't connected shows these exact commands with copy buttons; press **Re-check** after you log in.
 
 **How a chat message flows:**
 1. The planner decides whether to answer directly or use a skill.
