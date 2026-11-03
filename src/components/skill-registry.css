@@ -39,6 +39,10 @@
 .sf-registry__badge[data-status="validated"] { color: #94d7b6; border-color: #528971; }
 [data-theme="light"] .sf-registry__badge[data-status="validated"] { color: #1c6546; border-color: #529070; }
 .sf-registry__version { font-size: 13px; color: var(--sfr-muted); }
+.sf-registry__lineage { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--sfr-muted); }
+.sf-registry__lineage li + li::before { content: "→"; margin-right: 6px; }
+.sf-registry__lineage li[data-current] { color: var(--sfr-text); font-weight: 600; }
+.sf-registry__lineage li[data-status="retired"] { text-decoration: line-through; }
 .sf-registry code { color: inherit; white-space: normal; font-size: 12px; }
 .sf-registry dl { margin: 22px 0; }
 .sf-registry dl > div { display: flex; justify-content: space-between; gap: 18px; margin-bottom: 12px; flex-wrap: wrap; }

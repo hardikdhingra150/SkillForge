@@ -37,6 +37,28 @@ function mergeVersions(previous, incoming) {
   return [...values.values()];
 }
 
+// Every loaded version of one skill, oldest first: v1.0.0 → v1.1.0 (repaired) → …
+function lineage(items, skill) {
+  return items
+    .filter((item) => item.skill_id === skill.skill_id)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
+function Lineage({ family, current }) {
+  if (family.length < 2) return null;
+  return (
+    <ol className="sf-registry__lineage" aria-label="Version lineage">
+      {family.map((item) => (
+        <li key={item.version} data-current={item.version === current.version || undefined}
+          data-status={item.status}>
+          v{item.version}
+          {item.origin !== "builtin" && <small> ({item.origin}{item.parent_version ? ` from v${item.parent_version}` : ""})</small>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export default function SkillRegistryView({ onOpenWorkbench }) {
   const uid = useId();
   const [items, setItems] = useState([]);
@@ -185,6 +207,7 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
             </div>
             <h2>{skill.skill_id.replaceAll("_", " ")}</h2>
             <code>{skill.skill_id}</code>
+            <Lineage family={lineage(items, skill)} current={skill} />
             <dl>
               <div><dt>Capability</dt><dd>{skill.capability}</dd></div>
               <div><dt>Origin</dt><dd>{skill.parent_version ? `${skill.origin} from v${skill.parent_version}` : skill.origin || "builtin"}</dd></div>
