@@ -159,7 +159,8 @@ function Message({ message, onOpenLibrary }) {
       {!pending && message.content && <p className="sf-chat__content">{message.content.split("\n").map((line, i) => (
         <span key={i}><Inline text={line} />{"\n"}</span>
       ))}</p>}
-      {message.skill && <SkillCard skill={message.skill} onOpenLibrary={onOpenLibrary} />}
+      {message.skill?.event === "clarify" && <span className="sf-chat__badge sf-chat__ask">Question for you · reply below</span>}
+      {message.skill && message.skill.event !== "clarify" && <SkillCard skill={message.skill} onOpenLibrary={onOpenLibrary} />}
     </div>
   );
 }

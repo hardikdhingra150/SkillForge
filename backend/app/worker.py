@@ -10,8 +10,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.database.connection import engine
 from app.database.session import SessionLocal
+from app.llm import PROVIDERS
+from app.services import scoreboard
 from app.services.execution_queue import execute_next
-from app.services.request_queue import review_next
+from app.services.request_queue import claim_review, finish_review, review_requested
 
 logger = logging.getLogger("skillforge.worker")
 
@@ -60,8 +62,16 @@ def main() -> int:
                 # The current review is short and entirely local. A crash before
                 # commit rolls everything back, leaving the task queued.
                 with SessionLocal.begin() as db:
-                    execution_id = review_next(db)
-                    if execution_id is None:
+                    claim = claim_review(db)
+                if claim is not None:
+                    # The model call happens between two short transactions, never inside one.
+                    planner = scoreboard.pick_planner()
+                    provider = PROVIDERS[planner] if planner else None
+                    review = review_requested(claim, provider, provider.status().default_model if provider else None)
+                    with SessionLocal.begin() as db:
+                        execution_id = finish_review(db, claim["execution_id"], review)
+                else:
+                    with SessionLocal.begin() as db:
                         execution_id = execute_next(db)
             except SQLAlchemyError as error:
                 log_database_error(error)

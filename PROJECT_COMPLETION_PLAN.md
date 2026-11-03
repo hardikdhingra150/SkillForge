@@ -19,7 +19,7 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-**Phases 0–4 are done** (plus chat with Claude, Codex and a local model). Next: Phase 6 items (approval UI, live updates over SSE, real metrics), then deploy.
+**Phases 0–5 are done** (plus chat with Claude, Codex and a local model). Next: Phase 6 items (approval UI, live updates over SSE, real metrics), then deploy.
 
 ---
 
@@ -196,7 +196,15 @@ _Shipped:_
 - _**MCP:** the MCP server (`app/mcp_server.py`), verified with the official MCP client and with Claude Code calling a skill._
 - _**Starter pack:** five starter skills._
 
-## Phase 5: smarter requirement review and discovery (2–3 days)
+## Phase 5: smarter requirement review and discovery (2–3 days) ✅ Done
+
+_Shipped:_
+- _**LLM review** (`review_with_model` in `requirement_review.py`): keyword rules run first; otherwise a model returns `{workflow, confidence, question, summary}`. Confidence ≥ 0.7 accepts; below that the run asks. Any model error falls back to `keyword_rules_v1`. The model call runs outside database transactions (claim → review → finish in `request_queue.py`, with stale-claim recovery)._
+- _**Clarifying questions:** Workbench runs wait in `waiting_input` with the question; `POST /executions/{id}/clarify` answers it and re-queues the review (up to 5 rounds). In chat, the planner can reply with one question, and a missing skill input becomes a question._
+- _**Capability discovery** (`app/services/discovery.py`): synonyms, phrases and stemming score name and input overlap; close calls are confirmed by a strong model, which also maps the inputs. A model-confirmed match is never repaired: on a mismatch a new skill is created instead._
+- _**Contract-aware verifier and re-binding:** the verifier judges against the skill's documented behaviour; when a run is wrong but the code is fine, the inputs are re-bound (e.g. `case_sensitive=true`) before any repair. `dedupe_list` v1.1.0 documents its case-insensitive default._
+- _**Verified:** real runs with Codex and the local model in chat, and the Workbench question → answer → upload CSV flow in the browser._
+
 
 1. **LLM review with structured output** in `requirement_review.py`:
    - The output is `{capability, required_inputs, clarifying_question?, confidence}`.

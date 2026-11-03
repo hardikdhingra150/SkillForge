@@ -30,6 +30,7 @@ from app.sandbox.tools import TOOL_DOCS, TOOL_NAMES
 from app.schemas.skill_contract import SkillContract
 from app.services import live, scoreboard
 from app.services.checks import CheckFailed, run_checks
+from app.services.discovery import discover
 from app.services.repair import (
     Repaired,
     attempt_repair,
@@ -77,10 +78,14 @@ For "skill", give one or more steps. Use several steps only when the task is a s
 - files: only when the step reads an attached CSV: {"<input_name>": "<attached file name>"}; column names the
   skill needs go in inputs (for example {"product_column": "Product", "revenue_column": "Sales"}).
 
+Use "clarify" when the user clearly wants a task done but a value it needs is missing or ambiguous
+("convert this temperature" with no number, "count by domain" with no emails, a CSV task without saying which
+column). Ask ONE short, specific question. Do not clarify greetings or questions you can simply answer.
+
 Reply with ONLY a JSON object:
-{"mode": "skill" | "answer", "steps": [{"capability": str, "summary": str, "inputs": {...},
-  "input_types": {...}, "files": {...}}]}
-For "answer" only "mode" is required."""
+{"mode": "skill" | "answer" | "clarify", "question": str, "steps": [{"capability": str, "summary": str,
+  "inputs": {...}, "input_types": {...}, "files": {...}}]}
+For "answer" only "mode" is required; for "clarify" give "mode" and "question"."""
 
 SMITH_SYSTEM = """You are SkillSmith, the engineer inside SkillForge. You write small, safe, reusable skills.
 
@@ -115,13 +120,24 @@ For a "csv" input, read it with tools.read_csv("<input name>") and give each exa
 
 
 VERIFIER_SYSTEM = """You are the independent verifier inside SkillForge. A skill (a small program) produced an
-output for a user's request. Check whether the output is CORRECT for the request: recompute the answer yourself
-from the values in the request and compare. Ignore formatting differences (6.5 vs 6.50, key order, int vs float
-when equal). Reply with ONLY a JSON object: {"correct": true | false, "expected": <your answer>, "reason": "short"}"""
+output for a user's request. Check whether the output is CORRECT: recompute the answer yourself from the inputs.
+Judge it against the skill's DOCUMENTED BEHAVIOUR (its summary and input descriptions, including stated defaults)
+applied to the request. Mark it wrong only if it is incorrect for that documented behaviour, or if the request
+EXPLICITLY asks for something the documented behaviour contradicts. Where the request is silent or ambiguous, the
+documented behaviour decides. Ignore formatting differences (6.5 vs 6.50, key order, int vs float when equal).
+Reply with ONLY a JSON object: {"correct": true | false, "expected": <your answer>, "reason": "short"}"""
 
 
 class SmithExhausted(ValueError):
     """SkillSmith could not produce a skill that passes its proof."""
+
+
+class NeedsInput(ValueError):
+    """A skill was found but a value it needs is missing: ask the user instead of failing."""
+
+
+class MatchMismatch(ValueError):
+    """A model-confirmed match did not hold up on the user's input; build a new skill instead of repairing."""
 
 
 # ---------- step log (each step is its own short transaction so the UI can poll progress) ----------
@@ -197,6 +213,8 @@ def plan(provider, model, history, registry, text, attachments=None):
     prompt = (f"Existing skills:\n{registry}\n\nAttached files:\n{attachments_text(attachments)}\n\n"
               f"Conversation so far:\n{history or '(new conversation)'}\n\nLatest user message:\n{text}")
     decision = complete_json(provider, prompt, system=PLANNER_SYSTEM, model=model)
+    if decision.get("mode") == "clarify" and str(decision.get("question") or "").strip():
+        return {"mode": "clarify", "question": str(decision["question"]).strip()[:500]}
     if decision.get("mode") != "skill":
         return {"mode": "answer"}
     raw_steps = decision.get("steps") if isinstance(decision.get("steps"), list) else [decision]
@@ -286,9 +304,37 @@ def verifier_view(inputs, files):
     return view
 
 
-def verify_output(provider, model, request, capability, inputs, output):
+REBIND_SYSTEM = """A reusable skill ran with inputs that did not match what the user asked for. Re-read the user's
+request and set the skill's inputs correctly, using ONLY the input names listed, including optional ones when the
+request implies them (for example a flag the user asked for). Keep values that were already right.
+Reply with ONLY a JSON object: {"inputs": {...}, "changed": ["names you changed"], "reason": "short"}"""
+
+
+def rebind_inputs(provider, model, request, contract: dict, inputs: dict, problem: str):
+    """Let a model re-bind the inputs from the full contract. Returns new inputs, or None if nothing changed."""
+    names = [f["name"] for f in contract.get("inputs", [])]
+    prompt = (f"User request: {request}{documented(contract)}\nInputs used: {json.dumps(inputs)}\n"
+              f"What went wrong: {problem}")
+    try:
+        reply = complete_json(provider, prompt, system=REBIND_SYSTEM, model=model, timeout=90)
+    except (LLMError, ValueError):
+        return None
+    proposed = reply.get("inputs") if isinstance(reply.get("inputs"), dict) else {}
+    rebound = {**inputs, **{k: v for k, v in proposed.items() if k in names}}
+    return rebound if rebound != inputs else None
+
+
+def documented(contract: dict | None) -> str:
+    if not contract:
+        return ""
+    fields = "; ".join(f"{f['name']} ({f.get('type', 'text')}{', optional' if f.get('required') is False else ''})"
+                       f"{': ' + f['description'] if f.get('description') else ''}" for f in contract.get("inputs", []))
+    return f"\nSkill's documented behaviour: {contract.get('summary', '')}\nInputs: {fields}"
+
+
+def verify_output(provider, model, request, capability, inputs, output, contract=None):
     """Ask the model to recompute the answer independently. Returns (correct, reason)."""
-    prompt = (f"User request: {request}\nSkill: {capability}\nInputs it received: {json.dumps(inputs)}\n"
+    prompt = (f"User request: {request}\nSkill: {capability}{documented(contract)}\nInputs it received: {json.dumps(inputs)}\n"
               f"Output it produced: {json.dumps(output)}")
     try:
         verdict = complete_json(provider, prompt, system=VERIFIER_SYSTEM, model=model, timeout=120)
@@ -309,7 +355,7 @@ def prove(source, contract, examples, inputs, verifier=None, files=None):
         raise ValueError(f"On the user's inputs the skill raised {run.error.get('type')}: {run.error.get('message')}")
     run_checks(parsed, files or {}, inputs, run.output)
     if verifier:
-        correct, reason = verifier(inputs, run.output, files)
+        correct, reason = verifier(inputs, run.output, files, contract)
         if not correct:
             raise ValueError(f"The verifier says the output {json.dumps(run.output)} is wrong: {reason}")
     return evidence, run.output
@@ -379,7 +425,9 @@ def bind_chat_inputs(contract, extracted, files=None):
     missing = [f.name for f in contract.inputs
                if f.required and (f.name not in files if f.type == "csv" else f.name not in extracted)]
     if missing:
-        raise ValueError(f"I need a value for: {', '.join(missing)}.")
+        described = [next((f.description for f in contract.inputs if f.name == name), "") or name.replace("_", " ")
+                     for name in missing]
+        raise NeedsInput(f"To run {contract.capability} I need: {'; '.join(described)}. What should I use?")
     return {f.name: extracted[f.name] for f in contract.inputs if f.type != "csv" and f.name in extracted}
 
 
@@ -408,6 +456,10 @@ def run_turn(conversation_id, assistant_id, provider_id, model):
 
         add_step(assistant_id, "planning", f"Planning with {planner.label}{' (auto)' if auto else ''}…")
         decision = plan(planner, model, history, registry, user.content, attachments)
+        if decision.get("mode") == "clarify":
+            add_step(assistant_id, "clarifying", "A value is missing or ambiguous, so asking before doing anything.")
+            finish(assistant_id, content=decision["question"], skill={"event": "clarify", "question": decision["question"]})
+            return
         if decision.get("mode") != "skill":
             add_step(assistant_id, "answering", "This needs a direct answer, not a skill.")
             files_note = f"\n\nAttached files:\n{attachments_text(attachments)}" if attachments else ""
@@ -434,6 +486,9 @@ def run_turn(conversation_id, assistant_id, provider_id, model):
             final = payloads[-1]["skill"]
             finish(assistant_id, content=text, skill={**final, "event": "pipeline",
                                                       "steps": [p["skill"] for p in payloads]})
+    except NeedsInput as question:
+        add_step(assistant_id, "clarifying", "A value the skill needs is missing, so asking for it.")
+        finish(assistant_id, content=str(question), skill={"event": "clarify", "question": str(question)})
     except (LLMError, ValueError) as error:
         add_step(assistant_id, "failed", str(error))
         finish(assistant_id, content=f"I couldn't complete this: {error}", status="failed")
@@ -448,6 +503,10 @@ def run_step(message_id, label, step, outputs, attachments, auto, provider_id, m
     inputs = resolve_refs(step["inputs"], outputs)
     files = bind_files(step["files"], attachments) if step["files"] else {}
     add_step(message_id, "planned", f"{label}a reusable skill: {capability}.", {"capability": capability, "inputs": inputs})
+
+    match = discover_capability(message_id, capability, inputs, files, request)
+    capability, inputs = match.capability, match.inputs
+    confirmed_by_model = match.how == "model"
 
     with SessionLocal.begin() as db:
         skill = latest_validated(db, capability)
@@ -465,8 +524,14 @@ def run_step(message_id, label, step, outputs, attachments, auto, provider_id, m
 
     def attempt(author, author_id, author_model):
         if existing:
-            return reuse_or_repair(message_id, author, author_id, author_model, existing, inputs, input_types,
-                                   summary, request, files)
+            try:
+                return reuse_or_repair(message_id, author, author_id, author_model, existing, inputs, input_types,
+                                       summary, request, files, allow_repair=not confirmed_by_model)
+            except MatchMismatch as mismatch:
+                add_step(message_id, "match_rejected", f"{mismatch} Building a new skill instead.")
+                original = step["capability"]
+                return create(message_id, author, author_id, author_model, original, summary, resolve_refs(step["inputs"], outputs),
+                              input_types, request, files)
         return create(message_id, author, author_id, author_model, capability, summary, inputs, input_types, request, files)
 
     try:
@@ -482,6 +547,27 @@ def run_step(message_id, label, step, outputs, attachments, auto, provider_id, m
         outcome = attempt(PROVIDERS[stronger], stronger, PROVIDERS[stronger].status().default_model)
     outcome["output"] = outcome["skill"]["output"]
     return outcome
+
+
+def discover_capability(message_id, capability, inputs, files, request):
+    """Find an existing skill for this operation before creating one (see services/discovery.py)."""
+    with SessionLocal() as db:
+        rows = db.scalars(select(SkillVersion).where(SkillVersion.status == "validated",
+                                                     SkillVersion.contract_json.is_not(None))).all()
+    skills = {}
+    for row in rows:
+        if needs_files(row.contract_json) and not files:
+            continue
+        skills.setdefault(row.capability, {"summary": row.contract_json.get("summary", ""),
+                                           "inputs": [f["name"] for f in row.contract_json.get("inputs", [])]})
+    # Only a strong model may confirm a close match; with none available, a close call creates a new skill.
+    confirmer = next((PROVIDERS[p] for p in STRENGTH_ORDER if p != LOCAL and PROVIDERS[p].status().available), None)
+    match = discover(capability, inputs, skills, provider=confirmer,
+                     model=confirmer.status().default_model if confirmer else None, request=request)
+    if match.how in ("names", "model"):
+        add_step(message_id, "discovered", f"Reusing {match.capability} for {capability}: {match.reason}",
+                 {"planned": capability, "matched": match.capability, "how": match.how})
+    return match
 
 
 def reply_payload(skill, output, event):
@@ -503,21 +589,21 @@ def pick_judge(author_id, author_model):
 def make_judge(author_id, author_model):
     provider, model = pick_judge(author_id, author_model)
 
-    def judge(request, capability, inputs, output):
-        return verify_output(provider, model, request, capability, inputs, output)
+    def judge(request, capability, inputs, output, contract=None):
+        return verify_output(provider, model, request, capability, inputs, output, contract)
     judge.label, judge.provider_id, judge.author_id = provider.label, provider.id, author_id
     return judge
 
 
 def make_verifier(message_id, judge, request, capability):
-    def check(inputs, output, files=None):
+    def check(inputs, output, files=None, contract=None):
         view = verifier_view(inputs, files)
         if view is None:
             add_step(message_id, "verify_skipped", "The file is too large for a model to recompute by hand; "
                      "relying on the contract checks and the worked examples.")
             return True, "skipped (large file)"
         add_step(message_id, "verifying", f"Independent verifier ({judge.label}) is recomputing the answer…")
-        correct, reason = judge(request, capability, view, output)
+        correct, reason = judge(request, capability, view, output, contract)
         add_step(message_id, "verified" if correct else "verify_failed",
                  "Verifier agrees with the output." if correct else f"Verifier disagrees: {reason}")
         scoreboard.record(judge.provider_id, "verifier", "agreed" if correct else "disagreed", capability=capability)
@@ -527,7 +613,8 @@ def make_verifier(message_id, judge, request, capability):
     return check
 
 
-def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, input_types, summary, request, files=None):
+def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, input_types, summary, request, files=None,
+                    allow_repair=True):
     files = files or {}
     with SessionLocal.begin() as db:
         skill = db.get(SkillVersion, key)
@@ -543,11 +630,32 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
     if run.ok:
         try:
             run_checks(contract, files, inputs, run.output)
-            correct, reason = verifier(inputs, run.output, files)
+            correct, reason = verifier(inputs, run.output, files, skill.contract_json)
             if not correct:
                 failure = f"wrong answer {json.dumps(run.output)}: {reason}"
         except CheckFailed as error:
             failure, typed_failure = str(error), classify_check(error)
+    if failure is not None and run.ok and typed_failure is None:
+        # The verifier says the answer is wrong. Often the skill is fine and an input was bound wrong
+        # (an optional flag the planner missed): re-bind from the full contract before touching code.
+        strong = next((PROVIDERS[p] for p in STRENGTH_ORDER if p != LOCAL and PROVIDERS[p].status().available), provider)
+        rebound = rebind_inputs(strong, strong.status().default_model if strong is not provider else model,
+                                request, skill.contract_json, inputs, failure)
+        if rebound is not None:
+            add_step(message_id, "rebinding", f"Re-read the request against the skill's inputs: {json.dumps(rebound)}.",
+                     {"inputs": rebound})
+            rerun = run_skill(source, inputs=rebound, files=files, tools=contract.tools)
+            if rerun.ok:
+                try:
+                    run_checks(contract, files, rebound, rerun.output)
+                    correct, reason = verifier(rebound, rerun.output, files, skill.contract_json)
+                except CheckFailed as error:
+                    correct, reason = False, str(error)
+                if correct:
+                    run, inputs, failure = rerun, rebound, None
+                else:
+                    failure = f"wrong answer {json.dumps(rerun.output)} even after re-binding inputs: {reason}"
+
     if failure is None:
         add_step(message_id, "skill_ran", f"Done in {run.duration_ms:g} ms. Reused v{skill.version}, no new code needed.")
         creator = (skill.change_json or {}).get("created_by") or (skill.change_json or {}).get("provider")
@@ -556,6 +664,8 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
         return {"text": f"Reused **{skill.skill_id} v{skill.version}**.", "skill": reply_payload(skill, run.output, "reused")}
 
     add_step(message_id, "skill_failed", f"v{skill.version} failed on this input: {failure}")
+    if not allow_repair:
+        raise MatchMismatch(f"{skill.skill_id} looked like the same operation but failed on this input ({failure}).")
 
     # Deterministic strategies first (cheap, no model): e.g. export-formatted amounts in a CSV.
     if typed_failure is not None:

@@ -12,7 +12,42 @@ import {
   useSkillForgeProcess,
 } from "../hooks/useSkillForgeProcess.js";
 
+import { submitClarification } from "../api/skillforgeProcess.js";
+
 import "./skillforge-process-view.css";
+
+function ClarifyForm({ executionId, question, onSent }) {
+  const [answer, setAnswer] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  async function send(event) {
+    event.preventDefault();
+    if (!answer.trim()) return;
+    setSending(true);
+    setError("");
+    try {
+      await submitClarification(executionId, answer.trim());
+      setAnswer("");
+      onSent?.();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setSending(false);
+    }
+  }
+  return (
+    <form className="sf-process__clarify" onSubmit={send}>
+      <p className="sf-process__eyebrow">The reviewer has a question</p>
+      <p className="sf-process__question">{question}</p>
+      <div className="sf-process__actions">
+        <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Your answer…"
+               aria-label="Answer the reviewer's question" maxLength={2000} />
+        <button type="submit" disabled={sending || !answer.trim()}>{sending ? "Sending…" : "Send answer"}</button>
+      </div>
+      {error && <p className="sf-process__muted" role="alert">{error}</p>}
+    </form>
+  );
+}
 
 function readable(value) {
   return value.replaceAll("_", " ");
@@ -27,6 +62,9 @@ export default function SkillForgeProcessView({
   onOpenRequestHandled,
 }) {
   const process = useSkillForgeProcess();
+  const lastInputRequest = [...(process.events || [])].reverse().find((event) => event.event_type === "input_required");
+  const clarifyQuestion = lastInputRequest?.payload?.next_action === "clarify_requirement"
+    ? (lastInputRequest.payload.question || lastInputRequest.message) : "";
 
   const [draft, setDraft] = useState("");
   const [restoreId, setRestoreId] = useState("");
@@ -295,8 +333,13 @@ export default function SkillForgeProcessView({
                 </p>
               )}
 
+              {process.execution.status === "waiting_input" && clarifyQuestion && (
+                <ClarifyForm executionId={process.executionId} question={clarifyQuestion} onSent={process.refresh} />
+              )}
+
               {process.execution.status
                 === "waiting_input"
+                && !clarifyQuestion
                 && (
                   <p className="sf-process__notice">
                     More input is required. See the

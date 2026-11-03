@@ -12,7 +12,10 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 
 | Area | Status |
 |---|---|
-| Requirement review (keyword rules, `keyword_rules_v1`) | ✅ Backend |
+| Requirement review: keyword rules first, then an LLM review (`llm_review_v1`) that understands varied wording | ✅ Backend |
+| **Clarifying questions**: an unclear request (Workbench or chat) gets one specific question instead of failing | ✅ |
+| **Capability discovery**: "pull emails", "grab every mail address" and `extract_emails` find the same skill (synonyms, then model confirmation) instead of creating near-duplicates | ✅ |
+| **Contract-aware verifier**: answers are judged against the skill's documented behaviour and defaults; a wrong input binding is re-bound before any code repair | ✅ |
 | CSV upload, column mapping, confirmation, SHA-256 integrity checks | ✅ Backend |
 | Queue + background worker, execution timeline events | ✅ Backend |
 | Versioned skill registry with validation evidence and implementation hash | ✅ Backend |
@@ -154,6 +157,8 @@ With **Auto**:
 2. Submit "Show revenue by product".
 3. Upload a sales CSV (for example `demo_data/step10_sales.csv`) and confirm the product and revenue columns.
 4. Watch the timeline in the Process view. Finished runs appear under **Activity**, and the skill version appears under **Skill library**.
+
+Wording doesn't have to match: "How much money did each item bring in?" is understood by the LLM review. A vague request such as "Analyze my spreadsheet" gets a question in the Process view; answer it and the run is reviewed again (up to 5 rounds).
 
 **See a real self-repair:**
 

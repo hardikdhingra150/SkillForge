@@ -98,7 +98,7 @@ class SmithProofTests(unittest.TestCase):
     def test_verifier_disagreement_rejects_the_skill(self):
         source, contract, examples = build_candidate("count_words", GOOD_SPEC)
         with self.assertRaises(ValueError) as caught:
-            prove(source, contract, examples, {"text": "a b"}, verifier=lambda inputs, output, files=None: (False, "expected 3"))
+            prove(source, contract, examples, {"text": "a b"}, verifier=lambda inputs, output, files=None, contract=None: (False, "expected 3"))
         self.assertIn("verifier", str(caught.exception))
 
     def test_csv_skills_are_kept_out_of_chat(self):
@@ -183,7 +183,7 @@ class ArbitrationTests(unittest.TestCase):
     def test_verifier_siding_with_code_corrects_the_example(self, _steps):
         judge = lambda request, capability, inputs, output: (True, "7 words")  # noqa: E731
         evidence, output, examples = prove_with_arbitration("m", judge, "Count words", "count_words", self.source,
-                                                            self.contract, self.examples, {"text": "x y"}, lambda i, o, f=None: (True, ""))
+                                                            self.contract, self.examples, {"text": "x y"}, lambda i, o, f=None, c=None: (True, ""))
         self.assertEqual(output, {"words": 2})
         fixed = next(e for e in examples if e[0] == "miscount")[3]
         self.assertEqual(fixed, {"output": {"words": 7}, "corrected_by_verifier": True})
@@ -193,7 +193,7 @@ class ArbitrationTests(unittest.TestCase):
         judge = lambda request, capability, inputs, output: (False, "it is 10")  # noqa: E731
         with self.assertRaises(ExampleMismatch):
             prove_with_arbitration("m", judge, "Count words", "count_words", self.source, self.contract,
-                                   self.examples, {"text": "x y"}, lambda i, o, f=None: (True, ""))
+                                   self.examples, {"text": "x y"}, lambda i, o, f=None, c=None: (True, ""))
 
 
 if __name__ == "__main__":

@@ -56,10 +56,10 @@ REVENUE_BY_PRODUCT = BuiltinSkill(
     ],
 )
 
-def text_skill(skill_id, summary, inputs, outputs, tools, fixtures):
+def text_skill(skill_id, summary, inputs, outputs, tools, fixtures, version="1.0.0"):
     """A starter skill on plain values. Fixtures are (name, inputs, expected output)."""
     return BuiltinSkill(
-        skill_id=skill_id, version="1.0.0", source_file=f"{skill_id}.py",
+        skill_id=skill_id, version=version, source_file=f"{skill_id}.py",
         contract={"capability": skill_id, "summary": summary, "entrypoint": "run", "inputs": inputs, "outputs": outputs,
                   "tools": tools, "checks": ["contract_outputs"]},
         fixtures=[(name, values, {}, None if expected is None else {"output": expected}) for name, values, expected in fixtures],
@@ -98,14 +98,17 @@ STARTER_SKILLS = [
                    ("trim", {"text": "  --Skill Forge--  "}, {"slug": "skill-forge"}),
                    ("empty", {"text": "!!!"}, {"slug": ""}),
                ]),
-    text_skill("dedupe_list", "Remove duplicates from a list, keeping first occurrences in order.",
-               [{"name": "items", "type": "list"},
-                {"name": "case_sensitive", "type": "boolean", "required": False, "description": "Default false."}],
+    # 1.1.0 documents the case-insensitive default in the contract, so verifiers judge against it.
+    text_skill("dedupe_list", "Remove duplicates from a list, keeping first occurrences in order. Text is compared "
+               "case-insensitively and ignoring surrounding spaces unless case_sensitive is true.",
+               [{"name": "items", "type": "list", "description": "The values to de-duplicate."},
+                {"name": "case_sensitive", "type": "boolean", "required": False,
+                 "description": "Compare text exactly (default false: 'Apple' and 'apple' are duplicates)."}],
                [{"name": "items", "type": "list"}, {"name": "removed", "type": "integer"}], [], [
                    ("strings", {"items": ["a", "B", "b", "a", "c"]}, {"items": ["a", "B", "c"], "removed": 2}),
                    ("case_sensitive", {"items": ["a", "A"], "case_sensitive": True}, {"items": ["a", "A"], "removed": 0}),
                    ("numbers", {"items": [1, 2, 1, 3]}, {"items": [1, 2, 3], "removed": 1}),
-               ]),
+               ], version="1.1.0"),
 ]
 
 BUILTIN_SKILLS = [REVENUE_BY_PRODUCT, *STARTER_SKILLS]

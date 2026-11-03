@@ -198,3 +198,36 @@ def confirm_input(execution_id: UUID, body: MappingConfirm, db: DB):
         return result
     except SQLAlchemyError as error:
         raise database_error(error) from None
+
+
+class ClarificationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    answer: str = Field(min_length=1, max_length=2000)
+
+
+MAX_REVIEW_ROUNDS = 5
+
+
+@router.post("/executions/{execution_id}/clarify", status_code=202)
+def clarify_requirement(execution_id: UUID, body: ClarificationIn, db: DB):
+    """Answer the reviewer's question; the request is queued for another review round."""
+    try:
+        with db.begin():
+            execution, task = execution_row(db, execution_id, lock=True)
+            meta = dict(task.requirements_json or {})
+            review = meta.get("review", {})
+            if execution.status != "waiting_input" or review.get("next_action") != "clarify_requirement":
+                raise HTTPException(409, "This run is not waiting for a clarification.")
+            rounds = meta.get("review_round", 1) + 1
+            if rounds > MAX_REVIEW_ROUNDS:
+                raise HTTPException(409, "Too many clarification rounds. Start a new task with a fuller description.")
+            answer = body.answer.strip()
+            task.requirements_json = {**meta, "review_round": rounds,
+                                      "clarifications": [*meta.get("clarifications", []), answer]}
+            execution.status, execution.current_stage = "queued", "admission"
+            append_event(db, execution.id, event_key=f"review.clarify.{rounds}", stage="admission",
+                         event_type="clarification_received", message=f"Clarification received: {answer[:200]}",
+                         payload={"answer": answer, "round": rounds})
+        return {"execution_id": str(execution_id), "status": "queued", "round": rounds}
+    except SQLAlchemyError as error:
+        raise database_error(error) from None

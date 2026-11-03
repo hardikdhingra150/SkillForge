@@ -326,3 +326,10 @@ export function getSavedExecutions(
     { signal },
   );
 }
+export function submitClarification(executionId, answer) {
+  return request(`/executions/${encodeURIComponent(executionId)}/clarify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ answer }),
+  });
+}

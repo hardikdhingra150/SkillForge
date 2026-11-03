@@ -139,3 +139,4 @@
 .sf-chat__pipeline li + li::before { content: '→'; color: var(--faint); margin-right: 2px; }
 .sf-chat__badge[data-event=reused] { background: none; color: var(--text); border: 1px solid var(--muted); }
 .sf-chat__badge[data-event=repaired] { background: none; color: var(--text); border: 1px dashed var(--text); }
+.sf-chat__ask { justify-self: start; background: none !important; color: var(--text) !important; border: 1px dashed var(--text); }
