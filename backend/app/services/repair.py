@@ -12,6 +12,7 @@ import base64
 import difflib
 from dataclasses import dataclass, field
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.database.skill_models import SkillVersion
@@ -125,6 +126,13 @@ def next_version(db, skill_id: str, parent: str) -> str:
             return candidate
 
 
+def retired_duplicate(db, skill_id, source, contract):
+    """A version with exactly this code that a reviewer retired, if any: retired code must not come back."""
+    fingerprint = implementation_hash(source, contract)
+    return db.scalars(select(SkillVersion).where(SkillVersion.skill_id == skill_id, SkillVersion.status == "retired",
+                                                 SkillVersion.implementation_hash == fingerprint)).first()
+
+
 def promote(db, parent, source, contract, evidence, change) -> SkillVersion:
     """Insert the repaired version. If another worker promoted the same fix first, reuse it."""
     fingerprint = implementation_hash(source, contract)
@@ -198,6 +206,9 @@ def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int
                 evidence = run_fixture_tests(patch.source, patch.contract, fixtures)
             except (ValueError, CheckFailed) as error:
                 raise _AttemptFailed(Failure("REGRESSION", str(error))) from None
+            retired = retired_duplicate(db, skill.skill_id, patch.source, patch.contract)
+            if retired is not None:
+                raise _AttemptFailed(Failure("RETIRED_FIX", f"This fix is identical to v{retired.version}, which a reviewer retired."))
         except PolicyViolation as error:
             failure = Failure("POLICY_VIOLATION", str(error))
         except _AttemptFailed as error:

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ArrowUpRight, Bot, Check, CircleCheck, Copy, LoaderCircle, MessagesSquare, Plus, RefreshCw, Send, Trash2, Wrench } from "lucide-react";
+import { ArrowUpRight, Bot, Check, CircleCheck, Copy, FileSpreadsheet, LoaderCircle, MessagesSquare, Paperclip, Plus, RefreshCw, Send, Trash2, Wrench, X } from "lucide-react";
 import {
   createConversation,
   deleteConversation,
@@ -7,6 +7,8 @@ import {
   getProviders,
   listConversations,
   sendMessage,
+  streamConversation,
+  uploadAttachment,
 } from "../api/chat.js";
 import "./chat.css";
 
@@ -17,6 +19,7 @@ const SUGGESTIONS = [
   "Convert 100 degrees Celsius to Fahrenheit",
   "Add up these numbers: 1, 2.5, 3",
   "In one sentence, what is a skill registry?",
+  "Extract the emails from: ana@acme.io, bo@forge.dev, cy@acme.io — then count them by domain",
 ];
 
 const STEP_ICON = {
@@ -24,7 +27,17 @@ const STEP_ICON = {
   failed: Wrench, skill_failed: Wrench, verify_failed: Wrench, smith_rejected: Wrench,
 };
 
-const EVENT_LABEL = { created: "New skill", reused: "Reused", repaired: "Repaired" };
+const EVENT_LABEL = { created: "New skill", reused: "Reused", repaired: "Repaired", pipeline: "Multi-step" };
+
+const PROVIDER_LABEL = { auto: "Auto", claude: "Claude", codex: "Codex", anthropic: "Claude API", openai: "OpenAI API", ollama: "Local" };
+
+/** "Auto" lets the scoreboard pick the model per task; it is available whenever any model is. */
+function withAuto(list) {
+  const any = list.some((p) => p.available);
+  return [{ id: "auto", label: "Auto (scoreboard routing)", kind: "auto", available: any, models: [], default_model: null,
+            detail: any ? "Routes each task to the cheapest model with a good record." : "Connect at least one model.", setup: [] },
+          ...list];
+}
 
 /** Tiny, safe inline formatting: **bold** and `code`. Everything else is plain text. */
 function Inline({ text }) {
@@ -43,9 +56,27 @@ function Value({ value }) {
   return <span>{String(value)}</span>;
 }
 
+function FileChip({ file, onRemove }) {
+  return (
+    <span className="sf-chat__file">
+      <FileSpreadsheet size={13} /><b>{file.filename}</b>
+      <small>{file.row_count} rows · {file.headers.join(", ")}</small>
+      {onRemove && <button type="button" onClick={onRemove} aria-label={`Remove ${file.filename}`}><X size={12} /></button>}
+    </span>
+  );
+}
+
 function SkillCard({ skill, onOpenLibrary }) {
   return (
     <div className="sf-chat__skill" data-event={skill.event}>
+      {skill.steps?.length > 1 && (
+        <ol className="sf-chat__pipeline">
+          {skill.steps.map((step, i) => (
+            <li key={i}><span className="sf-chat__badge" data-event={step.event}>{EVENT_LABEL[step.event] || step.event}</span>
+              <code>{step.skill_id} v{step.version}</code></li>
+          ))}
+        </ol>
+      )}
       <div className="sf-chat__skill-top">
         <span className="sf-chat__badge">{EVENT_LABEL[skill.event] || skill.event}</span>
         <code>{skill.skill_id} v{skill.version}</code>
@@ -113,7 +144,12 @@ function SetupCard({ provider, onRecheck }) {
 
 function Message({ message, onOpenLibrary }) {
   if (message.role === "user") {
-    return <div className="sf-chat__message" data-role="user"><p>{message.content}</p></div>;
+    return (
+      <div className="sf-chat__message" data-role="user">
+        <p>{message.content}</p>
+        {message.attachments?.length > 0 && <div className="sf-chat__files">{message.attachments.map((f) => <FileChip key={f.id} file={f} />)}</div>}
+      </div>
+    );
   }
   const pending = message.status === "pending";
   return (
@@ -138,6 +174,10 @@ export default function ChatView({ onOpenLibrary }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef(null);
   const threadRef = useRef(null);
 
   const provider = providers.find((p) => p.id === providerId);
@@ -145,9 +185,9 @@ export default function ChatView({ onOpenLibrary }) {
 
   const loadProviders = useCallback(async (refresh = false) => {
     try {
-      const list = await getProviders({ refresh });
+      const list = withAuto(await getProviders({ refresh }));
       setProviders(list);
-      setProviderId((current) => current || list.find((p) => p.available)?.id || list[0]?.id || "");
+      setProviderId((current) => current || (list[0].available ? "auto" : list[0]?.id) || "");
     } catch (failure) {
       setError(failure.message);
     }
@@ -170,9 +210,20 @@ export default function ChatView({ onOpenLibrary }) {
     if (provider && !provider.models.includes(model)) setModel(provider.default_model || "");
   }, [provider, model]);
 
-  // Poll the open conversation while a reply is in progress.
+  // Stream the open conversation while a reply is in progress; poll only if the stream fails.
+  const [streamFailed, setStreamFailed] = useState(false);
+  const activeId = active?.id;
   useEffect(() => {
-    if (!active?.id || !pending) return undefined;
+    if (!activeId || !pending || streamFailed || typeof EventSource === "undefined") return undefined;
+    return streamConversation(activeId, {
+      onUpdate: setActive,
+      onDone: loadConversations,
+      onError: () => setStreamFailed(true),
+    });
+  }, [activeId, pending, streamFailed, loadConversations]);
+
+  useEffect(() => {
+    if (!active?.id || !pending || !streamFailed) return undefined;
     const timer = setTimeout(async () => {
       try {
         const next = await getConversation(active.id);
@@ -183,7 +234,7 @@ export default function ChatView({ onOpenLibrary }) {
       }
     }, POLL_MS);
     return () => clearTimeout(timer);
-  }, [active, pending, loadConversations]);
+  }, [active, pending, streamFailed, loadConversations]);
 
   const messageCount = active?.messages?.length ?? 0;
   const lastStepCount = active?.messages?.at(-1)?.steps?.length ?? 0;
@@ -200,19 +251,49 @@ export default function ChatView({ onOpenLibrary }) {
     }
   }
 
+  async function ensureConversation() {
+    if (active?.id) return active;
+    const created = await createConversation(providerId, model);
+    const fresh = { ...created, messages: [] };
+    setActive(fresh);
+    return fresh;
+  }
+
+  async function attach(list) {
+    const picked = [...list].filter((f) => f.name.toLowerCase().endsWith(".csv"));
+    if (!picked.length) { setError("Attach a .csv file."); return; }
+    setUploading(true);
+    setError("");
+    try {
+      const conversation = await ensureConversation();
+      for (const file of picked.slice(0, 5)) {
+        const uploaded = await uploadAttachment(conversation.id, file);
+        setFiles((current) => [...current, uploaded]);
+      }
+      loadConversations();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   async function send(text) {
     const content = (text ?? draft).trim();
-    if (!content || sending || pending) return;
+    if (!content || sending || pending || uploading) return;
     if (!provider?.available) {
       setError(provider ? `${provider.label}: ${provider.detail}` : "Choose a model first.");
       return;
     }
     setSending(true);
+    setStreamFailed(false);
     setError("");
     try {
       const conversation = active?.id ? active : await createConversation(providerId, model);
-      await sendMessage(conversation.id, content, providerId, model);
+      await sendMessage(conversation.id, content, providerId, model, files.map((f) => f.id));
       setDraft("");
+      setFiles([]);
       setActive(await getConversation(conversation.id));
       loadConversations();
     } catch (failure) {
@@ -235,7 +316,7 @@ export default function ChatView({ onOpenLibrary }) {
   return (
     <section className="sf-chat" aria-labelledby={`${uid}-title`}>
       <aside className="sf-chat__sidebar">
-        <button className="sf-chat__new" onClick={() => { setActive(null); setDraft(""); }}><Plus size={15} /> New chat</button>
+        <button className="sf-chat__new" onClick={() => { setActive(null); setDraft(""); setFiles([]); }}><Plus size={15} /> New chat</button>
         <p className="sf-chat__label">Recent</p>
         <ul>
           {conversations.map((c) => (
@@ -260,7 +341,7 @@ export default function ChatView({ onOpenLibrary }) {
             {providers.map((p) => (
               <button key={p.id} role="radio" aria-checked={providerId === p.id} data-available={p.available}
                       title={p.detail} onClick={() => setProviderId(p.id)}>
-                <i />{p.id === "ollama" ? "Local" : p.id === "claude" ? "Claude" : "Codex"}
+                <i />{PROVIDER_LABEL[p.id] || p.label}
               </button>
             ))}
             {provider?.models?.length > 1 && (
@@ -271,7 +352,8 @@ export default function ChatView({ onOpenLibrary }) {
             <button className="sf-chat__icon" onClick={() => loadProviders(true)} aria-label="Refresh provider status"><RefreshCw size={14} /></button>
           </div>
         </header>
-        {provider && !provider.available && <SetupCard provider={provider} onRecheck={() => loadProviders(true)} />}
+        {provider && !provider.available && provider.setup?.length > 0 && <SetupCard provider={provider} onRecheck={() => loadProviders(true)} />}
+        {provider && !provider.available && !provider.setup?.length && <p className="sf-chat__notice">{provider.detail}</p>}
         {error && <p className="sf-chat__error" role="alert">{error}</p>}
 
         <div className="sf-chat__thread" ref={threadRef} aria-live="polite">
@@ -288,12 +370,24 @@ export default function ChatView({ onOpenLibrary }) {
           {active?.messages?.map((m) => <Message key={m.id} message={m} onOpenLibrary={onOpenLibrary} />)}
         </div>
 
-        <form className="sf-chat__composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
+        <form className={`sf-chat__composer ${dragging ? "is-dragging" : ""}`} onSubmit={(e) => { e.preventDefault(); send(); }}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); attach(e.dataTransfer.files); }}>
+          {files.length > 0 && (
+            <div className="sf-chat__files sf-chat__files--pending">
+              {files.map((f) => <FileChip key={f.id} file={f} onRemove={() => setFiles((c) => c.filter((x) => x.id !== f.id))} />)}
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept=".csv,text/csv" multiple hidden onChange={(e) => attach(e.target.files)} />
+          <button type="button" className="sf-chat__attach" onClick={() => fileRef.current?.click()} disabled={uploading || pending}
+                  aria-label="Attach a CSV file" title="Attach a CSV file">
+            {uploading ? <LoaderCircle size={16} className="sf-chat__spin" /> : <Paperclip size={16} />}
+          </button>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={pending ? "Waiting for the reply…" : "Ask anything, or describe a task…"}
+            placeholder={pending ? "Waiting for the reply…" : files.length ? "What should I do with this file?" : "Ask anything, describe a task, or drop a CSV…"}
             rows={2}
             maxLength={8000}
             aria-label="Message"

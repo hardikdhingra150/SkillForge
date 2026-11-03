@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint, Uuid, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
 
@@ -40,3 +40,21 @@ class ChatMessage(Base):
         CheckConstraint("role IN ('user', 'assistant')", name="ck_chat_messages_role"),
         CheckConstraint("status IN ('pending', 'done', 'failed')", name="ck_chat_messages_status"),
     )
+
+
+class ChatAttachment(Base):
+    """A file attached to a chat message (CSV for now), validated on upload."""
+
+    __tablename__ = "chat_attachments"
+
+    id = mapped_column(Uuid, primary_key=True, server_default=text("uuidv7()"))
+    conversation_id = mapped_column(Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    message_id = mapped_column(Uuid, ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=True, index=True)
+    filename = mapped_column(String(200), nullable=False)
+    sha256 = mapped_column(String(64), nullable=False)
+    size_bytes = mapped_column(Integer, nullable=False)
+    content_bytes = mapped_column(LargeBinary, nullable=False)
+    headers_json = mapped_column(JSONB, nullable=False)
+    preview_json = mapped_column(JSONB, nullable=False)
+    row_count = mapped_column(Integer, nullable=False)
+    created_at = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

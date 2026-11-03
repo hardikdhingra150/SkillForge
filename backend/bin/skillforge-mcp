@@ -1,0 +1,4 @@
+#!/bin/sh
+# Launch SkillForge's MCP server (stdio). Point Claude Code, Codex or Cursor at this file.
+# Needs Postgres running (make db) and the backend set up (make setup && make migrate).
+cd "$(dirname "$0")/.." && exec .venv/bin/python -m app.mcp_server "$@"

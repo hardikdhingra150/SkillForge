@@ -6,7 +6,7 @@ VPY     := $(VENV)/bin/python
 BACKEND := cd backend &&
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate seed api worker web test test-backend lint lint-backend lint-web build check
+.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend lint lint-backend lint-web build check
 
 help: ## Show available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -36,6 +36,9 @@ worker: ## Run the background worker
 
 web: ## Run the frontend dev server on :5173
 	npm run dev
+
+mcp: ## Run the MCP server on stdio (for testing; agents launch backend/bin/skillforge-mcp themselves)
+	backend/bin/skillforge-mcp
 
 test-backend: ## Run backend unit tests
 	$(BACKEND) .venv/bin/python -m unittest discover tests

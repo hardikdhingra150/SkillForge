@@ -14,6 +14,7 @@ import {
   ChevronRight,
   FileText,
   FlaskConical,
+  Gauge,
   GitBranch,
   History,
   Layers3,
@@ -64,6 +65,8 @@ import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
 import ChatView from './components/ChatView.jsx';
+import ModelsView from './components/ModelsView.jsx';
+import ReviewView from './components/ReviewView.jsx';
 
 const views = [
   {
@@ -80,6 +83,16 @@ const views = [
     id: 'library',
     label: 'Skill library',
     icon: Layers3,
+  },
+  {
+    id: 'models',
+    label: 'Models',
+    icon: Gauge,
+  },
+  {
+    id: 'review',
+    label: 'Review',
+    icon: ShieldCheck,
   },
   {
     id: 'console',
@@ -1090,6 +1103,8 @@ export default function App() {
       'workbench',
       'chat',
       'library',
+      'models',
+      'review',
       'console',
       'activity',
       'governance',
@@ -1167,6 +1182,8 @@ export default function App() {
           'workbench',
           'chat',
           'library',
+          'models',
+          'review',
           'console',
           'activity',
           'governance',
@@ -1923,6 +1940,12 @@ export default function App() {
 
             {view === 'chat' && (
               <ChatView onOpenLibrary={() => navigate('library')} />
+            )}
+
+            {view === 'models' && <ModelsView />}
+
+            {view === 'review' && (
+              <ReviewView onOpenRun={(id) => { setRequestedExecutionId(id); navigate('workbench'); }} />
             )}
 
             {view === 'library' && (

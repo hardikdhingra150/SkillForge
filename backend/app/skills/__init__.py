@@ -56,4 +56,56 @@ REVENUE_BY_PRODUCT = BuiltinSkill(
     ],
 )
 
-BUILTIN_SKILLS = [REVENUE_BY_PRODUCT]
+def text_skill(skill_id, summary, inputs, outputs, tools, fixtures):
+    """A starter skill on plain values. Fixtures are (name, inputs, expected output)."""
+    return BuiltinSkill(
+        skill_id=skill_id, version="1.0.0", source_file=f"{skill_id}.py",
+        contract={"capability": skill_id, "summary": summary, "entrypoint": "run", "inputs": inputs, "outputs": outputs,
+                  "tools": tools, "checks": ["contract_outputs"]},
+        fixtures=[(name, values, {}, None if expected is None else {"output": expected}) for name, values, expected in fixtures],
+    )
+
+
+STARTER_SKILLS = [
+    text_skill("extract_emails", "Extract email addresses from text, in order, without duplicates.",
+               [{"name": "text", "type": "text", "description": "Text that may contain email addresses."}],
+               [{"name": "emails", "type": "list"}, {"name": "count", "type": "integer"}], ["regex_findall"], [
+                   ("two", {"text": "write a@b.co or c.d@e.org"}, {"emails": ["a@b.co", "c.d@e.org"], "count": 2}),
+                   ("duplicates", {"text": "x@y.io, X@y.io and x@y.io"}, {"emails": ["x@y.io"], "count": 1}),
+                   ("none", {"text": "no emails here"}, {"emails": [], "count": 0}),
+               ]),
+    text_skill("word_stats", "Count words, characters and sentences in a text.",
+               [{"name": "text", "type": "text"}],
+               [{"name": "words", "type": "integer"}, {"name": "characters", "type": "integer"},
+                {"name": "characters_no_spaces", "type": "integer"}, {"name": "sentences", "type": "integer"}],
+               ["regex_split"], [
+                   ("two_sentences", {"text": "Hello world. How are you?"},
+                    {"words": 5, "characters": 25, "characters_no_spaces": 21, "sentences": 2}),
+                   ("empty", {"text": ""}, {"words": 0, "characters": 0, "characters_no_spaces": 0, "sentences": 0}),
+                   ("spaces", {"text": "  a  b  "}, {"words": 2, "characters": 8, "characters_no_spaces": 2, "sentences": 1}),
+               ]),
+    text_skill("convert_temperature", "Convert a temperature between Celsius, Fahrenheit and Kelvin.",
+               [{"name": "value", "type": "number"}, {"name": "from_unit", "type": "text"}, {"name": "to_unit", "type": "text"}],
+               [{"name": "value", "type": "number"}, {"name": "unit", "type": "text"}], [], [
+                   ("boiling", {"value": 100, "from_unit": "C", "to_unit": "F"}, {"value": 212.0, "unit": "fahrenheit"}),
+                   ("body", {"value": 98.6, "from_unit": "fahrenheit", "to_unit": "celsius"}, {"value": 37.0, "unit": "celsius"}),
+                   ("kelvin", {"value": 0, "from_unit": "c", "to_unit": "k"}, {"value": 273.15, "unit": "kelvin"}),
+                   ("bad_unit", {"value": 1, "from_unit": "x", "to_unit": "c"}, None),
+               ]),
+    text_skill("slugify", "Turn a title into a URL slug.",
+               [{"name": "text", "type": "text"}], [{"name": "slug", "type": "text"}], ["regex_sub"], [
+                   ("title", {"text": "Hello, World! 2026"}, {"slug": "hello-world-2026"}),
+                   ("trim", {"text": "  --Skill Forge--  "}, {"slug": "skill-forge"}),
+                   ("empty", {"text": "!!!"}, {"slug": ""}),
+               ]),
+    text_skill("dedupe_list", "Remove duplicates from a list, keeping first occurrences in order.",
+               [{"name": "items", "type": "list"},
+                {"name": "case_sensitive", "type": "boolean", "required": False, "description": "Default false."}],
+               [{"name": "items", "type": "list"}, {"name": "removed", "type": "integer"}], [], [
+                   ("strings", {"items": ["a", "B", "b", "a", "c"]}, {"items": ["a", "B", "c"], "removed": 2}),
+                   ("case_sensitive", {"items": ["a", "A"], "case_sensitive": True}, {"items": ["a", "A"], "removed": 0}),
+                   ("numbers", {"items": [1, 2, 1, 3]}, {"items": [1, 2, 3], "removed": 1}),
+               ]),
+]
+
+BUILTIN_SKILLS = [REVENUE_BY_PRODUCT, *STARTER_SKILLS]

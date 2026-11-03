@@ -19,14 +19,22 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | Skills stored as source + contract, run in a sandbox (static policy, approved tools, CPU/time limits, no env or file writes) | ✅ Backend |
 | Host-side contract checks against independent reference calculations | ✅ Backend |
 | Execution history: search, filter, reopen | ✅ Backend |
-| **Chat** with Claude (Claude Code CLI), Codex (Codex CLI) or a local Ollama model | ✅ |
+| **Chat** with Claude (Claude Code CLI), Codex (Codex CLI), the Claude API, the OpenAI API, or a local Ollama model | ✅ |
+| **Auto** provider: routes each capability to the cheapest model that has proven itself (model scoreboard) | ✅ |
+| **Files in chat**: attach a CSV; file skills such as `revenue_by_product` are reused and repaired | ✅ |
+| **Multi-step tasks**: 1–4 chained skills, a step can use an earlier step's output (`$step1.field`) | ✅ |
+| **Live streaming** of agent steps over server-sent events, with a polling fallback | ✅ |
+| **Review queue**: retry a run with a bigger repair budget, or reject it; **retire / restore** versions (instant rollback) | ✅ |
+| **Export / import** a skill as one JSON bundle; imports are re-proven (hash, sandbox policy, every fixture) | ✅ |
+| **MCP server**: validated skills become tools for Claude Code, Codex and Cursor | ✅ |
+| Starter skill pack: `extract_emails`, `word_stats`, `convert_temperature`, `slugify`, `dedupe_list` | ✅ `make seed` |
 | Planner: answer directly, reuse a skill, or create one | ✅ LLM, structured JSON |
 | SkillSmith **creation**: contract, source and worked examples, proven in the sandbox | ✅ |
 | Independent **cross-model verifier** (a different model checks the answer) and example arbitration | ✅ |
 | **LLM repair** of a skill that crashes or gives a wrong answer, promoted as a new version | ✅ |
 | **Escalation** from the local model to a stronger one when it cannot produce a proven skill | ✅ |
 | Automatic **repair**: classify the failure, patch the skill, prove it on the failing input + lineage regression fixtures + strategy proof fixtures, promote a new version | ✅ Backend (one strategy so far: `normalize_amounts`) |
-| Repair budget, then `waiting_approval` for human review | ✅ Backend (the approval UI is Phase 6) |
+| Repair budget, then `waiting_approval` for human review | ✅ (Review page) |
 | Workbench metrics, crew panel, sample skill cards | 🎭 Sample data |
 
 ## Quick start
@@ -117,6 +125,39 @@ The Chat page shows each provider's live status. A provider that isn't connected
 4. If a skill crashes or gives a wrong answer, SkillSmith rewrites it. The fix must also pass every earlier example, and it's saved as a new version.
 5. If the local model can't produce a proven skill, the task escalates to Codex or Claude.
 
+### API-key providers (for deployment)
+
+The CLIs use your own logins, so they're for local use. A deployed SkillForge uses API keys, which are set only in `backend/.env` and never stored or sent to the browser:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...      # Claude API (claude-opus-5-5, with refusal fallbacks on)
+OPENAI_API_KEY=sk-...             # OpenAI API
+OPENAI_MODEL=gpt-5                # optional
+```
+
+### Use SkillForge skills from other agents (MCP)
+
+Every validated skill becomes an MCP tool. It runs the newest validated version in the sandbox, then the contract checks, and the result includes which version answered. New and repaired skills appear automatically. Postgres must be running (`make db`).
+
+```bash
+claude mcp add skillforge -- "$PWD/backend/bin/skillforge-mcp"
+```
+```bash
+codex mcp add skillforge -- "$PWD/backend/bin/skillforge-mcp"
+```
+
+For Cursor, add the same command to `~/.cursor/mcp.json` under `mcpServers.skillforge.command`. The Skill library page shows these commands with this machine's paths.
+
+### Model scoreboard and Auto routing
+
+Every proof outcome is recorded per model: proven on the first try, rejected, exhausted, overruled by the verifier, example corrected, reused, escalated. The **Models** page shows the numbers.
+
+With **Auto**:
+1. Planning uses the cheapest available model.
+2. Each capability goes to the cheapest model that has proven it before.
+3. With no history, it tries the cheapest model and escalates to a stronger one on failure, and the router learns from the outcome.
+4. The local model never verifies a cloud model's work.
+
 ### Try the pipeline
 
 1. Open **Workbench**.
@@ -166,13 +207,17 @@ src/
     HeroForge.jsx             hero + self-playing learning-loop console
     Pop.jsx                   spring pop-in, word reveals, pixel bursts
     ScrollChoreographer.jsx   scroll reveals, parallax, spotlight
-    ChatView.jsx              chat with provider picker, live agent steps, skill result cards
+    ChatView.jsx              chat: provider picker (Auto…), CSV attachments, live steps, skill/pipeline cards
+    ModelsView.jsx · ReviewView.jsx  model scoreboard and routing; human review queue
     SkillForgeProcessView.jsx · SkillRegistryView.jsx · ExecutionHistory.jsx · CSVInputPanel.jsx
   *.css                       theme layers (neutral-theme.css holds the palette)
 backend/
   app/main.py                 FastAPI app and routers (/api/v1)
   app/worker.py               polling worker: requirement review + execution
-  app/services/               requirement_review, csv_inputs, execution_queue, checks, skill_registry, repair, agent
+  app/services/               requirement_review, csv_inputs, execution_queue, checks, skill_registry, repair, agent,
+                              scoreboard (routing), live (SSE), skill_bundle (export/import)
+  app/mcp_server.py           MCP server (stdio): validated skills as tools; launcher in backend/bin/skillforge-mcp
+  app/api/review.py           review queue, retire/restore versions
   app/llm/                    providers: Claude Code CLI, Codex CLI, Ollama (status + complete)
   app/api/chat.py             providers, conversations, messages (agent runs in the background)
   app/sandbox/                policy (static checks), tools (approved toolkit), runner + child process

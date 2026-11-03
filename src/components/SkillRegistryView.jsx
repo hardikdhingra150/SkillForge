@@ -1,5 +1,34 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { getSkillRegistry } from "../api/skillforgeProcess.js";
+import { restoreVersion, retireVersion } from "../api/review.js";
+import { exportUrl, getMcpConfig, importSkill } from "../api/skills.js";
+
+function UseInAgents() {
+  const [config, setConfig] = useState(null);
+  const [copied, setCopied] = useState("");
+  async function load(event) {
+    if (event.target.open && !config) {
+      try { setConfig(await getMcpConfig()); } catch { setConfig({ clients: [], notes: "Start the API to see the commands." }); }
+    }
+  }
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); setCopied(text); setTimeout(() => setCopied(""), 1500); } catch { setCopied(""); }
+  }
+  return (
+    <details className="sf-registry__agents" onToggle={load}>
+      <summary>Use these skills in Claude Code, Codex or Cursor (MCP)</summary>
+      <p>Every validated skill below becomes a tool your coding agents can call. It runs in the same sandbox and passes the same checks.</p>
+      {config?.clients?.map((client) => (
+        <div key={client.name} className="sf-registry__agent">
+          <span>{client.name}</span>
+          <pre>{client.command}</pre>
+          <button onClick={() => copy(client.command)}>{copied === client.command ? "Copied" : "Copy"}</button>
+        </div>
+      ))}
+      {config?.notes && <p className="sf-registry__count">{config.notes}</p>}
+    </details>
+  );
+}
 import "./skill-registry.css";
 
 function mergeVersions(previous, incoming) {
@@ -48,6 +77,37 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
     return () => activeRequest.current?.abort();
   }, [status, query, refresh, applyPage]);
 
+  const importRef = useRef(null);
+  const [importNote, setImportNote] = useState("");
+
+  async function importFile(file) {
+    if (!file) return;
+    setError("");
+    setImportNote("");
+    try {
+      const bundle = JSON.parse(await file.text());
+      const row = await importSkill(bundle);
+      setImportNote(`Imported ${row.skill_id} v${row.version}: re-proven with ${row.validation?.test_count ?? 0} fixtures in the sandbox.`);
+      setRefresh((n) => n + 1);
+    } catch (failure) {
+      setError(failure instanceof SyntaxError ? "That file is not a SkillForge bundle (invalid JSON)." : failure.message);
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+    }
+  }
+
+  async function changeStatus(skill, action) {
+    setError("");
+    try {
+      const updated = action === "retire" ? await retireVersion(skill.skill_id, skill.version) : await restoreVersion(skill.skill_id, skill.version);
+      setItems((previous) => previous.map((item) => (
+        item.skill_id === skill.skill_id && item.version === skill.version ? { ...item, status: updated.status } : item
+      )));
+    } catch (failure) {
+      setError(failure.message);
+    }
+  }
+
   async function loadMore() {
     if (loading || !cursor) return;
     const controller = new AbortController();
@@ -74,9 +134,13 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
         </div>
         <div className="sf-registry__actions">
           <button onClick={() => setRefresh((value) => value + 1)} disabled={loading}>Refresh registry</button>
+          <button onClick={() => importRef.current?.click()}>Import bundle</button>
+          <input ref={importRef} type="file" accept=".json,application/json" hidden onChange={(e) => importFile(e.target.files?.[0])} />
           <button onClick={onOpenWorkbench}>Open workbench</button>
         </div>
       </header>
+      {importNote && <p className="sf-registry__count" role="status">{importNote}</p>}
+      <UseInAgents />
 
       <form className="sf-registry__filters" onSubmit={(event) => {
         event.preventDefault();
@@ -136,6 +200,11 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
                 <span key={index} data-kind={line.startsWith("+") && !line.startsWith("+++") ? "add" : line.startsWith("-") && !line.startsWith("---") ? "del" : undefined}>{line}{"\n"}</span>
               ))}</pre>
             </details>}
+            <div className="sf-registry__actions sf-registry__version-actions">
+              {skill.status === "validated" && <button onClick={() => changeStatus(skill, "retire")} title="Stop using this version; the previous validated version is used again">Retire (roll back)</button>}
+              {skill.status === "retired" && skill.source_code && <button onClick={() => changeStatus(skill, "restore")}>Restore</button>}
+              {skill.source_code && <a className="sf-registry__export" href={exportUrl(skill.skill_id, skill.version)} download>Export bundle</a>}
+            </div>
             <details>
               <summary>Validation evidence and implementation hash</summary>
               {checks.length > 0 && <ul>{checks.map((check, index) => (

@@ -86,7 +86,7 @@ def run_fixture_tests(source: str, contract_data: dict, fixtures) -> dict:
             continue
         totals = {item["product"]: Decimal(item["revenue"]) for item in result.output.get("products", [])}
         want = {key: Decimal(value) for key, value in expected.get("totals", {}).items()}
-        if totals != want or Decimal(result.output["total_revenue"]) != Decimal(expected["total_revenue"]):
+        if totals != want or Decimal(result.output["total_revenue"]) != Decimal(expected["total_revenue"]):  # sales fixtures
             raise ValueError(f"Fixture {name} returned the wrong totals.")
         evidence.append({"name": name, "passed": True})
     return {"passed": True, "test_count": len(evidence), "tests": evidence, "runner": "sandbox"}
@@ -108,6 +108,9 @@ def register_builtin(db, skill) -> dict:
         ).on_conflict_do_nothing(index_elements=["skill_id", "version"])
     )
     existing = db.get(SkillVersion, (skill.skill_id, skill.version))
+    if existing.origin in ("generated", "repaired", "imported"):
+        # A skill with this id was created in this workspace before the starter pack shipped: keep it.
+        return {**evidence, "skipped": f"kept the existing {existing.origin} {skill.skill_id} v{skill.version}"}
     if existing.source_code is None:
         # One-time upgrade of a row registered before skills were stored as source.
         existing.change_json = {"backfill": {

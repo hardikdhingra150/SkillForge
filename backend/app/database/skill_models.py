@@ -25,6 +25,6 @@ class SkillVersion(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('draft', 'validated', 'retired')", name="ck_skill_versions_status"),
-        CheckConstraint("origin IN ('builtin', 'generated', 'repaired')", name="ck_skill_versions_origin"),
+        CheckConstraint("origin IN ('builtin', 'generated', 'repaired', 'imported')", name="ck_skill_versions_origin"),
         CheckConstraint("(source_code IS NULL) = (contract_json IS NULL)", name="ck_skill_versions_source_contract"),
     )

@@ -51,10 +51,14 @@ def execute_next(db):
     if execution is None:
         return None
 
+    task = db.get(Task, execution.task_id)
+    run_attempt = (task.requirements_json or {}).get("run_attempt", 1)
+    prefix = "run.v1" if run_attempt == 1 else f"run.v1.retry{run_attempt}"
+
     def emit(kind, stage, message, payload=None):
         execution.current_stage = stage
         append_event(
-            db, execution.id, event_key=f"run.v1.{kind}", stage=stage,
+            db, execution.id, event_key=f"{prefix}.{kind}", stage=stage,
             event_type=kind, message=message, payload=payload,
         )
 
@@ -117,7 +121,8 @@ def execute_next(db):
             emit("step_failed", "execution", f"The skill failed: {failure.message}", {"code": "SKILL_STEP_FAILED", "error": run.error})
 
         if failure is not None:
-            outcome = attempt_repair(db, emit, skill, inputs, files, failure, settings.repair_budget)
+            budget = (task.requirements_json or {}).get("repair_budget", settings.repair_budget)
+            outcome = attempt_repair(db, emit, skill, inputs, files, failure, budget)
             if isinstance(outcome, Exhausted):
                 execution.status = "waiting_approval"
                 execution.result_json = {"error": {

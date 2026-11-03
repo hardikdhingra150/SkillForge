@@ -120,3 +120,22 @@
 .sf-chat__command code { flex: 1; overflow-x: auto; white-space: nowrap; color: var(--text); font: 12.5px 'Space Mono', monospace; }
 .sf-chat__command button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: none; }
 .sf-chat__recheck { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: none; font-size: 12px; }
+
+/* Attachments */
+.sf-chat__composer { flex-wrap: wrap; }
+.sf-chat__composer.is-dragging { outline: 2px dashed var(--text); outline-offset: -6px; background: var(--soft); }
+.sf-chat__files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sf-chat__files--pending { flex-basis: 100%; margin: 0 0 4px; }
+.sf-chat__file { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 5px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--glass-inset); color: var(--text); font-size: 12px; }
+.sf-chat__message[data-role=user] .sf-chat__file { background: rgba(0,0,0,.08); border-color: rgba(0,0,0,.2); color: var(--ink); }
+.sf-chat__file b { font-weight: 500; }
+.sf-chat__file small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; opacity: .7; }
+.sf-chat__file button { display: grid; place-items: center; padding: 2px; border: 0; background: none; cursor: pointer; }
+.sf-chat__attach { display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid var(--line) !important; border-radius: 12px; background: var(--glass-inset) !important; color: var(--text) !important; }
+
+/* Multi-step pipeline */
+.sf-chat__pipeline { list-style: none; margin: 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); counter-reset: step; }
+.sf-chat__pipeline li { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; }
+.sf-chat__pipeline li + li::before { content: '→'; color: var(--faint); margin-right: 2px; }
+.sf-chat__badge[data-event=reused] { background: none; color: var(--text); border: 1px solid var(--muted); }
+.sf-chat__badge[data-event=repaired] { background: none; color: var(--text); border: 1px dashed var(--text); }

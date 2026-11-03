@@ -1,7 +1,8 @@
 """The chat agent: plan a turn, reuse or create a skill, prove it, and reply.
 
-    user message
-      -> plan (LLM): plain answer, or a reusable skill + extracted inputs
+    user message (+ attached CSV files)
+      -> plan (LLM): plain answer, or 1-4 skill steps; a step's input may be "$stepN.field" from an
+         earlier step, and a step may read an attached CSV
       -> answer: the model replies directly
       -> skill: latest validated version for the capability?
            yes -> run in the sandbox + contract checks
@@ -19,15 +20,26 @@ from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 
-from app.database.chat_models import ChatMessage, Conversation
+from app.config import settings
+from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.session import SessionLocal
 from app.database.skill_models import SkillVersion
 from app.llm import PROVIDERS, LLMError, complete_json, get_provider
 from app.sandbox import PolicyViolation, check_source, run_skill
 from app.sandbox.tools import TOOL_DOCS, TOOL_NAMES
 from app.schemas.skill_contract import SkillContract
+from app.services import live, scoreboard
 from app.services.checks import CheckFailed, run_checks
-from app.services.repair import encode_fixture, lineage_fixtures, promote
+from app.services.repair import (
+    Repaired,
+    attempt_repair,
+    classify_check,
+    classify_run_error,
+    encode_fixture,
+    lineage_fixtures,
+    promote,
+    retired_duplicate,
+)
 from app.services.skill_registry import (
     ExampleMismatch,
     implementation_hash,
@@ -39,28 +51,35 @@ from app.services.skill_registry import (
 
 MAX_HISTORY = 10
 # Strongest first: used to pick an independent verifier and an escalation target.
-STRENGTH_ORDER = ["codex", "claude", "ollama"]
+STRENGTH_ORDER = ["anthropic", "claude", "codex", "openai", "ollama"]
+LOCAL = "ollama"
 SMITH_ATTEMPTS = 3
-CHAT_TOOLS = [name for name in TOOL_NAMES if name not in ("read_csv", "column")]  # chat skills take values, not files
+CHAT_TOOLS = [name for name in TOOL_NAMES if name not in ("read_csv", "column")]  # value-only skills
+MAX_STEPS = 4
+VERIFY_FILE_BYTES = 12_000  # larger files are too big for a model to recompute reliably
 
 PLANNER_SYSTEM = """You are the planner inside SkillForge, a workspace where AI agents build reusable skills.
 Decide how to handle the user's latest message.
 
-Use "skill" ONLY when the message contains concrete input values AND asks to compute or transform them
-(counting, converting units, extracting patterns, reformatting, sorting, statistics, parsing, validating),
-so the same small pure-Python function could be reused later on different values.
+Use "skill" ONLY when the message gives concrete input values (in the text or in attached files) AND asks to
+compute or transform them (counting, converting units, extracting patterns, reformatting, sorting, statistics,
+parsing, validating, aggregating a CSV), so the same small pure-Python function could be reused later.
 Everything else is "answer": greetings, explanations, opinions, creative writing, advice, questions about
 SkillForge, and ANY request to write, show, fix or explain code ("give me code to...", "write a function...").
 
-For "skill":
-- capability: snake_case name of the GENERAL operation, never the specific values
-  (e.g. "count_words", "celsius_to_fahrenheit", "extract_emails").
+For "skill", give one or more steps. Use several steps only when the task is a sequence of DIFFERENT operations
+("extract the emails, then dedupe them, then count by domain"); at most 4 steps. For each step:
+- capability: snake_case name of the GENERAL operation, never the specific values (e.g. "extract_emails").
 - If an existing skill below does the same operation, reuse its capability and its input names exactly.
-- inputs: the values taken from the message, keyed by short snake_case names.
+- inputs: values keyed by short snake_case names. A later step may use an earlier step's output as an input
+  value written exactly as "$step1.<output_name>" (for example "$step1.emails").
 - input_types: for each input one of text, integer, number, boolean, list, object.
+- files: only when the step reads an attached CSV: {"<input_name>": "<attached file name>"}; column names the
+  skill needs go in inputs (for example {"product_column": "Product", "revenue_column": "Sales"}).
 
 Reply with ONLY a JSON object:
-{"mode": "skill" | "answer", "capability": str, "summary": str, "inputs": {...}, "input_types": {...}}
+{"mode": "skill" | "answer", "steps": [{"capability": str, "summary": str, "inputs": {...},
+  "input_types": {...}, "files": {...}}]}
 For "answer" only "mode" is required."""
 
 SMITH_SYSTEM = """You are SkillSmith, the engineer inside SkillForge. You write small, safe, reusable skills.
@@ -84,13 +103,15 @@ Hard rules (violations are rejected automatically):
 Reply with ONLY a JSON object:
 {
   "summary": "one line: what the skill does",
-  "inputs":  [{"name": "...", "type": "text|integer|number|boolean|list|object", "description": "..."}],
+  "inputs":  [{"name": "...", "type": "text|integer|number|boolean|list|object|csv", "description": "..."}],
   "outputs": [{"name": "...", "type": "text|integer|number|boolean|list|object|decimal_string", "description": "..."}],
   "tools":   ["tool names you use, or empty"],
   "source":  "def run(inputs, tools):\\n    ...",
-  "examples": [{"name": "snake_case", "inputs": {...}, "output": {...exact expected output...}}]
+  "examples": [{"name": "snake_case", "inputs": {...}, "files": {...}, "output": {...exact expected output...}}]
 }
-Give at least 3 examples with exact expected outputs, including one edge case."""
+Give at least 3 examples with exact expected outputs, including one edge case.
+For a "csv" input, read it with tools.read_csv("<input name>") and give each example's CSV text in
+"files": {"<input name>": "header1,header2\\nvalue,value\\n"}; column names go in normal text inputs."""
 
 
 VERIFIER_SYSTEM = """You are the independent verifier inside SkillForge. A skill (a small program) produced an
@@ -112,6 +133,8 @@ def add_step(message_id, kind, text, payload=None):
             "kind": kind, "text": text, "payload": payload or {}, "at": datetime.now(UTC).isoformat(),
         }]
         message.updated_at = func.now()
+        conversation_id = message.conversation_id
+    live.bump(conversation_id)
 
 
 def finish(message_id, *, content, status="done", skill=None):
@@ -120,6 +143,8 @@ def finish(message_id, *, content, status="done", skill=None):
         message.content, message.status, message.skill_json = content, status, skill
         message.updated_at = func.now()
         db.get(Conversation, message.conversation_id).updated_at = func.now()
+        conversation_id = message.conversation_id
+    live.bump(conversation_id)
 
 
 # ---------- planning ----------
@@ -133,41 +158,90 @@ def history_text(db, conversation_id, before_sequence):
     return "\n".join(f"{m.role.upper()}: {m.content[:1500]}" for m in reversed(rows))
 
 
-def registry_text(db):
+def needs_files(contract: dict) -> bool:
+    """Skills that read an uploaded file (CSV inputs or column mappings)."""
+    return any(field.get("type") in ("csv", "column") for field in contract.get("inputs", []))
+
+
+def registry_text(db, with_files=False):
     rows = db.scalars(select(SkillVersion).where(SkillVersion.status == "validated", SkillVersion.contract_json.is_not(None))).all()
     seen, lines = set(), []
     for row in rows:
-        if row.capability in seen or needs_files(row.contract_json):
+        if row.capability in seen or (needs_files(row.contract_json) and not with_files):
             continue
         seen.add(row.capability)
-        names = ", ".join(field["name"] for field in row.contract_json.get("inputs", []))
+        names = ", ".join(f"{field['name']}:{field.get('type', 'text')}" for field in row.contract_json.get("inputs", []))
         lines.append(f"- {row.capability}: {row.contract_json.get('summary', '')} (inputs: {names})")
     return "\n".join(lines) or "(none yet)"
 
 
-def needs_files(contract: dict) -> bool:
-    """Skills that read uploaded files run from the Workbench, not from chat."""
-    return any(field.get("type") in ("csv", "column") for field in contract.get("inputs", []))
+def attachments_text(attachments):
+    if not attachments:
+        return "(no files attached)"
+    return "\n".join(f"- {a['filename']}: {a['row_count']} rows; columns: {', '.join(a['headers'])}; "
+                     f"first rows: {json.dumps(a['preview'][:3])}" for a in attachments.values())
 
 
-def plan(provider, model, history, registry, text):
-    prompt = f"Existing skills:\n{registry}\n\nConversation so far:\n{history or '(new conversation)'}\n\nLatest user message:\n{text}"
+def normalize_step(raw):
+    capability = str(raw.get("capability", "")).strip().lower()
+    capability = "".join(ch if ch.isalnum() else "_" for ch in capability).strip("_")[:60]
+    inputs = raw.get("inputs") if isinstance(raw.get("inputs"), dict) else None
+    files = raw.get("files") if isinstance(raw.get("files"), dict) else {}
+    if not capability or inputs is None:
+        return None
+    return {"capability": capability, "summary": str(raw.get("summary") or capability), "inputs": inputs,
+            "input_types": raw.get("input_types") if isinstance(raw.get("input_types"), dict) else {}, "files": files}
+
+
+def plan(provider, model, history, registry, text, attachments=None):
+    prompt = (f"Existing skills:\n{registry}\n\nAttached files:\n{attachments_text(attachments)}\n\n"
+              f"Conversation so far:\n{history or '(new conversation)'}\n\nLatest user message:\n{text}")
     decision = complete_json(provider, prompt, system=PLANNER_SYSTEM, model=model)
-    if decision.get("mode") == "skill":
-        capability = str(decision.get("capability", "")).strip().lower()
-        # A skill computes from values in the message; with nothing to compute from it is just an answer.
-        if not capability or not isinstance(decision.get("inputs"), dict) or not decision["inputs"]:
-            return {"mode": "answer"}
-        decision["capability"] = "".join(ch if ch.isalnum() else "_" for ch in capability).strip("_")[:60] or "skill"
-    return decision
+    if decision.get("mode") != "skill":
+        return {"mode": "answer"}
+    raw_steps = decision.get("steps") if isinstance(decision.get("steps"), list) else [decision]
+    steps = [step for step in (normalize_step(r) for r in raw_steps[:MAX_STEPS] if isinstance(r, dict)) if step]
+    # A skill computes from values; a first step with nothing to compute from is just an answer.
+    if not steps or not (steps[0]["inputs"] or steps[0]["files"]):
+        return {"mode": "answer"}
+    return {"mode": "skill", "steps": steps, "capability": steps[0]["capability"], "inputs": steps[0]["inputs"]}
+
+
+def resolve_refs(inputs, outputs):
+    """Replace "$stepN.field" values with the output of an earlier step."""
+    resolved = {}
+    for name, value in inputs.items():
+        if isinstance(value, str) and value.startswith("$step"):
+            ref, _, field = value[5:].partition(".")
+            if not ref.isdigit() or int(ref) > len(outputs) or int(ref) < 1:
+                raise ValueError(f"Step input {name} refers to {value}, which is not an earlier step.")
+            earlier = outputs[int(ref) - 1]
+            if field not in earlier:
+                raise ValueError(f"Step {ref} has no output named {field!r} (it returned {', '.join(earlier)}).")
+            value = earlier[field]
+        resolved[name] = value
+    return resolved
+
+
+def bind_files(step_files, attachments):
+    files = {}
+    for input_name, filename in step_files.items():
+        match = attachments.get(filename) or (next(iter(attachments.values())) if len(attachments) == 1 else None)
+        if match is None:
+            raise ValueError(f"I can't find the attached file {filename!r}.")
+        files[input_name] = match["content"]
+    return files
 
 
 # ---------- SkillSmith ----------
 
-def smith_prompt(capability, summary, inputs, input_types, feedback=None, existing=None):
+def smith_prompt(capability, summary, inputs, input_types, feedback=None, existing=None, files=None):
     parts = [f"Capability: {capability}", f"Goal: {summary}",
-             f"The user's current inputs (your skill must handle these): {json.dumps(inputs)}",
+             f"The user's current inputs (your skill must handle these, with exactly these input names): {json.dumps(inputs)}",
              f"Input types: {json.dumps(input_types)}"]
+    if files:
+        parts.append("CSV inputs (type csv, read with tools.read_csv(name)):\n" + "\n".join(
+            f"- {name}: first lines:\n{content.decode('utf-8-sig', errors='replace')[:600]}" for name, content in files.items()))
     if existing:
         parts.append(f"The current version fails on these inputs. Fix it while keeping the same inputs and outputs.\n"
                      f"Current source:\n{existing}")
@@ -176,24 +250,40 @@ def smith_prompt(capability, summary, inputs, input_types, feedback=None, existi
     return "\n\n".join(parts)
 
 
-def build_candidate(capability, spec):
+def build_candidate(capability, spec, allow_files=False):
+    allowed = TOOL_NAMES if allow_files else CHAT_TOOLS
     contract = {
         "capability": capability, "summary": str(spec.get("summary") or capability)[:300], "entrypoint": "run",
         "inputs": [{"name": f["name"], "type": f.get("type", "text"), "description": str(f.get("description", ""))[:300]}
                    for f in spec.get("inputs", [])],
         "outputs": [{"name": f["name"], "type": f.get("type", "text"), "description": str(f.get("description", ""))[:300]}
                     for f in spec.get("outputs", [])],
-        "tools": [t for t in spec.get("tools", []) if t in CHAT_TOOLS],
+        "tools": [t for t in spec.get("tools", []) if t in allowed],
         "checks": ["contract_outputs"],
     }
+    if not allow_files and any(f["type"] == "csv" for f in contract["inputs"]):
+        raise ValueError("This task has no attached file, so the skill cannot take a csv input.")
     SkillContract.model_validate(contract)
     source = spec.get("source") or ""
     check_source(source)
-    examples = [(str(e.get("name") or f"example_{i}"), e.get("inputs") or {}, {}, {"output": e.get("output") or {}})
-                for i, e in enumerate(spec.get("examples") or [], start=1)]
+    examples = []
+    for i, e in enumerate(spec.get("examples") or [], start=1):
+        example_files = {k: str(v).encode() for k, v in (e.get("files") or {}).items()} if allow_files else {}
+        examples.append((str(e.get("name") or f"example_{i}"), e.get("inputs") or {}, example_files,
+                         {"output": e.get("output") or {}}))
     if len(examples) < 3:
         raise ValueError("Give at least 3 examples with exact expected outputs.")
     return source, contract, examples
+
+
+def verifier_view(inputs, files):
+    """What the verifier sees: the inputs, plus small files in full. None when a file is too big to check by hand."""
+    view = dict(inputs)
+    for name, content in (files or {}).items():
+        if len(content) > VERIFY_FILE_BYTES:
+            return None
+        view[name] = content.decode("utf-8-sig", errors="replace")
+    return view
 
 
 def verify_output(provider, model, request, capability, inputs, output):
@@ -209,75 +299,94 @@ def verify_output(provider, model, request, capability, inputs, output):
     return True, str(verdict.get("reason", ""))
 
 
-def prove(source, contract, examples, inputs, verifier=None):
+def prove(source, contract, examples, inputs, verifier=None, files=None):
     """Every worked example must reproduce exactly, the user's input must pass the contract, and the
     independent verifier must agree with the answer."""
     evidence = run_fixture_tests(source, contract, examples)
     parsed = SkillContract.model_validate(contract)
-    run = run_skill(source, inputs=inputs, files={}, tools=parsed.tools)
+    run = run_skill(source, inputs=inputs, files=files or {}, tools=parsed.tools)
     if not run.ok:
         raise ValueError(f"On the user's inputs the skill raised {run.error.get('type')}: {run.error.get('message')}")
-    run_checks(parsed, {}, inputs, run.output)
+    run_checks(parsed, files or {}, inputs, run.output)
     if verifier:
-        correct, reason = verifier(inputs, run.output)
+        correct, reason = verifier(inputs, run.output, files)
         if not correct:
             raise ValueError(f"The verifier says the output {json.dumps(run.output)} is wrong: {reason}")
     return evidence, run.output
 
 
-def prove_with_arbitration(message_id, judge, summary, capability, source, contract, examples, inputs, verifier):
+def prove_with_arbitration(message_id, judge, summary, capability, source, contract, examples, inputs, verifier, files=None):
     """Prove the candidate. When an example disagrees with the code, the independent verifier decides who is
     right: if it sides with the code, the example is corrected; otherwise the mismatch is a real failure."""
     corrected = set()
     while True:
         try:
-            evidence, output = prove(source, contract, examples, inputs, verifier)
+            evidence, output = prove(source, contract, examples, inputs, verifier, files)
             return evidence, output, examples
         except ExampleMismatch as mismatch:
             if judge is None or mismatch.name in corrected:
                 raise
+            example_files = next((f for n, _, f, _ in examples if n == mismatch.name), {})
+            view = verifier_view(mismatch.inputs, example_files)
+            if view is None:
+                raise
             add_step(message_id, "arbitrating", f"Example {mismatch.name}: the code says {json.dumps(mismatch.output)}, "
                      f"the example says {json.dumps(mismatch.expected)}. Asking the verifier who is right…")
-            correct, reason = judge(f"Task: {summary}", capability, mismatch.inputs, mismatch.output)
+            correct, reason = judge(f"Task: {summary}", capability, view, mismatch.output)
             if not correct:
                 add_step(message_id, "arbitrated", f"The verifier sided with the example: {reason}")
                 raise
             corrected.add(mismatch.name)
-            examples = [(name, ex_inputs, files, {"output": mismatch.output, "corrected_by_verifier": True})
-                        if name == mismatch.name else (name, ex_inputs, files, expected)
-                        for name, ex_inputs, files, expected in examples]
+            if getattr(judge, "author_id", None):
+                scoreboard.record(judge.author_id, "author", "example_corrected", capability=capability)
+            examples = [(name, ex_inputs, ex_files, {"output": mismatch.output, "corrected_by_verifier": True})
+                        if name == mismatch.name else (name, ex_inputs, ex_files, expected)
+                        for name, ex_inputs, ex_files, expected in examples]
             add_step(message_id, "arbitrated", f"The verifier sided with the code. Corrected example {mismatch.name}.")
 
 
 def smith(message_id, provider, model, capability, summary, inputs, input_types, existing=None, verifier=None, feedback=None,
-          judge=None):
+          judge=None, files=None):
     """Ask the model for a skill until it passes the proof, or attempts run out. Returns (source, contract, examples, evidence, output)."""
+    tools = TOOL_NAMES if files else CHAT_TOOLS
+    system = SMITH_SYSTEM.replace("{tool_docs}", "\n".join(f"  - {TOOL_DOCS[t]}" for t in tools))
     for attempt in range(1, SMITH_ATTEMPTS + 1):
         verb = "fixing" if existing else "writing"
         add_step(message_id, "smith_attempt", f"SkillSmith attempt {attempt}: {verb} {capability}.")
         try:
-            spec = complete_json(provider, smith_prompt(capability, summary, inputs, input_types, feedback, existing),
-                                 system=SMITH_SYSTEM.replace("{tool_docs}", "\n".join(f"  - {TOOL_DOCS[t]}" for t in CHAT_TOOLS)),
-                                 model=model, timeout=300)
-            source, contract, examples = build_candidate(capability, spec)
+            spec = complete_json(provider, smith_prompt(capability, summary, inputs, input_types, feedback, existing, files),
+                                 system=system, model=model, timeout=300)
+            source, contract, examples = build_candidate(capability, spec, allow_files=bool(files))
             evidence, output, examples = prove_with_arbitration(message_id, judge, summary, capability,
-                                                                source, contract, examples, inputs, verifier)
+                                                                source, contract, examples, inputs, verifier, files)
+            scoreboard.record(provider.id, "author", "proven", model=model, capability=capability, attempts=attempt)
             return source, contract, examples, evidence, output
         except LLMError:
             raise
         except (ValueError, PolicyViolation, CheckFailed, KeyError, TypeError) as error:
             feedback = str(error)[:800]
             add_step(message_id, "smith_rejected", f"Rejected attempt {attempt}: {feedback}")
+            scoreboard.record(provider.id, "author", "rejected", model=model, capability=capability)
+    scoreboard.record(provider.id, "author", "exhausted", model=model, capability=capability, attempts=SMITH_ATTEMPTS)
     raise SmithExhausted(f"SkillSmith could not produce a skill that passes its proof after {SMITH_ATTEMPTS} attempts.")
 
 
 # ---------- the turn ----------
 
-def bind_chat_inputs(contract, extracted):
-    missing = [f.name for f in contract.inputs if f.required and f.name not in extracted]
+def bind_chat_inputs(contract, extracted, files=None):
+    """Value inputs come from the plan; csv inputs come from attached files."""
+    files = files or {}
+    missing = [f.name for f in contract.inputs
+               if f.required and (f.name not in files if f.type == "csv" else f.name not in extracted)]
     if missing:
         raise ValueError(f"I need a value for: {', '.join(missing)}.")
-    return {f.name: extracted[f.name] for f in contract.inputs if f.name in extracted}
+    return {f.name: extracted[f.name] for f in contract.inputs if f.type != "csv" and f.name in extracted}
+
+
+def load_attachments(db, message_id):
+    rows = db.scalars(select(ChatAttachment).where(ChatAttachment.message_id == message_id)).all()
+    return {row.filename: {"filename": row.filename, "headers": row.headers_json, "row_count": row.row_count,
+                           "preview": row.preview_json, "content": row.content_bytes} for row in rows}
 
 
 def run_turn(conversation_id, assistant_id, provider_id, model):
@@ -286,47 +395,45 @@ def run_turn(conversation_id, assistant_id, provider_id, model):
             message = db.get(ChatMessage, assistant_id)
             user = db.scalars(select(ChatMessage).where(ChatMessage.conversation_id == conversation_id,
                                                         ChatMessage.sequence == message.sequence - 1)).one()
+            attachments = load_attachments(db, user.id)
             history = history_text(db, conversation_id, user.sequence)
-            registry = registry_text(db)
-        provider = get_provider(provider_id)
+            registry = registry_text(db, with_files=bool(attachments))
+        auto = provider_id == "auto"
+        if auto:
+            provider_id = scoreboard.pick_planner()
+            if provider_id is None:
+                raise LLMError("No model is available. Connect Claude, Codex, an API key, or a local model.")
+            model = PROVIDERS[provider_id].status().default_model
+        planner = get_provider(provider_id)
 
-        add_step(assistant_id, "planning", f"Planning with {provider.label}…")
-        decision = plan(provider, model, history, registry, user.content)
+        add_step(assistant_id, "planning", f"Planning with {planner.label}{' (auto)' if auto else ''}…")
+        decision = plan(planner, model, history, registry, user.content, attachments)
         if decision.get("mode") != "skill":
             add_step(assistant_id, "answering", "This needs a direct answer, not a skill.")
-            reply = provider.complete(f"Conversation so far:\n{history or '(new)'}\n\nUSER: {user.content}",
-                                      system="You are SkillForge's assistant. Answer clearly and concisely in Markdown.",
-                                      model=model)
+            files_note = f"\n\nAttached files:\n{attachments_text(attachments)}" if attachments else ""
+            reply = planner.complete(f"Conversation so far:\n{history or '(new)'}\n\nUSER: {user.content}{files_note}",
+                                     system="You are SkillForge's assistant. Answer clearly and concisely in Markdown.",
+                                     model=model)
             finish(assistant_id, content=reply)
             return
 
-        capability, inputs = decision["capability"], decision["inputs"]
-        summary, input_types = decision.get("summary") or capability, decision.get("input_types") or {}
-        add_step(assistant_id, "planned", f"This is a reusable skill: {capability}.", {"capability": capability, "inputs": inputs})
+        steps = decision["steps"]
+        if len(steps) > 1:
+            add_step(assistant_id, "pipeline", "A multi-step task: " + " → ".join(s["capability"] for s in steps) + ".",
+                     {"steps": [s["capability"] for s in steps]})
+        outputs, payloads = [], []
+        for index, step in enumerate(steps, start=1):
+            label = f"Step {index}/{len(steps)}: " if len(steps) > 1 else ""
+            payloads.append(run_step(assistant_id, label, step, outputs, attachments, auto, provider_id, model, user.content))
+            outputs.append(payloads[-1]["output"])
 
-        with SessionLocal.begin() as db:
-            skill = latest_validated(db, capability)
-            if skill is not None and needs_files(skill.contract_json):
-                capability, skill = f"{capability}_text", latest_validated(db, f"{capability}_text")
-            existing = (skill.skill_id, skill.version) if skill else None
-
-        def attempt(author, author_id, author_model):
-            if existing:
-                return reuse_or_repair(assistant_id, author, author_id, author_model, existing, inputs, input_types,
-                                       summary, user.content)
-            return create(assistant_id, author, author_id, author_model, capability, summary, inputs, input_types, user.content)
-
-        try:
-            outcome = attempt(provider, provider_id, model)
-        except SmithExhausted:
-            stronger = next((p for p in STRENGTH_ORDER[:STRENGTH_ORDER.index(provider_id)]
-                             if PROVIDERS[p].status().available), None)
-            if stronger is None:
-                raise
-            add_step(assistant_id, "escalating", f"{provider.label} could not produce a proven skill. "
-                     f"Escalating to {PROVIDERS[stronger].label}.")
-            outcome = attempt(PROVIDERS[stronger], stronger, PROVIDERS[stronger].status().default_model)
-        finish(assistant_id, content=outcome["text"], skill=outcome["skill"])
+        if len(payloads) == 1:
+            finish(assistant_id, content=payloads[0]["text"], skill=payloads[0]["skill"])
+        else:
+            text = "Ran " + " → ".join(f"**{p['skill']['skill_id']} v{p['skill']['version']}**" for p in payloads) + "."
+            final = payloads[-1]["skill"]
+            finish(assistant_id, content=text, skill={**final, "event": "pipeline",
+                                                      "steps": [p["skill"] for p in payloads]})
     except (LLMError, ValueError) as error:
         add_step(assistant_id, "failed", str(error))
         finish(assistant_id, content=f"I couldn't complete this: {error}", status="failed")
@@ -336,6 +443,47 @@ def run_turn(conversation_id, assistant_id, provider_id, model):
         raise
 
 
+def run_step(message_id, label, step, outputs, attachments, auto, provider_id, model, request):
+    capability, summary, input_types = step["capability"], step["summary"], step["input_types"]
+    inputs = resolve_refs(step["inputs"], outputs)
+    files = bind_files(step["files"], attachments) if step["files"] else {}
+    add_step(message_id, "planned", f"{label}a reusable skill: {capability}.", {"capability": capability, "inputs": inputs})
+
+    with SessionLocal.begin() as db:
+        skill = latest_validated(db, capability)
+        if skill is not None and needs_files(skill.contract_json) and not files:
+            capability, skill = f"{capability}_text", latest_validated(db, f"{capability}_text")
+        existing = (skill.skill_id, skill.version) if skill else None
+
+    provider = get_provider(provider_id)
+    if auto:
+        routed, reason = scoreboard.route_author(capability)
+        if routed:
+            provider_id, provider = routed, get_provider(routed)
+            model = provider.status().default_model
+            add_step(message_id, "routed", f"Auto-routing: {provider.label}. {reason}", {"provider": routed})
+
+    def attempt(author, author_id, author_model):
+        if existing:
+            return reuse_or_repair(message_id, author, author_id, author_model, existing, inputs, input_types,
+                                   summary, request, files)
+        return create(message_id, author, author_id, author_model, capability, summary, inputs, input_types, request, files)
+
+    try:
+        outcome = attempt(provider, provider_id, model)
+    except SmithExhausted:
+        stronger = next((p for p in STRENGTH_ORDER[:STRENGTH_ORDER.index(provider_id)]
+                         if p != LOCAL and PROVIDERS[p].status().available), None)
+        if stronger is None:
+            raise
+        add_step(message_id, "escalating", f"{provider.label} could not produce a proven skill. "
+                 f"Escalating to {PROVIDERS[stronger].label}.")
+        scoreboard.record(provider_id, "author", "escalated", model=model, capability=capability)
+        outcome = attempt(PROVIDERS[stronger], stronger, PROVIDERS[stronger].status().default_model)
+    outcome["output"] = outcome["skill"]["output"]
+    return outcome
+
+
 def reply_payload(skill, output, event):
     return {"skill_id": skill.skill_id, "version": skill.version, "capability": skill.capability,
             "origin": skill.origin, "parent_version": skill.parent_version, "event": event, "output": output,
@@ -343,13 +491,12 @@ def reply_payload(skill, output, event):
 
 
 def pick_judge(author_id, author_model):
-    """Prefer a different model as the verifier, so the author never grades its own work, but never a
-    weaker one: the local model does not judge Codex or Claude. Without another strong model the author
-    checks itself."""
-    rank = STRENGTH_ORDER.index(author_id)
+    """Prefer a different, strong model as the verifier, so the author never grades its own work. The local
+    model never judges a cloud model; without another strong model available the author checks itself."""
     for candidate in STRENGTH_ORDER:
-        if candidate != author_id and STRENGTH_ORDER.index(candidate) <= max(rank, 1) and PROVIDERS[candidate].status().available:
-            return PROVIDERS[candidate], PROVIDERS[candidate].status().default_model
+        if candidate in (author_id, LOCAL) or not PROVIDERS[candidate].status().available:
+            continue
+        return PROVIDERS[candidate], PROVIDERS[candidate].status().default_model
     return get_provider(author_id), author_model
 
 
@@ -358,54 +505,88 @@ def make_judge(author_id, author_model):
 
     def judge(request, capability, inputs, output):
         return verify_output(provider, model, request, capability, inputs, output)
-    judge.label = provider.label
+    judge.label, judge.provider_id, judge.author_id = provider.label, provider.id, author_id
     return judge
 
 
 def make_verifier(message_id, judge, request, capability):
-    def check(inputs, output):
+    def check(inputs, output, files=None):
+        view = verifier_view(inputs, files)
+        if view is None:
+            add_step(message_id, "verify_skipped", "The file is too large for a model to recompute by hand; "
+                     "relying on the contract checks and the worked examples.")
+            return True, "skipped (large file)"
         add_step(message_id, "verifying", f"Independent verifier ({judge.label}) is recomputing the answer…")
-        correct, reason = judge(request, capability, inputs, output)
+        correct, reason = judge(request, capability, view, output)
         add_step(message_id, "verified" if correct else "verify_failed",
                  "Verifier agrees with the output." if correct else f"Verifier disagrees: {reason}")
+        scoreboard.record(judge.provider_id, "verifier", "agreed" if correct else "disagreed", capability=capability)
+        if not correct:
+            scoreboard.record(judge.author_id, "author", "overruled", capability=capability)
         return correct, reason
     return check
 
 
-def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, input_types, summary, request):
+def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, input_types, summary, request, files=None):
+    files = files or {}
     with SessionLocal.begin() as db:
         skill = db.get(SkillVersion, key)
         contract = verify(skill)
         source = skill.source_code
     add_step(message_id, "skill_selected", f"Found {skill.skill_id} v{skill.version} in the registry. Running it in the sandbox.")
-    inputs = bind_chat_inputs(contract, extracted)
-    run = run_skill(source, inputs=inputs, files={}, tools=contract.tools)
+    inputs = bind_chat_inputs(contract, extracted, files)
+    run = run_skill(source, inputs=inputs, files=files, tools=contract.tools)
     failure = None if run.ok else f"{run.error.get('type')}: {run.error.get('message')}"
+    typed_failure = None if run.ok else classify_run_error(run.error)
     judge = make_judge(provider_id, model)
     verifier = make_verifier(message_id, judge, request, skill.capability)
     if run.ok:
         try:
-            run_checks(contract, {}, inputs, run.output)
-            correct, reason = verifier(inputs, run.output)
+            run_checks(contract, files, inputs, run.output)
+            correct, reason = verifier(inputs, run.output, files)
             if not correct:
                 failure = f"wrong answer {json.dumps(run.output)}: {reason}"
         except CheckFailed as error:
-            failure = str(error)
+            failure, typed_failure = str(error), classify_check(error)
     if failure is None:
         add_step(message_id, "skill_ran", f"Done in {run.duration_ms:g} ms. Reused v{skill.version}, no new code needed.")
+        creator = (skill.change_json or {}).get("created_by") or (skill.change_json or {}).get("provider")
+        if creator:
+            scoreboard.record(creator, "author", "reused", capability=skill.capability)
         return {"text": f"Reused **{skill.skill_id} v{skill.version}**.", "skill": reply_payload(skill, run.output, "reused")}
 
     add_step(message_id, "skill_failed", f"v{skill.version} failed on this input: {failure}")
+
+    # Deterministic strategies first (cheap, no model): e.g. export-formatted amounts in a CSV.
+    if typed_failure is not None:
+        with SessionLocal.begin() as db:
+            parent = db.get(SkillVersion, key)
+            emit = lambda kind, _stage, text, payload=None: add_step(message_id, kind, text, payload)  # noqa: E731
+            repaired = attempt_repair(db, emit, parent, inputs, files, typed_failure, settings.repair_budget)
+            if isinstance(repaired, Repaired):
+                new_key = (repaired.skill.skill_id, repaired.skill.version)
+                output = repaired.output
+        if isinstance(repaired, Repaired):
+            with SessionLocal() as db:
+                new = db.get(SkillVersion, new_key)
+                return {"text": f"Repaired **{new.skill_id}** and saved **v{new.version}**.",
+                        "skill": reply_payload(new, output, "repaired")}
+
     new_source, new_contract, examples, evidence, output = smith(
         message_id, provider, model, skill.capability, summary, inputs, input_types, existing=source,
-        verifier=verifier, feedback=f"The current version failed: {failure}", judge=judge)
+        verifier=verifier, feedback=f"The current version failed: {failure}", judge=judge, files=files)
     if [f["name"] for f in new_contract["inputs"]] != [f.name for f in contract.inputs]:
         raise ValueError("The repair changed the skill's inputs, so it cannot replace this version.")
     with SessionLocal.begin() as db:
         parent = db.get(SkillVersion, key)
+        retired = retired_duplicate(db, parent.skill_id, new_source, new_contract)
+        if retired is not None:
+            raise ValueError(f"The repair is identical to v{retired.version}, which a reviewer retired. Review it instead.")
         regression = lineage_fixtures(db, parent)
         evidence = run_fixture_tests(new_source, new_contract, regression + examples)
-        fixtures = examples + [(f"regression_input_{parent.version}", inputs, {}, "checks")]
+        stored_files = files if sum(len(v) for v in files.values()) <= 256 * 1024 else {}
+        fixtures = examples + ([(f"regression_input_{parent.version}", inputs, stored_files, "checks")]
+                               if stored_files or not files else [])
         new = promote(db, parent, new_source, new_contract, {**evidence, "repaired_from": parent.version}, {
             "strategy": "skillsmith_llm", "summary": f"Rewritten by {provider.label} after: {failure}",
             "failure": {"code": "SKILL_ERROR", "message": failure}, "provider": provider_id, "model": model,
@@ -419,12 +600,12 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
         return {"text": f"Repaired **{new.skill_id}** and saved **v{new.version}**.", "skill": reply_payload(new, output, "repaired")}
 
 
-def create(message_id, provider, provider_id, model, capability, summary, inputs, input_types, request):
+def create(message_id, provider, provider_id, model, capability, summary, inputs, input_types, request, files=None):
     add_step(message_id, "no_skill", f"No skill can do {capability} yet. SkillSmith will create one.")
     judge = make_judge(provider_id, model)
     verifier = make_verifier(message_id, judge, request, capability)
     source, contract, examples, evidence, output = smith(message_id, provider, model, capability, summary, inputs,
-                                                         input_types, verifier=verifier, judge=judge)
+                                                         input_types, verifier=verifier, judge=judge, files=files)
     skill_id = capability
     with SessionLocal.begin() as db:
         fingerprint = implementation_hash(source, contract)

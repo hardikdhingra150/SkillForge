@@ -12,7 +12,10 @@ def main():
         with SessionLocal.begin() as db:
             for skill in BUILTIN_SKILLS:
                 evidence = register_builtin(db, skill)
-                print(f"Registered {skill.skill_id} v{skill.version}: {evidence['test_count']} sandbox tests passed.")
+                if evidence.get("skipped"):
+                    print(f"Skipped {skill.skill_id} v{skill.version}: {evidence['skipped']}.")
+                else:
+                    print(f"Registered {skill.skill_id} v{skill.version}: {evidence['test_count']} sandbox tests passed.")
     finally:
         engine.dispose()
 
