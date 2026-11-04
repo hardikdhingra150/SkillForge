@@ -537,6 +537,8 @@ def run_step(message_id, label, step, outputs, attachments, auto, provider_id, m
     try:
         outcome = attempt(provider, provider_id, model)
     except SmithExhausted:
+        if not auto and provider_id == LOCAL:
+            raise
         stronger = next((p for p in STRENGTH_ORDER[:STRENGTH_ORDER.index(provider_id)]
                          if p != LOCAL and PROVIDERS[p].status().available), None)
         if stronger is None:
@@ -577,8 +579,9 @@ def reply_payload(skill, output, event):
 
 
 def pick_judge(author_id, author_model):
-    """Prefer a different, strong model as the verifier, so the author never grades its own work. The local
-    model never judges a cloud model; without another strong model available the author checks itself."""
+    """Keep Ollama verification local and prefer an independent cloud verifier for cloud authors."""
+    if author_id == LOCAL:
+        return get_provider(author_id), author_model
     for candidate in STRENGTH_ORDER:
         if candidate in (author_id, LOCAL) or not PROVIDERS[candidate].status().available:
             continue

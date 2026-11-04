@@ -151,7 +151,7 @@ With **Auto**:
 1. Planning uses the cheapest available model.
 2. Each capability goes to the cheapest model that has proven it before.
 3. With no history, it tries the cheapest model and escalates to a stronger one on failure, and the router learns from the outcome.
-4. The local model never verifies a cloud model's work.
+4. An explicitly selected Ollama model verifies locally and never escalates to a cloud provider. Auto mode can still use cloud providers.
 
 ### Try the pipeline
 
