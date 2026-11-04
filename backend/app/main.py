@@ -17,6 +17,7 @@ from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.database.connection import engine
 from app.database.session import SessionLocal
+from app.request_limits import RequestSizeLimit
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -40,6 +41,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(RequestSizeLimit)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,
