@@ -7,7 +7,6 @@ import React, {
 import {
   ArrowUpRight,
   ChevronRight,
-  Play,
   Search,
   ShieldCheck,
   Terminal,
@@ -15,46 +14,38 @@ import {
 } from 'lucide-react';
 
 import {
-  DotText,
   PixelSpark,
   PixelSprite,
 } from './components/PixelArt';
 
 import {
-  crew,
   initialRuns,
   initialSkills,
   stages,
 } from './data';
 
-import Landing, {
-  EvolvingCore,
-} from './components/Landing';
+import Landing from './components/Landing';
 
 import LivingBackground from './components/LivingBackground';
 import CursorCompanions from './components/CursorCompanions';
 import MotionVisibility from './components/MotionVisibility';
-import MotionText from './components/MotionText';
 import ScrollChoreographer from './components/ScrollChoreographer';
 
 import {
   ScrollProgress,
 } from './components/ScrollStory';
 
-import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
-import { Button, PageHeading, PanelTop, Status } from './components/ui.jsx';
-import { Metrics } from './components/Metrics.jsx';
-import { SkillCard } from './components/SkillCard.jsx';
-import { CrewPanel } from './components/CrewPanel.jsx';
-import { Console } from './components/Console.jsx';
+import { Status } from './components/ui.jsx';
 import { useLiveRun } from './state/useLiveRun.js';
 import { Modal } from './components/Modal.jsx';
 import { SkillDetail } from './components/SkillDetail.jsx';
 import { Guardrails } from './routes/Guardrails.jsx';
 import { Topbar } from './components/Topbar.jsx';
 import { Footer } from './components/Footer.jsx';
+import { Workbench } from './routes/Workbench.jsx';
+import { ConsolePage } from './routes/ConsolePage.jsx';
 import { VIEW_IDS, views } from './navigation.js';
-import { getMetricsSummary } from './api/skillforgeProcess.js';
+
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
 import ChatView from './components/ChatView.jsx';
@@ -102,29 +93,6 @@ export default function App() {
   const [toast, setToast] = useState('');
 
   const [repairs, setRepairs] = useState(8);
-  const [metricsSummary, setMetricsSummary] = useState(null);
-
-  // Real metrics while the Workbench is open; the sample cards stay when the API is offline.
-  useEffect(() => {
-    if (view !== 'workbench') {
-      return undefined;
-    }
-
-    const controller = new AbortController();
-
-    const load = () => getMetricsSummary(controller.signal)
-      .then(setMetricsSummary)
-      .catch(() => {});
-
-    load();
-
-    const timer = setInterval(load, 20000);
-
-    return () => {
-      clearInterval(timer);
-      controller.abort();
-    };
-  }, [view]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -171,7 +139,6 @@ export default function App() {
   }, []);
 
   const toastTimeout = useRef();
-  const consoleRef = useRef();
 
   useEffect(() => () => clearTimeout(toastTimeout.current), []);
 
@@ -357,226 +324,22 @@ export default function App() {
             </div>
 
             {view === 'workbench' && (
-              <>
-                <section className="hero">
-                  <div className="hero-copy">
-                    <div className="hero-kicker">
-                      <span className="kicker-line" />
-
-                      A WORKSPACE THAT GROWS WITH YOU
-
-                      <PixelSpark />
-                    </div>
-
-                    <h1>
-                      <DotText text="ALWAYS EVOLVING." />
-
-                      <MotionText
-                        text="Your next idea, unlocked."
-                      />
-                    </h1>
-
-                    <p>
-                      Give your agents a task. Let them discover,
-                      build, and repair
-                      <br className="desktop-break" />
-                      {' '}
-                      the skills to do it.
-                      {' '}
-                      <strong>
-                        Every run leaves them a little smarter.
-                      </strong>
-                    </p>
-
-                    <div className="hero-actions">
-                      <Button
-                        className="lime"
-                        icon={Play}
-                        onClick={() => {
-                          consoleRef.current?.scrollIntoView({
-                            behavior: motion
-                              ? 'smooth'
-                              : 'auto',
-                            block: 'center',
-                          });
-
-                          startRun();
-                        }}
-                        disabled={running}
-                      >
-                        {running
-                          ? 'The crew is on it...'
-                          : 'Let’s make something happen'}
-                      </Button>
-
-                      <button
-                        className="quiet-button"
-                        onClick={() => {
-                          setModal({ type: 'lifecycle' });
-                        }}
-                      >
-                        How it works
-                        <ArrowUpRight size={15} />
-                      </button>
-                    </div>
-
-                    <div className="hero-bottom">
-                      <div className="tiny-crew">
-                        {crew.map((member) => (
-                          <PixelSprite
-                            kind={member.kind}
-                            key={member.kind}
-                          />
-                        ))}
-                      </div>
-
-                      <span>
-                        SMALL TEAM. NEVER-ENDING POTENTIAL.
-                      </span>
-
-                      <span className="hero-arrow">
-                        ↝
-                      </span>
-                    </div>
-                  </div>
-
-                  <EvolvingCore
-                    compact
-                    running={running}
-                    onInteract={() => {
-                      notify(
-                        'The forge is listening. Give it a task to learn from.',
-                      );
-                    }}
-                  />
-                </section>
-
-                <SkillForgeProcessView
-                  requestedExecutionId={requestedExecutionId}
-                  onOpenRequestHandled={setRequestedExecutionId}
-                />
-
-                <div className="section-meta">
-                  <span>
-                    <i />
-                    {' '}
-                    A LITTLE MOMENTUM
-                  </span>
-
-                  <span>
-                    {metricsSummary
-                      ? 'LIVE · FROM YOUR RECORDED RUNS'
-                      : 'DEMO WORKSPACE · SAMPLE METRICS'}
-                  </span>
-                </div>
-
-                <Metrics
-                  skills={skills}
-                  runs={runs}
-                  repairs={repairs}
-                  summary={metricsSummary}
-                />
-
-                <div className="work-grid">
-                  <div ref={consoleRef}>
-                    <Console {...consoleProps} />
-                  </div>
-
-                  <CrewPanel
-                    mode={mode}
-                    onSelect={(member) => {
-                      setModal({
-                        type: 'crew',
-                        member,
-                      });
-                    }}
-                  />
-                </div>
-
-                <section className="skills-section">
-                  <div className="section-heading">
-                    <div>
-                      <p className="eyebrow">
-                        <span className="tiny-block lavender" />
-                        YOUR GROWING COLLECTION
-                      </p>
-
-                      <h2>
-                        Learn it once.
-                        {' '}
-                        <span>Use it forever.</span>
-                      </h2>
-                    </div>
-
-                    <Button
-                      className="outline small"
-                      onClick={() => navigate('library')}
-                    >
-                      Explore the skill library
-                    </Button>
-                  </div>
-
-                  <div className="skills-grid">
-                    {skills
-                      .filter((skill) => !skill.draft)
-                      .slice(0, 3)
-                      .map((skill, index) => (
-                        <SkillCard
-                          key={skill.id}
-                          skill={skill}
-                          onInspect={showSkill}
-                          mode={mode}
-                          index={index}
-                        />
-                      ))}
-                  </div>
-                </section>
-
-                <section className="recent-panel panel motion-panel">
-                  <PanelTop label="saved_tasks.log">
-                    <button
-                      type="button"
-                      className="text-link"
-                      onClick={() => navigate('activity')}
-                    >
-                      Open activity
-                      <ArrowUpRight size={12} />
-                    </button>
-                  </PanelTop>
-
-                  <div style={{ padding: '20px' }}>
-                    <p>
-                      Browse saved task runs, their current
-                      status, and recorded results.
-                    </p>
-
-                    <Button
-                      className="outline small"
-                      onClick={() => navigate('activity')}
-                    >
-                      View task history
-                    </Button>
-                  </div>
-                </section>
-
-                <div className="closing-strip">
-                  <PixelSpark />
-
-                  <DotText
-                    text="DISCOVER. CREATE. REPAIR. REPEAT."
-                  />
-
-                  <PixelSpark />
-
-                  <button
-                    onClick={() => navigate('governance')}
-                  >
-                    <ShieldCheck size={14} />
-                    PLAYFUL OUTSIDE. GOVERNED INSIDE.
-                    <ArrowUpRight size={13} />
-                  </button>
-                </div>
-              </>
+              <Workbench
+                running={running}
+                motion={motion}
+                mode={mode}
+                skills={skills}
+                runs={runs}
+                repairs={repairs}
+                consoleProps={consoleProps}
+                onRun={startRun}
+                requestedExecutionId={requestedExecutionId}
+                onOpenRequestHandled={setRequestedExecutionId}
+                onNavigate={navigate}
+                onShowSkill={showSkill}
+                onOpenModal={setModal}
+                notify={notify}
+              />
             )}
 
             {view === 'chat' && (
@@ -596,52 +359,7 @@ export default function App() {
             )}
 
             {view === 'console' && (
-              <>
-                <PageHeading
-                  label="ONE TASK. A WHOLE LEARNING LOOP."
-                  title="Let’s see what happens."
-                  description="A missing column is not the end of the story. It is where the learning starts."
-                />
-
-                <Console
-                  {...consoleProps}
-                  expanded
-                />
-
-                <div className="console-explain">
-                  <article>
-                    <span>01 / THE PLOT TWIST</span>
-
-                    <h3>
-                      Your CSV says “$1,200.50”.
-                      <br />
-                      The skill expects a plain number.
-                    </h3>
-
-                    <p>
-                      v1.0.0 fails with BAD_NUMBER. Patch
-                      diagnoses it, switches to parse_amount,
-                      and proves the fix on the failing input.
-                    </p>
-                  </article>
-
-                  <article>
-                    <span>02 / THE HAPPY ENDING</span>
-
-                    <h3>
-                      Every test passes.
-                      <br />
-                      A better skill stays with you.
-                    </h3>
-
-                    <p>
-                      v1.1.0 joins the registry. Run the
-                      same task again and the worker
-                      reuses it with no repair.
-                    </p>
-                  </article>
-                </div>
-              </>
+              <ConsolePage consoleProps={consoleProps} />
             )}
 
             {view === 'activity' && (
