@@ -5,7 +5,7 @@ import { getMetricsSummary } from '../api/skillforgeProcess.js';
 import { crew } from '../data';
 import { Console } from '../components/Console.jsx';
 import { CrewPanel } from '../components/CrewPanel.jsx';
-import { EvolvingCore } from '../components/Landing';
+import { EvolvingCore } from '../components/EvolvingCore.jsx';
 import { Metrics } from '../components/Metrics.jsx';
 import MotionText from '../components/MotionText';
 import { DotText, PixelSpark, PixelSprite } from '../components/PixelArt';
