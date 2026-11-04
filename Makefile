@@ -49,6 +49,9 @@ lint-backend: ## Lint backend Python with ruff
 test-web: ## Run frontend unit tests (Vitest)
 	npm test
 
+e2e: ## Run Playwright smoke tests (mocked API)
+	npm run test:e2e
+
 lint-web: ## Lint frontend with ESLint
 	npm run lint
 

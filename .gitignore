@@ -22,3 +22,7 @@ outputs/*.mp4
 
 # OS / editor
 .DS_Store
+
+# Playwright
+test-results/
+playwright-report/
