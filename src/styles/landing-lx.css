@@ -2,7 +2,6 @@
  * Minimal landing: three sections after the hero. Everything enters by
  * springing out of nothing; pets hop out of their cards with a pixel burst.
  */
-:root { --pop-spring: cubic-bezier(.34, 1.56, .64, 1); --hop-spring: cubic-bezier(.3, 1.9, .55, 1); }
 
 /* ---------- Pop primitives ---------- */
 .pop-scope .pop, .pop-scope .pop-hop {
