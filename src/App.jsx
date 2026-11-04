@@ -6,12 +6,7 @@ import React, {
 
 import {
   ArrowUpRight,
-  AudioLines,
   ChevronRight,
-  Menu,
-  Moon,
-  Sun,
-  Pause,
   Play,
   Search,
   ShieldCheck,
@@ -56,6 +51,8 @@ import { useLiveRun } from './state/useLiveRun.js';
 import { Modal } from './components/Modal.jsx';
 import { SkillDetail } from './components/SkillDetail.jsx';
 import { Guardrails } from './routes/Guardrails.jsx';
+import { Topbar } from './components/Topbar.jsx';
+import { Footer } from './components/Footer.jsx';
 import { VIEW_IDS, views } from './navigation.js';
 import { getMetricsSummary } from './api/skillforgeProcess.js';
 import SkillRegistryView from './components/SkillRegistryView.jsx';
@@ -244,21 +241,6 @@ export default function App() {
     });
   };
 
-  const landingNav = [
-    {
-      id: 'how',
-      label: 'How it learns',
-    },
-    {
-      id: 'trust',
-      label: 'Guardrails',
-    },
-    {
-      id: 'start',
-      label: 'Get started',
-    },
-  ];
-
   const scrollLanding = (id) => {
     setMobileNav(false);
 
@@ -302,150 +284,35 @@ export default function App() {
         className="app-content"
         inert={modal ? true : undefined}
       >
-        <header className="topbar">
-          <div className="topbar-inner">
-            <button
-              className="brand"
-              onClick={() => navigate('landing')}
-              aria-label="SkillForge home"
-            >
-              <span className="brand-symbol">
-                S
-                <span />
-              </span>
-
-              <DotText text="SKILLFORGE" />
-
-              <span className="brand-beta">
-                WORKSPACE
-              </span>
-            </button>
-
-            <nav
-              className={mobileNav ? 'open' : ''}
-              aria-label="Main navigation"
-            >
-              {view === 'landing'
-                ? landingNav.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        scrollLanding(item.id);
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  ))
-                : views.map((item) => (
-                    <button
-                      key={item.id}
-                      className={
-                        view === item.id ? 'active' : ''
-                      }
-                      onClick={() => {
-                        navigate(item.id);
-                      }}
-                    >
-                      <item.icon size={14} />
-                      {item.label}
-
-                      {item.id === 'console'
-                        && running
-                        && (
-                          <i className="running-dot" />
-                        )}
-                    </button>
-                  ))}
-            </nav>
-
-            <div className="header-actions">
-              {view !== 'landing' && (
-                <button
-                  className="icon-button search-button"
-                  aria-label="Search workspace"
-                  onClick={() => {
-                    setSearch('');
-                    setModal({ type: 'search' });
-                  }}
-                >
-                  <Search size={16} />
-                  <kbd>⌘K</kbd>
-                </button>
-              )}
-
-              <button
-                className="icon-button theme-button"
-                aria-label={`Switch to ${
-                  theme === 'dark' ? 'light' : 'dark'
-                } mode`}
-                onClick={() => {
-                  setTheme((value) => (
-                    value === 'dark'
-                      ? 'light'
-                      : 'dark'
-                  ));
-                }}
-              >
-                {theme === 'dark'
-                  ? <Sun size={16} />
-                  : <Moon size={16} />}
-              </button>
-
-              <button
-                className={`icon-button motion-button ${
-                  motion ? 'on' : ''
-                }`}
-                aria-label={
-                  motion
-                    ? 'Pause animations'
-                    : 'Resume animations'
-                }
-                aria-pressed={!motion}
-                onClick={() => {
-                  setMotion((value) => !value);
-                }}
-              >
-                {motion
-                  ? <AudioLines size={17} />
-                  : <Pause size={17} />}
-              </button>
-
-              {view === 'landing' ? (
-                <button
-                  className="header-enter"
-                  onClick={() => navigate('workbench')}
-                >
-                  Open workspace
-                  <ArrowUpRight size={14} />
-                </button>
-              ) : (
-                <button
-                  className="profile-avatar"
-                  onClick={() => {
-                    setModal({ type: 'runtime' });
-                  }}
-                  aria-label="Workspace details"
-                >
-                  H
-                  <span />
-                </button>
-              )}
-
-              <button
-                className="icon-button mobile-menu"
-                aria-label="Toggle navigation"
-                aria-expanded={mobileNav}
-                onClick={() => {
-                  setMobileNav((value) => !value);
-                }}
-              >
-                {mobileNav
-                  ? <X size={18} />
-                  : <Menu size={18} />}
-              </button>
-            </div>
-          </div>
-        </header>
+        <Topbar
+          view={view}
+          running={running}
+          theme={theme}
+          motion={motion}
+          mobileNav={mobileNav}
+          onNavigate={navigate}
+          onScrollLanding={scrollLanding}
+          onToggleTheme={() => {
+            setTheme((value) => (
+              value === 'dark'
+                ? 'light'
+                : 'dark'
+            ));
+          }}
+          onToggleMotion={() => {
+            setMotion((value) => !value);
+          }}
+          onToggleNav={() => {
+            setMobileNav((value) => !value);
+          }}
+          onSearch={() => {
+            setSearch('');
+            setModal({ type: 'search' });
+          }}
+          onRuntime={() => {
+            setModal({ type: 'runtime' });
+          }}
+        />
 
         {view === 'landing' ? (
           <Landing
@@ -790,39 +657,12 @@ export default function App() {
               <Guardrails />
             )}
 
-            <footer className="site-footer">
-              <span>
-                <i />
-                BUILT FOR THE NEXT “WHAT IF?”
-              </span>
-
-              <div>
-                <button
-                  onClick={() => navigate('landing')}
-                >
-                  Home
-                </button>
-
-                <button
-                  onClick={() => navigate('governance')}
-                >
-                  Guardrails
-                </button>
-
-                <button
-                  onClick={() => {
-                    setModal({ type: 'runtime' });
-                  }}
-                >
-                  Under the hood
-                  <ArrowUpRight size={11} />
-                </button>
-
-                <span>
-                  FRONTEND PLAYGROUND / V.03
-                </span>
-              </div>
-            </footer>
+            <Footer
+              onNavigate={navigate}
+              onRuntime={() => {
+                setModal({ type: 'runtime' });
+              }}
+            />
           </main>
         )}
       </div>
