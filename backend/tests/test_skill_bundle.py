@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from app.services.repair import encode_fixture
-from app.services.skill_bundle import FORMAT, BundleError, import_bundle
+from app.services.skill_bundle import FORMAT, BundleError, export_bundle, import_bundle
 from app.services.skill_registry import implementation_hash
 from app.skills import REVENUE_BY_PRODUCT
 
@@ -31,6 +31,20 @@ def bundle():
                   "implementation_hash": implementation_hash(source, contract), "origin": "builtin"},
         "fixtures": [encode_fixture(*f) for f in REVENUE_BY_PRODUCT.fixtures],
     }
+
+
+class ExportTests(unittest.TestCase):
+    def test_omits_recorded_inputs_but_keeps_builtin_fixtures(self):
+        skill = SimpleNamespace(
+            skill_id="revenue_by_product", version="1.0.0", capability="revenue_by_product",
+            origin="repaired", parent_version=None, contract_json={}, source_code="source",
+            implementation_hash="hash", validation_json={}, change_json={"fixtures": [
+                encode_fixture("regression_input_for_v1.0.0", {}, {"sales_csv": b"private"}, "checks"),
+            ]},
+        )
+        exported = export_bundle(FakeDB(), skill)
+        self.assertEqual(len(exported["fixtures"]), len(REVENUE_BY_PRODUCT.fixtures))
+        self.assertFalse(any(item["name"].startswith("regression_input_") for item in exported["fixtures"]))
 
 
 class ImportTests(unittest.TestCase):
