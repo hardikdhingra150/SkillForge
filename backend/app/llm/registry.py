@@ -118,8 +118,11 @@ class Ollama(Provider):
         status = self.status()
         if not status.available:
             raise LLMError(status.detail)
+        selected = model or status.default_model
+        if selected not in status.models:
+            raise LLMError("Choose an installed local Ollama model.")
         messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
-        body = json.dumps({"model": model or status.default_model, "messages": messages, "stream": False,
+        body = json.dumps({"model": selected, "messages": messages, "stream": False,
                            "options": {"temperature": 0.2}}).encode()
         request = urllib.request.Request(OLLAMA_URL + "/api/chat", data=body, headers={"Content-Type": "application/json"})
         try:
