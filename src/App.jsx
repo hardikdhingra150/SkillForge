@@ -9,13 +9,11 @@ import {
   ArrowUpRight,
   AudioLines,
   Check,
-  CheckCheck,
   ChevronRight,
   FileText,
   FlaskConical,
   GitBranch,
   History,
-  Layers3,
   LockKeyhole,
   Menu,
   Moon,
@@ -26,12 +24,10 @@ import {
   ShieldCheck,
   Terminal,
   X,
-  Zap,
 } from 'lucide-react';
 
 import {
   DotText,
-  MiniBars,
   PixelSpark,
   PixelSprite,
 } from './components/PixelArt';
@@ -59,6 +55,9 @@ import {
 
 import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
 import { Button, PageHeading, PanelTop, Status } from './components/ui.jsx';
+import { Metrics } from './components/Metrics.jsx';
+import { SkillCard } from './components/SkillCard.jsx';
+import { CrewPanel } from './components/CrewPanel.jsx';
 import { VIEW_IDS, views } from './navigation.js';
 import { getMetricsSummary } from './api/skillforgeProcess.js';
 import { LIVE_FILE, replayLines, runLive } from './api/liveRun.js';
@@ -72,213 +71,6 @@ import ReviewView from './components/ReviewView.jsx';
 const sleep = (ms) => (
   new Promise((resolve) => setTimeout(resolve, ms))
 );
-
-function liveMetrics(summary) {
-  const count = (value) => String(value).padStart(2, '0');
-
-  return [
-    {
-      name: 'Skills in your toolkit',
-      value: count(summary.skills),
-      sub: 'VALIDATED AND READY',
-      icon: Layers3,
-      color: 'lime',
-    },
-    {
-      name: 'Successful runs',
-      value: summary.success_rate === null ? '—' : String(summary.success_rate),
-      unit: summary.success_rate === null ? '' : '%',
-      sub: `${summary.succeeded} OF ${summary.runs} RUNS`,
-      icon: CheckCheck,
-      color: 'lavender',
-    },
-    {
-      name: 'Problems → progress',
-      value: count(summary.repairs),
-      sub: 'REPAIRED VERSIONS SAVED',
-      icon: GitBranch,
-      color: 'peach',
-    },
-    {
-      name: 'Skills reused',
-      value: count(summary.reuses),
-      sub: summary.average_seconds === null
-        ? 'NO TIMED RUNS YET'
-        : `AVERAGE RUN ${summary.average_seconds < 0.1 ? 'UNDER 0.1' : summary.average_seconds}S`,
-      icon: Zap,
-      color: 'blue',
-    },
-  ];
-}
-
-function Metrics({
-  skills,
-  repairs,
-  summary,
-}) {
-  const metrics = summary ? liveMetrics(summary) : [
-
-    {
-      name: 'Skills in your toolkit',
-      value: String(
-        skills.filter((skill) => !skill.draft).length,
-      ).padStart(2, '0'),
-      sub: 'READY FOR THEIR NEXT JOB',
-      icon: Layers3,
-      color: 'lime',
-    },
-    {
-      name: 'Happy executions',
-      value: '98.4',
-      unit: '%',
-      sub: 'GETTING BETTER WITH EVERY RUN',
-      icon: CheckCheck,
-      color: 'lavender',
-    },
-    {
-      name: 'Problems → progress',
-      value: String(repairs).padStart(2, '0'),
-      sub: 'FIXED. TESTED. REMEMBERED.',
-      icon: GitBranch,
-      color: 'peach',
-    },
-    {
-      name: 'Time back for you',
-      value: '4.2',
-      unit: 'h',
-      sub: 'GO MAKE SOMETHING GOOD',
-      icon: Zap,
-      color: 'blue',
-    },
-  ];
-
-  return (
-    <section
-      className="metrics"
-      aria-label={summary ? 'Workspace metrics' : 'Illustrative workspace metrics'}
-    >
-      {metrics.map((metric, index) => (
-        <article
-          className={`metric-card ${metric.color} motion-panel`}
-          style={{ '--i': index }}
-          key={metric.name}
-        >
-          <div className="metric-heading">
-            <span>{metric.name}</span>
-            <metric.icon size={15} />
-          </div>
-
-          <div className="metric-main">
-            <span
-              className="metric-value"
-              key={metric.value}
-            >
-              {metric.value}
-              <small>{metric.unit}</small>
-            </span>
-
-            <MiniBars
-              color={metric.color}
-              count={12}
-            />
-          </div>
-
-          <div className="metric-bottom">
-            <span>{metric.sub}</span>
-            <span>↗</span>
-          </div>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function SkillCard({
-  skill,
-  onInspect,
-  mode,
-  index = 0,
-}) {
-  return (
-    <button
-      className={`skill-card ${skill.kind} motion-panel`}
-      style={{ '--i': index }}
-      onClick={() => onInspect(skill)}
-    >
-      <div className="skill-scene">
-        <div className="skill-grid" />
-
-        <span className="skill-number">
-          SKILL / {String(index + 1).padStart(2, '0')}
-        </span>
-
-        <span className="skill-hover-label">
-          SAY HELLO ↗
-        </span>
-
-        <PixelSprite
-          kind={skill.kind}
-          mode={mode}
-        />
-
-        <div className="skill-platform" />
-
-        <div className="scene-token token-left">
-          {skill.category === 'Code'
-            ? '</>'
-            : skill.category === 'Data'
-              ? 'Σ'
-              : 'Aa'}
-        </div>
-
-        <div className="scene-token token-right">
-          {skill.draft ? '...' : '✓'}
-        </div>
-
-        <PixelSpark className="skill-spark" />
-
-        <span className="skill-tagline">
-          {skill.tag || 'A NEW IDEA TAKING SHAPE'}
-        </span>
-      </div>
-
-      <div className="skill-content">
-        <div className="skill-title">
-          <h3>
-            <MotionText text={skill.name} />
-          </h3>
-
-          <span className="version">
-            v{skill.version}
-          </span>
-        </div>
-
-        <p>{skill.description}</p>
-
-        <div className="skill-tags">
-          <span>{skill.category}</span>
-
-          <span>
-            {skill.draft
-              ? 'Draft'
-              : `${skill.tests}/${skill.tests} tests passed`}
-          </span>
-
-          <span>{skill.runs} runs</span>
-        </div>
-
-        <div className="skill-bottom">
-          <code>{skill.id}</code>
-
-          <span>
-            Open skill
-            <ArrowUpRight size={13} />
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-}
 
 function LiveResult({ result }) {
   const products = [...(result.products || [])]
@@ -481,71 +273,6 @@ function Console({
               ? (live ? 'Run again · reuse the skill' : 'Replay again')
               : 'Let’s run it'}
         </Button>
-      </div>
-    </section>
-  );
-}
-
-function CrewPanel({
-  mode,
-  onSelect,
-}) {
-  return (
-    <section className="crew-panel panel motion-panel">
-      <PanelTop label="your_little_team">
-        <span className="crew-count">
-          03 ONLINE
-        </span>
-      </PanelTop>
-
-      <div className="crew-heading">
-        <h2>
-          Good things come
-          <br />
-          in little pixels.
-        </h2>
-
-        <p>Different talents. One shared mission.</p>
-      </div>
-
-      <div className="crew-list">
-        {crew.map((member) => (
-          <button
-            className={`crew-member ${member.kind}`}
-            key={member.kind}
-            onClick={() => onSelect(member)}
-          >
-            <div className="crew-avatar">
-              <PixelSprite
-                kind={member.kind}
-                mode={mode}
-              />
-            </div>
-
-            <div>
-              <h3>
-                {member.name}
-                <span>{member.role}</span>
-              </h3>
-
-              <p>{member.description}</p>
-            </div>
-
-            <ArrowUpRight size={14} />
-          </button>
-        ))}
-      </div>
-
-      <div className="crew-note">
-        <PixelSpark />
-
-        <span>
-          PERSONALITY INCLUDED.
-          <br />
-          CAPABILITIES KEEP GROWING.
-        </span>
-
-        <span className="crew-heart">♡</span>
       </div>
     </section>
   );
