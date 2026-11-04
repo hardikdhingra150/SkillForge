@@ -30,7 +30,7 @@ def export_bundle(db, skill: SkillVersion) -> dict:
     while node is not None and node.version not in seen:
         seen.add(node.version)
         lineage.append({"version": node.version, "origin": node.origin, "parent_version": node.parent_version,
-                        "summary": (node.change_json or {}).get("summary"), "implementation_hash": node.implementation_hash})
+                        "implementation_hash": node.implementation_hash})
         node = db.get(SkillVersion, (skill.skill_id, node.parent_version)) if node.parent_version else None
     return {
         "format": FORMAT,
@@ -41,7 +41,10 @@ def export_bundle(db, skill: SkillVersion) -> dict:
             "implementation_hash": skill.implementation_hash, "validation": skill.validation_json,
         },
         "lineage": lineage,
-        "fixtures": [encode_fixture(*fixture) for fixture in lineage_fixtures(db, skill)][:MAX_FIXTURES],
+        "fixtures": [
+            encode_fixture(*fixture) for fixture in lineage_fixtures(db, skill)
+            if not fixture[0].startswith("regression_input_")
+        ][:MAX_FIXTURES],
     }
 
 
