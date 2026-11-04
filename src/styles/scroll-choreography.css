@@ -48,7 +48,7 @@ html body .app.reveal-armed [data-reveal=mask]:not(.is-revealed) {
 html body .app.reveal-armed [data-reveal=curtain] { clip-path: inset(0 0 round 18px); }
 html body .app.reveal-armed [data-reveal=curtain]:not(.is-revealed) { clip-path: inset(14% 9% round 40px); scale: .97; opacity: .2; }
 
-.app .principle-grid, .app .guard-grid { perspective: 1400px; }
+.app .guard-grid { perspective: 1400px; }
 
 /* Workspace surfaces already play a mount animation; the scroll entrance replaces it. */
 html body .app.reveal-armed .main-content :is(.panel, .metric-card, .skill-card, .guard-card)[data-reveal] { animation-name: none; }

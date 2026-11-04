@@ -37,9 +37,6 @@
   animation-name: sf-auto-dot-letter;
   animation-duration: 4.9s;
 }
-.app .forge-headline .kinetic-letter .letter-float {
-  animation-duration: 4.8s;
-}
 
 /* Secondary headings breathe as complete lines; paragraphs remain still. */
 .app.is-workspace .main-content :is(.console-heading h2, .crew-heading h2, .section-heading h2, .guard-card h2, .console-explain h3, .privacy-panel h2),
@@ -51,23 +48,9 @@
   animation: sf-auto-number 4.8s calc(var(--i, 0) * -.85s) ease-in-out infinite;
   transform-origin: 25% 80%;
 }
-.app .landing-final .application-result strong {
-  display: inline-block;
-  animation: sf-auto-number 5.2s -1.2s ease-in-out infinite;
-  transform-origin: 20% 80%;
-}
 
 /* Pet silhouettes move inside their stable holders; cursor pets use JS only. */
-.app .forge-title-pet > .pixel-sprite,
-.app .result-art > .pixel-sprite,
-.app .studio-outcome > .pixel-sprite,
-.app .application-result > .pixel-sprite,
-.app .finale-pet > .pixel-sprite,
-.app .core-node > .pixel-sprite,
-.app .tiny-crew > .pixel-sprite,
-.app .crew-avatar > .pixel-sprite,
-.app .new-skill-sprite > .pixel-sprite,
-.app .skill-detail-intro > .pixel-sprite {
+.app .core-node > .pixel-sprite,.app .tiny-crew > .pixel-sprite,.app .crew-avatar > .pixel-sprite,.app .skill-detail-intro > .pixel-sprite {
   animation: sf-auto-companion 3.8s calc(var(--i, 0) * -.7s) ease-in-out infinite;
   transform-origin: 50% 80%;
 }
@@ -81,9 +64,6 @@
 .app .mini-companion:not(.busy) > .pixel-sprite {
   animation: sf-auto-companion 3.9s -.9s ease-in-out infinite;
 }
-.app .activity-row > span:first-child > .pixel-sprite {
-  animation: sf-auto-small-companion 4.1s -.9s ease-in-out infinite;
-}
 .app .cursor-companion,
 .app .cursor-companion > .pixel-sprite { animation: none !important; }
 
@@ -92,7 +72,6 @@
   animation: sf-auto-symbol 4.4s calc(var(--i, 0) * -.8s) ease-in-out infinite;
   transform-origin: center;
 }
-.app .landing-final .unit-icon { animation: none; }
 .app :is(.panel-sigil, .product-mark > svg, .studio-toolbar > span > svg) {
   display: inline-block;
   animation: sf-auto-sigil 4s -1.3s ease-in-out infinite;
@@ -114,10 +93,6 @@
 .app.is-workspace .main-content :is(.panel, .metric-card, .skill-card, .guard-card, .hero)::before {
   height: 2px;
   animation: sf-auto-edge 4.8s calc(var(--i, 0) * -.75s) ease-in-out infinite;
-}
-.app .hero-product-flow > i::after,
-.app .system-connection i::after {
-  animation-duration: 2.4s;
 }
 
 @keyframes sf-auto-word {

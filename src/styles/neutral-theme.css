@@ -38,10 +38,7 @@
 :root[data-scene=particle] .app .topbar {background:rgba(24,24,24,.91);border-color:var(--glass-edge)}
 :root[data-scene=particle][data-theme=light] .app .topbar {background:rgba(241,241,241,.91)}
 .app .forge-hero-overline i {box-shadow:0 0 12px rgba(255,255,255,.3)}
-.app .hero-product {box-shadow:0 25px 65px rgba(0,0,0,.12)}
-.app .landing-final .code-line.added {background:var(--soft);color:var(--text)}
-.app .landing-final .code-line.removed {background:var(--soft);color:var(--muted)}
-.app .landing-final .forge-headline,.app .landing-final .kinetic-type.dotted {color:var(--text)}
+.app .landing-final .kinetic-type.dotted {color:var(--text)}
 .app .metric-card::after {background:var(--soft)}
 .app .tiny-block {box-shadow:2px 2px 0 var(--line)}
 .app .status i {box-shadow:0 0 0 3px var(--soft)}

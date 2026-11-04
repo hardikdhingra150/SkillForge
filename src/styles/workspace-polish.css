@@ -161,29 +161,13 @@
 /* Readable history retains its columns rather than hiding information. */
 .is-workspace .main-content .recent-panel { margin-top: 30px; }
 .is-workspace .main-content .text-link { font-size: 11px; min-height: 28px; }
-.is-workspace .main-content .activity-table { overflow-x: auto; padding: 0 24px 10px; scrollbar-width: thin; scrollbar-color: var(--line) var(--surface); }
-.is-workspace .main-content .activity-row { grid-template-columns: minmax(0, 2fr) minmax(98px, .65fr) minmax(94px, .65fr) minmax(78px, .4fr); gap: 18px; padding: 21px 0; border-color: var(--line); min-width: 590px; }
-.is-workspace .main-content .activity-row > span:first-child { font-size: 14px; line-height: 1.4; gap: 15px; }
-.is-workspace .main-content .activity-row > span:first-child > .pixel-sprite { height: 34px; width: 34px; }
-.is-workspace .main-content .activity-row small { font-size: 10px; line-height: 1.7; margin-top: 6px; color: var(--muted); }
-.is-workspace .main-content .activity-labels, .is-workspace .main-content .activity-labels > span:first-child { font: 10px/1.5 var(--mono); letter-spacing: .5px; color: var(--muted); padding-top: 20px; padding-bottom: 16px; }
-.is-workspace .main-content .activity-labels > span:last-child { display: block; }
-.is-workspace .main-content .run-when { font-size: 11px; line-height: 1.5; color: var(--muted); }
-.is-workspace .main-content .run-duration { display: flex; font-size: 11px; color: var(--text); }
-.is-workspace .main-content .result-pill { font-size: 10px; padding: 7px 9px; gap: 6px; border-color: var(--line); color: var(--lime); background: var(--surface-high); }
-.is-workspace .main-content .result-pill.repaired { color: var(--peach); }
 .is-workspace .main-content .page-heading { margin: 16px 0 32px; gap: 25px; }
 .is-workspace .main-content .page-heading .eyebrow { font-size: 10px; letter-spacing: .7px; margin-bottom: 15px; }
 .is-workspace .main-content .page-heading h1 { font: 52px/1.06 var(--pixel); letter-spacing: -1px; margin-bottom: 16px; animation: workspace-type-reveal .6s ease-out both; }
 .is-workspace .main-content .page-heading p:last-child { font-size: 14px; line-height: 1.8; max-width: 690px; }
-.is-workspace .main-content .library-tools { gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
 .is-workspace .main-content .search-field { min-height: 48px; max-width: 470px; padding: 13px 16px; background: var(--surface); border-color: var(--line); box-shadow: none; border-radius: 11px; }
 .is-workspace .main-content .search-field input { font-size: 13px; }
 .is-workspace .main-content .search-field input::placeholder { color: var(--muted); }
-.is-workspace .main-content .filter-pills { gap: 7px; flex-wrap: wrap; }
-.is-workspace .main-content .filter-pills button { font: 13px var(--pixel); padding: 11px 16px; min-height: 42px; border-color: var(--line); background: var(--surface); color: var(--muted); border-radius: 8px; }
-.is-workspace .main-content .filter-pills button.selected { background: var(--lime); color: var(--ink); border-color: var(--lime); box-shadow: none; }
-.is-workspace .main-content .filter-pills button:hover { transform: none; }
 .is-workspace .main-content .expanded .console-heading { padding: 30px 30px 23px; }
 .is-workspace .main-content .expanded .console-heading h2 { font-size: 39px; }
 .is-workspace .main-content .expanded .task-input { margin: 0 30px; }
@@ -308,7 +292,6 @@
   .is-workspace .main-content .page-heading { align-items: start; flex-direction: column; gap: 20px; }
   .is-workspace .main-content .page-heading h1 { font-size: 46px; }
   .is-workspace .main-content .page-heading p:last-child { font-size: 14px; }
-  .is-workspace .main-content .library-tools { gap: 15px; }
   .is-workspace .main-content .search-field { flex-basis: 100%; max-width: none; }
   .is-workspace .main-content .console-explain { grid-template-columns: minmax(0, 1fr); }
   .is-workspace .main-content .guard-grid { grid-template-columns: minmax(0, 1fr); }
@@ -402,14 +385,10 @@
   .is-workspace .main-content .skill-tags > span { font-size: 9px; }
   .is-workspace .main-content .skill-bottom code { font-size: 9px; }
   .is-workspace .main-content .skill-bottom > span { font-size: 10px; }
-  .is-workspace .main-content .activity-table { padding-right: 18px; padding-left: 18px; }
-  .is-workspace .main-content .activity-row { padding-top: 18px; padding-bottom: 18px; }
   .is-workspace .main-content .page-heading { margin-top: 10px; margin-bottom: 27px; }
   .is-workspace .main-content .page-heading .eyebrow { font-size: 9px; line-height: 1.7; }
   .is-workspace .main-content .page-heading h1 { font-size: 42px; }
   .is-workspace .main-content .page-heading p:last-child { font-size: 13px; }
-  .is-workspace .main-content .filter-pills { gap: 6px; }
-  .is-workspace .main-content .filter-pills button { padding: 9px 12px; font-size: 13px; min-height: 40px; }
   .is-workspace .main-content .expanded .console-heading { padding: 23px 18px 18px; }
   .is-workspace .main-content .expanded .console-heading h2 { font-size: 30px; }
   .is-workspace .main-content .expanded .task-input { margin: 0 18px; }
