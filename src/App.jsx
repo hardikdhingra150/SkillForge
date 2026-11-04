@@ -5,12 +5,10 @@ import React, {
 } from 'react';
 
 import {
-  ArrowRight,
   ArrowUpRight,
   AudioLines,
   Check,
   ChevronRight,
-  FileText,
   FlaskConical,
   GitBranch,
   History,
@@ -58,225 +56,15 @@ import { Button, PageHeading, PanelTop, Status } from './components/ui.jsx';
 import { Metrics } from './components/Metrics.jsx';
 import { SkillCard } from './components/SkillCard.jsx';
 import { CrewPanel } from './components/CrewPanel.jsx';
+import { Console } from './components/Console.jsx';
+import { useLiveRun } from './state/useLiveRun.js';
 import { VIEW_IDS, views } from './navigation.js';
 import { getMetricsSummary } from './api/skillforgeProcess.js';
-import { LIVE_FILE, replayLines, runLive } from './api/liveRun.js';
-import recordedRun from './fixtures/recordedRepairRun.json';
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
 import ChatView from './components/ChatView.jsx';
 import ModelsView from './components/ModelsView.jsx';
 import ReviewView from './components/ReviewView.jsx';
-
-const sleep = (ms) => (
-  new Promise((resolve) => setTimeout(resolve, ms))
-);
-
-function LiveResult({ result }) {
-  const products = [...(result.products || [])]
-    .sort((a, b) => Number(b.revenue) - Number(a.revenue))
-    .slice(0, 4);
-  const top = Math.max(...products.map((item) => Math.abs(Number(item.revenue))), 1);
-  const money = (value) => Number(value).toLocaleString(undefined, {
-    style: 'currency',
-    currency: 'USD',
-  });
-
-  return (
-    <div className="demo-result">
-      <span>
-        <Check size={13} />
-        {money(result.total_revenue)} total revenue
-        {' · '}
-        {result.skill?.id} v{result.skill?.version}
-      </span>
-
-      {products.map((item) => (
-        <div key={item.product}>
-          <b style={{ '--width': `${Math.round((100 * Math.abs(Number(item.revenue))) / top)}%` }} />
-          {item.product}
-          <em>{money(item.revenue)}</em>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Console({
-  logs,
-  running,
-  runComplete,
-  stage,
-  reused,
-  live = false,
-  result = null,
-  onRun,
-  expanded = false,
-}) {
-  const logRef = useRef();
-
-  useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop =
-        logRef.current.scrollHeight;
-    }
-  }, [logs, runComplete]);
-
-  return (
-    <section
-      className={`console-panel panel motion-panel ${
-        expanded ? 'expanded' : ''
-      }`}
-    >
-      <PanelTop label="the_learning_loop.exe">
-        <Status color={running ? 'peach' : ''}>
-          {running
-            ? 'THINKING + TINKERING'
-            : runComplete
-              ? 'SKILL UNLOCKED'
-              : 'READY WHEN YOU ARE'}
-        </Status>
-      </PanelTop>
-
-      <div className="console-heading">
-        <div>
-          <p className="eyebrow">
-            FAIL A LITTLE. LEARN A LOT.
-          </p>
-
-          <h2>
-            Watch the magic <span>happen.</span>
-          </h2>
-        </div>
-
-        <div
-          className={`mini-companion ${
-            running ? 'busy' : ''
-          }`}
-        >
-          <PixelSprite kind="patch" />
-        </div>
-      </div>
-
-      <div className="task-input">
-        <span className="prompt-caret">›</span>
-
-        <p>
-          Analyze my sales CSV. Show revenue by product.
-        </p>
-
-        <span className="task-key">↵</span>
-      </div>
-
-      <div className="file-chip">
-        <FileText size={11} />
-
-        <span>{LIVE_FILE.name}</span>
-        <span>{LIVE_FILE.rows} rows · messy amounts</span>
-        <span className="demo-text">{live ? 'LIVE' : 'REPLAY'}</span>
-      </div>
-
-      <div className="lifecycle">
-        {stages.map((name, index) => (
-          <div
-            key={name}
-            className={[
-              'lifecycle-step',
-              stage === index && running ? 'active' : '',
-              runComplete || index < stage ? 'done' : '',
-              reused
-                && [1, 4, 5].includes(index)
-                && stage >= index
-                ? 'skipped'
-                : '',
-            ].filter(Boolean).join(' ')}
-          >
-            <div className="step-node">
-              {runComplete || index < stage
-                ? <Check size={11} />
-                : <span>{index + 1}</span>}
-            </div>
-
-            <span>{name}</span>
-          </div>
-        ))}
-      </div>
-
-      <div
-        className="terminal-output"
-        ref={logRef}
-        aria-live="polite"
-        aria-label="Execution log"
-      >
-        {!logs.length ? (
-          <div className="terminal-idle">
-            <div className="terminal-symbol">
-              {'>_'}
-            </div>
-
-            <div>
-              <p>
-                Every great skill starts with a small problem
-                <span className="cursor">_</span>
-              </p>
-
-              <span>
-                One column mismatch. One clever repair.
-                A capability that sticks.
-              </span>
-            </div>
-          </div>
-        ) : (
-          logs.map((log, index) => (
-            <div
-              key={index}
-              className={`log-line ${log.type || ''}`}
-            >
-              <span className="log-time">
-                {log.time}
-              </span>
-
-              <span className="log-tag">
-                {log.tag}
-              </span>
-
-              <span>{log.message}</span>
-            </div>
-          ))
-        )}
-
-        {runComplete && result && <LiveResult result={result} />}
-
-      </div>
-
-      <div className="console-footer">
-        <span>
-          <LockKeyhole size={11} />
-          {live ? 'REAL RUN · SANDBOXED' : 'RECORDED RUN · API OFFLINE'}
-        </span>
-
-        <Button
-          className="lime small"
-          onClick={onRun}
-          disabled={running}
-          icon={
-            running
-              ? AudioLines
-              : runComplete
-                ? ArrowRight
-                : Play
-          }
-        >
-          {running
-            ? 'Working on it...'
-            : runComplete
-              ? (live ? 'Run again · reuse the skill' : 'Replay again')
-              : 'Let’s run it'}
-        </Button>
-      </div>
-    </section>
-  );
-}
 
 function Modal({
   children,
@@ -678,14 +466,6 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
 
-  const [logs, setLogs] = useState([]);
-  const [running, setRunning] = useState(false);
-  const [runComplete, setRunComplete] = useState(false);
-  const [stage, setStage] = useState(-1);
-  const [reused, setReused] = useState(false);
-  // The console runs for real against the API; the scripted demo is only a fallback.
-  const [consoleLive, setConsoleLive] = useState(true);
-  const [liveResult, setLiveResult] = useState(null);
   const [repairs, setRepairs] = useState(8);
   const [metricsSummary, setMetricsSummary] = useState(null);
 
@@ -756,18 +536,9 @@ export default function App() {
   }, []);
 
   const toastTimeout = useRef();
-  const alive = useRef(true);
-  const inFlight = useRef(false);
   const consoleRef = useRef();
 
-  useEffect(() => {
-    alive.current = true;
-
-    return () => {
-      alive.current = false;
-      clearTimeout(toastTimeout.current);
-    };
-  }, []);
+  useEffect(() => () => clearTimeout(toastTimeout.current), []);
 
   useEffect(() => {
     const handleShortcut = (event) => {
@@ -823,151 +594,10 @@ export default function App() {
     });
   };
 
-  // Offline: replay a recorded real run (src/fixtures/recordedRepairRun.json) at a readable pace.
-  const playDemo = async () => {
-    if (inFlight.current) {
-      return;
-    }
-
-    inFlight.current = true;
-    setRunning(true);
-    setRunComplete(false);
-    setReused(false);
-    setLiveResult(null);
-    setLogs([]);
-    setStage(0);
-
-    for (const line of replayLines()) {
-      if (!alive.current) {
-        return;
-      }
-
-      setStage(line.stage);
-      setLogs((previous) => [...previous, line]);
-      await sleep(line.type === 'error' ? 1400 : 800);
-    }
-
-    if (!alive.current) {
-      return;
-    }
-
-    setLiveResult(recordedRun.result);
-    setRunComplete(true);
-    setStage(6);
-    setRunning(false);
-    inFlight.current = false;
-    notify('That was a recorded real run. Start the API and worker to run it live.');
-  };
-
-  const runController = useRef(null);
-
-  useEffect(() => () => runController.current?.abort(), []);
-
-  const startRun = async () => {
-    if (inFlight.current) {
-      return;
-    }
-
-    inFlight.current = true;
-
-    const started = Date.now();
-    const controller = new AbortController();
-    let lines = 0;
-
-    runController.current = controller;
-
-    const push = (line) => {
-      if (!alive.current) {
-        return;
-      }
-
-      lines += 1;
-      setStage(line.stage);
-      setLogs((previous) => [
-        ...previous,
-        {
-          ...line,
-          time: `00:${String(Math.floor((Date.now() - started) / 1000)).padStart(2, '0')}`,
-        },
-      ]);
-    };
-
-    setRunning(true);
-    setRunComplete(false);
-    setReused(false);
-    setLiveResult(null);
-    setLogs([]);
-    setStage(0);
-
-    try {
-      const { execution, repaired } = await runLive({
-        onLine: push,
-        onWaiting: () => push({
-          stage: 0,
-          tag: 'WAIT',
-          type: '',
-          message: 'No worker has picked this up yet. Start one with make worker.',
-        }),
-        signal: controller.signal,
-      });
-
-      if (!alive.current) {
-        return;
-      }
-
-      const ok = execution?.status === 'succeeded';
-      const version = execution?.result?.skill?.version;
-
-      setConsoleLive(true);
-      setReused(ok && !repaired);
-      setLiveResult(ok ? execution.result : null);
-      setRunComplete(ok);
-      setStage(ok ? 6 : 4);
-
-      if (ok && repaired) {
-        setRepairs((value) => value + 1);
-      }
-
-      notify(
-        !ok
-          ? 'The run needs a human. Open Review to retry or reject it.'
-          : repaired
-            ? `Repaired and saved revenue_by_product v${version}.`
-            : `Reused revenue_by_product v${version}. No repair needed.`,
-      );
-    } catch (error) {
-      if (!alive.current || error.name === 'AbortError') {
-        return;
-      }
-
-      // No API at all: fall back to the scripted demo.
-      if (error.status === 0 && !lines) {
-        setConsoleLive(false);
-        inFlight.current = false;
-        setRunning(false);
-        await playDemo();
-        return;
-      }
-
-      push({ stage: 4, tag: 'FAIL', type: 'error', message: error.message });
-    } finally {
-      if (runController.current === controller) {
-        inFlight.current = false;
-        setRunning(false);
-      }
-    }
-  };
-
-  const consoleProps = {
-    logs,
-    running,
-    runComplete,
-    stage,
-    reused,
-    live: consoleLive,
-    result: liveResult,
-    onRun: startRun,
-  };
+  const { consoleProps, running, startRun } = useLiveRun({
+    notify,
+    onRepaired: () => setRepairs((value) => value + 1),
+  });
 
   const showSkill = (skill) => {
     setModal({
