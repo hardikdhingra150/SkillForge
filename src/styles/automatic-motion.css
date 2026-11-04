@@ -141,11 +141,6 @@
   62% { transform: translateY(-4px) rotate(-3deg); }
   82% { transform: translateY(1px) rotate(1deg); }
 }
-@keyframes sf-auto-small-companion {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
-  38% { transform: translateY(-4px) rotate(4deg); }
-  70% { transform: translateY(-1px) rotate(-2deg); }
-}
 @keyframes sf-auto-symbol {
   0%, 100% { transform: translateY(0) rotate(0) scale(1); }
   28% { transform: translateY(-5px) rotate(-7deg) scale(1.08); }

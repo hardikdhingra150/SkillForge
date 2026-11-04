@@ -76,8 +76,6 @@
 @keyframes sf-icon-breathe{0%,100%{transform:translateY(0) rotate(0)}35%{transform:translateY(-3px) rotate(6deg)}70%{transform:translateY(1px) rotate(-3deg)}}
 @keyframes sf-sigil-tilt{0%,100%{transform:rotate(0)}30%{transform:rotate(-7deg) translateY(-1px)}65%{transform:rotate(5deg)}}
 @keyframes sf-edge-travel{0%,100%{transform:translateX(-20%);opacity:.25}50%{transform:translateX(195%);opacity:.8}}
-@keyframes sf-signal-travel{from{transform:translateX(-110%)}to{transform:translateX(470%)}}
-@keyframes sf-scan-travel{from{transform:translateX(-120%)}to{transform:translateX(420%)}}
 @keyframes sf-pet-float{0%,100%{transform:translateY(0) rotate(-1deg)}45%{transform:translateY(-5px) rotate(2deg)}70%{transform:translateY(-2px)}}
 @keyframes sf-pet-celebrate{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-9px) rotate(-5deg)}65%{transform:translateY(-4px) rotate(4deg)}}
 @keyframes sf-spark-turn{0%,100%{transform:scale(.85) rotate(0);opacity:.5}50%{transform:scale(1.05) rotate(90deg);opacity:1}}
