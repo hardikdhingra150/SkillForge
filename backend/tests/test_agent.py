@@ -112,10 +112,11 @@ class JudgeChoiceTests(unittest.TestCase):
                     for pid in ("claude", "codex", "ollama")}
         return patch.multiple("app.llm.registry.Provider", status=lambda self, refresh=False: statuses[self.id])
 
-    def test_local_author_is_judged_by_a_stronger_model(self):
+    def test_local_author_keeps_verification_on_ollama(self):
         from app.services.agent import pick_judge
-        with self.available("codex", "ollama"):
-            self.assertEqual(pick_judge("ollama", None)[0].id, "codex")
+        with self.available("claude", "codex", "ollama"):
+            self.assertEqual(pick_judge("ollama", "local-model")[0].id, "ollama")
+            self.assertEqual(pick_judge("ollama", "local-model")[1], "local-model")
 
     def test_local_model_never_judges_codex(self):
         from app.services.agent import pick_judge
