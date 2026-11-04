@@ -1,11 +1,6 @@
 /* One atmosphere and one surface system across every route. */
-:root[data-scene=particle]{--glass-panel:rgba(24,35,40,.67);--glass-inset:rgba(12,20,23,.45);--glass-raised:rgba(41,61,65,.56);--glass-edge:rgba(184,214,205,.25);--motion-glint:rgba(205,250,228,.7)}
-:root[data-scene=particle][data-theme=light]{--glass-panel:rgba(255,254,249,.63);--glass-inset:rgba(237,241,233,.47);--glass-raised:rgba(211,225,214,.54);--glass-edge:rgba(80,115,97,.31);--motion-glint:rgba(36,104,71,.55)}
 /* A fixed shared video stays mounted when the route changes. No workspace dimming. */
-:root[data-scene=particle] .app .particle-film-bg{opacity:.54;filter:none;mix-blend-mode:normal;transform:translateZ(0);animation:none}
-:root[data-scene=particle][data-theme=light] .app .particle-film-bg{opacity:.13;filter:grayscale(1) invert(1);mix-blend-mode:multiply}
-:root[data-scene=particle] .app .background-vignette{background:linear-gradient(90deg,var(--bg),transparent 75%),linear-gradient(0deg,var(--bg),transparent 85%);opacity:.74}
-:root[data-scene=particle][data-theme=light] .app .background-vignette{background:linear-gradient(90deg,#eff2e9,transparent);opacity:.45}
+:root[data-scene=particle] .app .particle-film-bg{transform:translateZ(0);animation:none}
 .app .topbar{backdrop-filter:none;background:rgba(12,20,23,.9)}[data-theme=light] .app .topbar{background:rgba(249,251,245,.87)}
 .app .landing-final :is(.hero-product,.forge-capability-strip,.forge-system,.learning-studio,.application-panel,.principle-grid article,.cinema-finale),
 .app.is-workspace .main-content :is(.panel,.metric-card,.skill-card,.guard-card,.hero,.habitat,.console-explain article,.privacy-panel){
@@ -25,14 +20,13 @@
 .app.is-workspace .main-content .skill-platform{background:var(--soft)}
 .app.is-workspace .main-content .skill-grid{opacity:.55}
 .app .core-heart{backdrop-filter:none}
-.app .modal-backdrop{backdrop-filter:none;background:rgba(5,12,15,.74)}
+.app .modal-backdrop{backdrop-filter:none}
 .app .modal{background:var(--glass);border-color:var(--glass-edge)}
 /* Card frames stay stable; their light, icons, and contents remain alive. */
 .app .landing-final :is(.hero-product,.forge-system,.learning-studio,.application-panel,.principle-grid article,.cinema-finale)::before,
 .app.is-workspace .main-content :is(.panel,.metric-card,.skill-card,.guard-card,.hero)::before{
-  content:'';position:absolute;z-index:2;pointer-events:none;top:-1px;left:12%;width:25%;height:1px;
+  content:'';position:absolute;z-index:2;pointer-events:none;top:-1px;left:12%;width:25%;
   background:linear-gradient(90deg,transparent,var(--motion-glint),transparent);opacity:.65;
-  animation:sf-edge-travel 6s calc(var(--i,0)*-.8s) ease-in-out infinite;
 }
 .app.is-workspace .main-content :is(.panel,.metric-card,.skill-card,.guard-card){transition:transform .25s cubic-bezier(.2,.7,.2,1),border-color .25s;animation:sf-surface-enter .5s calc(var(--i,0)*.045s) backwards}
 .app .landing-final :is(.forge-system,.learning-studio,.application-panel,.principle-grid article){transition:border-color .25s,transform .25s}
@@ -61,9 +55,6 @@
 .app.is-workspace .main-content .hero h1>span:last-child{animation:none;filter:none}
 .motion-text{display:inline;white-space:normal}.motion-word{display:inline-block;white-space:pre;animation:sf-word-wave 6.4s calc(var(--word)*-.24s) ease-in-out infinite;transform-origin:50% 80%}.motion-word>span{display:inline-block;transition:transform .22s cubic-bezier(.2,.8,.2,1),color .2s}
 .app.is-workspace .main-content .page-heading h1 .motion-text{font:inherit;letter-spacing:inherit}
-.app.is-workspace .main-content :is(.console-heading h2,.crew-heading h2,.section-heading h2,.guard-card h2,.console-explain h3,.privacy-panel h2),
-.app .landing-final :is(.cinema-section h2,.system-unit h3,.studio-narrative h3,.application-copy h3,.principle-grid h3){animation:sf-heading-drift 7s ease-in-out infinite;transform-origin:0 60%}
-.app.is-workspace .main-content .metric-value{animation:sf-count-enter .55s both,sf-heading-drift 5.8s .6s ease-in-out infinite}
 .app :is(.metric-heading>svg,.guard-card>svg,.forge-capability-strip>div>svg,.result-stamp>svg,.principle-grid article>div>svg){animation:sf-icon-breathe 4.8s calc(var(--i,0)*-.6s) ease-in-out infinite;transform-origin:center}
 .app :is(.panel-sigil,.product-mark>svg,.studio-toolbar>span>svg){display:inline-block;animation:sf-sigil-tilt 5s ease-in-out infinite}
 .app .main-content{animation:sf-page-enter .35s ease-out!important}.app .log-line{animation:sf-log-enter .28s ease-out}.app .modal{animation:sf-surface-enter .22s ease-out}.app .toast{animation:sf-surface-enter .25s ease-out}
