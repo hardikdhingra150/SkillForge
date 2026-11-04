@@ -109,7 +109,8 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
     try {
       const bundle = JSON.parse(await file.text());
       const row = await importSkill(bundle);
-      setImportNote(`Imported ${row.skill_id} v${row.version}: re-proven with ${row.validation?.test_count ?? 0} fixtures in the sandbox.`);
+      const review = row.status === "retired" ? " Review the source and restore this version to enable it." : "";
+      setImportNote(`Imported ${row.skill_id} v${row.version}: re-proven with ${row.validation?.test_count ?? 0} fixtures in the sandbox.${review}`);
       setRefresh((n) => n + 1);
     } catch (failure) {
       setError(failure instanceof SyntaxError ? "That file is not a SkillForge bundle (invalid JSON)." : failure.message);
