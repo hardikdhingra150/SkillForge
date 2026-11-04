@@ -5,6 +5,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from app.api.activity import router as activity_router
 from app.api.chat import fail_interrupted_turns
@@ -47,6 +49,15 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Idempotency-Key"],
 )
+
+
+@app.middleware("http")
+async def reject_cross_origin_writes(request: Request, call_next):
+    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+        origins = request.headers.getlist("origin")
+        if origins and (len(origins) != 1 or origins[0] not in settings.frontend_origins):
+            return JSONResponse({"detail": "This origin cannot modify the local workspace."}, status_code=403)
+    return await call_next(request)
 
 app.include_router(tasks_router)
 app.include_router(inputs_router)
