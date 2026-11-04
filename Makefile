@@ -46,6 +46,9 @@ test-backend: ## Run backend unit tests
 lint-backend: ## Lint backend Python with ruff
 	$(BACKEND) .venv/bin/ruff check .
 
+test-web: ## Run frontend unit tests (Vitest)
+	npm test
+
 lint-web: ## Lint frontend with ESLint
 	npm run lint
 
@@ -54,6 +57,6 @@ lint: lint-backend lint-web ## Lint everything
 build: ## Production build of the frontend
 	npm run build
 
-test: test-backend ## Run all tests
+test: test-backend test-web ## Run all tests
 
 check: lint test build ## Everything CI runs
