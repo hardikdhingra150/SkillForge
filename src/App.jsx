@@ -25,7 +25,6 @@ import {
   Sun,
   Pause,
   Play,
-  Plus,
   Search,
   ShieldCheck,
   Terminal,
@@ -921,123 +920,6 @@ function SkillDetail({
   );
 }
 
-function NewSkill({
-  onClose,
-  onCreate,
-  skills,
-}) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
-
-  return (
-    <Modal
-      title="A new skill is a new possibility."
-      eyebrow="GIVE YOUR IDEA A NAME"
-      onClose={onClose}
-    >
-      <form
-        className="modal-body create-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-
-          const id = (
-            name
-              .trim()
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '_')
-              .replace(/^_|_$/g, '')
-          ) || `skill_${Date.now()}`;
-
-          if (!name.trim() || !description.trim()) {
-            setError(
-              'A name and a little description will get us started.',
-            );
-            return;
-          }
-
-          if (skills.some((skill) => skill.id === id)) {
-            setError(
-              'That name already has a home here. Try a new one.',
-            );
-            return;
-          }
-
-          onCreate({
-            id,
-            name: name.trim(),
-            description: description.trim(),
-            version: '0.1',
-            kind: 'byte',
-            category: 'Custom',
-            tools: [],
-            tests: 0,
-            runs: 0,
-            draft: true,
-          });
-        }}
-      >
-        <div className="new-skill-sprite">
-          <PixelSprite kind="byte" />
-          <span>What are we making today?</span>
-        </div>
-
-        <label htmlFor="skill-name">
-          SKILL NAME
-        </label>
-
-        <input
-          id="skill-name"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-          placeholder="Invoice detective, perhaps?"
-          maxLength={45}
-          required
-        />
-
-        <label htmlFor="skill-description">
-          WHAT SHOULD IT HELP WITH?
-        </label>
-
-        <textarea
-          id="skill-description"
-          value={description}
-          onChange={(event) => {
-            setDescription(event.target.value);
-          }}
-          placeholder="Compare invoices to purchase orders and flag anything that looks off..."
-          maxLength={220}
-          required
-        />
-
-        <p className="modal-note">
-          This adds a draft to the preview. It will need
-          validation before becoming a reusable skill.
-        </p>
-
-        {error && (
-          <p
-            className="form-error"
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
-
-        <Button
-          className="lime"
-          type="submit"
-          icon={Plus}
-        >
-          Bring the idea to life
-        </Button>
-      </form>
-    </Modal>
-  );
-}
-
 function Guardrails() {
   const rules = [
     {
@@ -1186,7 +1068,7 @@ export default function App() {
   ));
 
   const [mode] = useState('voxel');
-  const [skills, setSkills] = useState(initialSkills);
+  const [skills] = useState(initialSkills);
   const [runs] = useState(initialRuns);
 
   const [modal, setModal] = useState(null);
@@ -2109,27 +1991,6 @@ export default function App() {
         />
       )}
 
-      {modal?.type === 'create' && (
-        <NewSkill
-          skills={skills}
-          onClose={() => setModal(null)}
-          onCreate={(skill) => {
-            setSkills((previous) => [
-              skill,
-              ...previous,
-            ]);
-
-            setModal(null);
-
-            notify(
-              `${skill.name} is taking its first little steps.`,
-            );
-
-            navigate('library');
-          }}
-        />
-      )}
-
       {modal?.type === 'crew' && (
         <Modal
           eyebrow="MEET YOUR LITTLE TEAM"
@@ -2272,51 +2133,6 @@ export default function App() {
                 <PixelSpark />
               </div>
             ))}
-          </div>
-        </Modal>
-      )}
-
-      {modal?.type === 'run' && (
-        <Modal
-          title={modal.run.name}
-          eyebrow="A LITTLE TRACE OF WHAT HAPPENED"
-          onClose={() => setModal(null)}
-        >
-          <div className="modal-body">
-            <div className="run-detail-stats">
-              <div>
-                <small>OUTCOME</small>
-                <strong>{modal.run.result}</strong>
-              </div>
-
-              <div>
-                <small>VERSION</small>
-                <strong>v{modal.run.version}</strong>
-              </div>
-
-              <div>
-                <small>TIME</small>
-                <strong>{modal.run.duration}</strong>
-              </div>
-            </div>
-
-            <pre className="code-block">
-              {JSON.stringify(
-                {
-                  execution_id: modal.run.id,
-                  skill: modal.run.skill,
-                  version: modal.run.version,
-                  status: 'completed',
-                  tests: 'passed',
-                  repairs: modal.run.result === 'Repaired'
-                    ? 1
-                    : 0,
-                  source: 'illustrative_demo',
-                },
-                null,
-                2,
-              )}
-            </pre>
           </div>
         </Modal>
       )}
