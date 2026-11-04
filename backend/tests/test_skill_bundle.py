@@ -38,7 +38,7 @@ class ImportTests(unittest.TestCase):
         db = FakeDB()
         row, created = import_bundle(db, bundle())
         self.assertTrue(created)
-        self.assertEqual((row.origin, row.status, row.version), ("imported", "validated", "1.0.0"))
+        self.assertEqual((row.origin, row.status, row.version), ("imported", "retired", "1.0.0"))
         self.assertEqual(row.validation_json["test_count"], 4)
         self.assertTrue(row.validation_json["imported"])
 

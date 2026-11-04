@@ -74,7 +74,7 @@ def import_bundle(db, bundle: dict) -> tuple[SkillVersion, bool]:
         major, minor = max(version_key(v) for v in taken)[:2]
         wanted = f"{major}.{minor + 1}.0"
     row = SkillVersion(
-        skill_id=skill_id, version=wanted, capability=contract.capability, status="validated",
+        skill_id=skill_id, version=wanted, capability=contract.capability, status="retired",
         implementation_hash=fingerprint, validation_json={**evidence, "imported": True}, source_code=source,
         contract_json=contract_data, origin="imported", parent_version=None,
         change_json={"imported_from": {"skill_id": skill.get("skill_id"), "version": skill.get("version"),
