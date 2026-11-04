@@ -33,3 +33,15 @@ test('the theme toggle switches and remembers light mode', async ({ page }) => {
   await page.reload();
   await expect(html).toHaveAttribute('data-theme', next);
 });
+
+test('the Live console replays a recorded real run when the API is offline', async ({ page }) => {
+  await page.unrouteAll();
+  await page.route('http://127.0.0.1:5999/api/v1/**', (route) => route.abort());
+  await page.goto('/#console');
+  await page.getByRole('button', { name: 'Let’s run it' }).click();
+
+  const log = page.getByLabel('Execution log');
+  await expect(log.getByText('Saved revenue_by_product v1.1.0 (repaired from v1.0.0).', { exact: false })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText('RECORDED RUN · API OFFLINE')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Replay again' })).toBeVisible({ timeout: 10000 });
+});
