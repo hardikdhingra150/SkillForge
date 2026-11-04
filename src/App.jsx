@@ -8,19 +8,16 @@ import {
   ArrowRight,
   ArrowUpRight,
   AudioLines,
-  Box,
   Check,
   CheckCheck,
   ChevronRight,
   FileText,
   FlaskConical,
-  Gauge,
   GitBranch,
   History,
   Layers3,
   LockKeyhole,
   Menu,
-  MessagesSquare,
   Moon,
   Sun,
   Pause,
@@ -61,6 +58,8 @@ import {
 } from './components/ScrollStory';
 
 import SkillForgeProcessView from './components/SkillForgeProcessView.jsx';
+import { Button, PageHeading, PanelTop, Status } from './components/ui.jsx';
+import { VIEW_IDS, views } from './navigation.js';
 import { getMetricsSummary } from './api/skillforgeProcess.js';
 import { LIVE_FILE, replayLines, runLive } from './api/liveRun.js';
 import recordedRun from './fixtures/recordedRepairRun.json';
@@ -70,99 +69,9 @@ import ChatView from './components/ChatView.jsx';
 import ModelsView from './components/ModelsView.jsx';
 import ReviewView from './components/ReviewView.jsx';
 
-const views = [
-  {
-    id: 'workbench',
-    label: 'Workbench',
-    icon: Box,
-  },
-  {
-    id: 'chat',
-    label: 'Chat',
-    icon: MessagesSquare,
-  },
-  {
-    id: 'library',
-    label: 'Skill library',
-    icon: Layers3,
-  },
-  {
-    id: 'models',
-    label: 'Models',
-    icon: Gauge,
-  },
-  {
-    id: 'review',
-    label: 'Review',
-    icon: ShieldCheck,
-  },
-  {
-    id: 'console',
-    label: 'Live console',
-    icon: Terminal,
-  },
-  {
-    id: 'activity',
-    label: 'Activity',
-    icon: History,
-  },
-];
-
 const sleep = (ms) => (
   new Promise((resolve) => setTimeout(resolve, ms))
 );
-
-function Button({
-  children,
-  icon: Icon = ArrowUpRight,
-  className = '',
-  ...props
-}) {
-  return (
-    <button
-      className={`button ${className}`}
-      {...props}
-    >
-      {children}
-      {Icon && <Icon size={16} />}
-    </button>
-  );
-}
-
-function PanelTop({
-  label,
-  children,
-  tone = '',
-}) {
-  return (
-    <div className={`panel-top ${tone}`}>
-      <span
-        className="panel-sigil"
-        aria-hidden="true"
-      >
-        [·]
-      </span>
-
-      <span>{label}</span>
-
-      <div className="panel-top-right">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Status({
-  children,
-  color = '',
-}) {
-  return (
-    <span className={`status ${color}`}>
-      <i />
-      {children}
-    </span>
-  );
-}
 
 function liveMetrics(summary) {
   const count = (value) => String(value).padStart(2, '0');
@@ -1002,29 +911,6 @@ function Guardrails() {
   );
 }
 
-function PageHeading({
-  label,
-  title,
-  description,
-  children,
-}) {
-  return (
-    <div className="page-heading">
-      <div>
-        <p className="eyebrow">{label}</p>
-
-        <h1>
-          <MotionText text={title} />
-        </h1>
-
-        <p>{description}</p>
-      </div>
-
-      {children}
-    </div>
-  );
-}
-
 export default function App() {
   const [
     requestedExecutionId,
@@ -1032,16 +918,7 @@ export default function App() {
   ] = useState('');
 
   const [view, setView] = useState(() => (
-    [
-      'workbench',
-      'chat',
-      'library',
-      'models',
-      'review',
-      'console',
-      'activity',
-      'governance',
-    ].includes(location.hash.slice(1))
+    VIEW_IDS.includes(location.hash.slice(1))
       ? location.hash.slice(1)
       : 'landing'
   ));
@@ -1136,16 +1013,7 @@ export default function App() {
       const id = location.hash.slice(1);
 
       setView(
-        [
-          'workbench',
-          'chat',
-          'library',
-          'models',
-          'review',
-          'console',
-          'activity',
-          'governance',
-        ].includes(id)
+        VIEW_IDS.includes(id)
           ? id
           : 'landing',
       );
