@@ -5,6 +5,11 @@ Stdlib only: the sandbox child process imports this module directly.
 
 import ast
 
+if __package__:
+    from .tools import TOOL_NAMES
+else:
+    from tools import TOOL_NAMES
+
 MAX_SOURCE_BYTES = 50_000
 ENTRYPOINT = "run"
 
@@ -25,8 +30,19 @@ BANNED_NAMES = frozenset({
 BANNED_NODES = (
     ast.Import, ast.ImportFrom, ast.Global, ast.Nonlocal, ast.ClassDef,
     ast.AsyncFunctionDef, ast.Await, ast.AsyncFor, ast.AsyncWith,
-    ast.Yield, ast.YieldFrom,
+    ast.Yield, ast.YieldFrom, ast.MatchClass,
 )
+
+SAFE_ATTRIBUTES = frozenset(TOOL_NAMES) | {
+    "add", "append", "capitalize", "casefold", "clear", "copy", "count",
+    "difference", "discard", "endswith", "extend", "find", "get", "index",
+    "insert", "intersection", "isalnum", "isalpha", "isdigit", "isfinite",
+    "islower", "isspace", "isupper", "items", "join", "keys", "lower",
+    "lstrip", "partition", "pop", "remove", "replace", "reverse", "rfind",
+    "rpartition", "rsplit", "rstrip", "setdefault", "sort", "split",
+    "splitlines", "startswith", "strip", "swapcase", "title", "union",
+    "update", "upper", "values",
+}
 
 
 class PolicyViolation(ValueError):
@@ -51,6 +67,8 @@ def check_source(source: str) -> ast.Module:
             raise PolicyViolation(f"The name {node.id!r} is not allowed in skills (line {line}).")
         if isinstance(node, ast.Attribute) and node.attr.startswith("_"):
             raise PolicyViolation(f"Private attribute {node.attr!r} is not allowed in skills (line {line}).")
+        if isinstance(node, ast.Attribute) and node.attr not in SAFE_ATTRIBUTES:
+            raise PolicyViolation(f"Attribute {node.attr!r} is not allowed in skills (line {line}).")
 
     # Only functions, constants and a docstring at module level: nothing runs on load.
     for node in tree.body:

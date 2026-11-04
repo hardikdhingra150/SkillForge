@@ -26,6 +26,11 @@ class PolicyTests(unittest.TestCase):
         self.assert_blocked(skill("return ().__class__.__bases__"), "Private attribute")
         self.assert_blocked(skill("return tools._secret"), "Private attribute")
 
+    def test_blocks_interpreter_introspection_and_dynamic_attribute_reads(self):
+        self.assert_blocked(skill("return (x for x in ()).gi_frame"), "Attribute")
+        self.assert_blocked(skill("return '{0.value}'.format(inputs)"), "Attribute")
+        self.assert_blocked(skill("match inputs:\n    case dict():\n        return {}"), "MatchClass")
+
     def test_blocks_code_running_at_import(self):
         self.assert_blocked("x = [1]\n" + skill("return {}"), "module level")
         self.assert_blocked("class A:\n    pass\n" + skill("return {}"), "ClassDef")
