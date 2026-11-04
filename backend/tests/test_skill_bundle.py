@@ -59,6 +59,12 @@ class ImportTests(unittest.TestCase):
         with self.assertRaisesRegex(BundleError, "hash"):
             import_bundle(FakeDB(), tampered)
 
+    def test_invalid_version_is_rejected_before_running_fixtures(self):
+        invalid = bundle()
+        invalid["skill"]["version"] = "invalid"
+        with self.assertRaisesRegex(BundleError, "numeric major.minor.patch"):
+            import_bundle(FakeDB(), invalid)
+
     def test_unsafe_code_is_rejected_even_with_a_matching_hash(self):
         evil = bundle()
         evil["skill"]["source"] = "import os\n" + evil["skill"]["source"]

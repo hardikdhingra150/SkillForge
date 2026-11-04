@@ -13,7 +13,7 @@ from app.database.skill_models import SkillVersion
 from app.sandbox import check_source
 from app.schemas.skill_contract import SkillContract
 from app.services.repair import decode_fixture, encode_fixture, lineage_fixtures
-from app.services.skill_registry import implementation_hash, run_fixture_tests, version_key
+from app.services.skill_registry import VERSION_PATTERN, implementation_hash, run_fixture_tests, version_key
 
 FORMAT = "skillforge.skill/v1"
 MAX_FIXTURES = 50
@@ -53,6 +53,9 @@ def import_bundle(db, bundle: dict) -> tuple[SkillVersion, bool]:
     source, contract_data = skill.get("source"), skill.get("contract")
     if not isinstance(source, str) or not isinstance(contract_data, dict):
         raise BundleError("The bundle is missing the skill's source or contract.")
+    wanted = skill.get("version", "1.0.0")
+    if not isinstance(wanted, str) or not VERSION_PATTERN.fullmatch(wanted):
+        raise BundleError("Skill version must be a numeric major.minor.patch version.")
     contract = SkillContract.model_validate(contract_data)
     check_source(source)
     fingerprint = implementation_hash(source, contract_data)
@@ -68,7 +71,6 @@ def import_bundle(db, bundle: dict) -> tuple[SkillVersion, bool]:
     same = next((v for v in versions if v.implementation_hash == fingerprint), None)
     if same is not None:
         return same, False
-    wanted = str(skill.get("version") or "1.0.0")
     taken = {v.version for v in versions}
     if wanted in taken:
         major, minor = max(version_key(v) for v in taken)[:2]
