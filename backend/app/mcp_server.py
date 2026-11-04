@@ -24,7 +24,7 @@ from app.database.skill_models import SkillVersion
 from app.sandbox import run_skill
 from app.services import scoreboard
 from app.services.checks import CheckFailed, run_checks
-from app.services.skill_registry import SkillIntegrityError, latest_validated, verify, version_key
+from app.services.skill_registry import VERSION_PATTERN, SkillIntegrityError, latest_validated, verify, version_key
 
 logger = logging.getLogger("skillforge.mcp")
 server = Server("skillforge", instructions=(
@@ -45,6 +45,8 @@ def latest_skills(db) -> dict[str, SkillVersion]:
     rows = db.scalars(select(SkillVersion).where(SkillVersion.status == "validated", SkillVersion.source_code.is_not(None))).all()
     best: dict[str, SkillVersion] = {}
     for row in rows:
+        if not VERSION_PATTERN.fullmatch(row.version):
+            continue
         current = best.get(row.capability)
         if current is None or version_key(row.version) > version_key(current.version):
             best[row.capability] = row

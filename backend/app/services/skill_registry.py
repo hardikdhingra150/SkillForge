@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -35,7 +36,12 @@ def implementation_hash(source: str, contract: dict) -> str:
     return hashlib.sha256(b"skillforge-skill-v1\0" + source.encode() + b"\0" + canonical_contract(contract)).hexdigest()
 
 
+VERSION_PATTERN = re.compile(r"[0-9]{1,9}\.[0-9]{1,9}\.[0-9]{1,9}")
+
+
 def version_key(version: str) -> tuple[int, ...]:
+    if not VERSION_PATTERN.fullmatch(version):
+        return (-1, -1, -1)
     return tuple(int(part) for part in version.split("."))
 
 
@@ -48,7 +54,8 @@ def latest_validated(db, capability: str) -> SkillVersion | None:
             SkillVersion.source_code.is_not(None),
         ).with_for_update(read=True)
     ).all()
-    return max(rows, key=lambda row: version_key(row.version), default=None)
+    return max((row for row in rows if VERSION_PATTERN.fullmatch(row.version)),
+               key=lambda row: version_key(row.version), default=None)
 
 
 def verify(skill: SkillVersion) -> SkillContract:
