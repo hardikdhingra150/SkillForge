@@ -5,7 +5,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from sqlalchemy import or_, select, tuple_
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -36,6 +36,12 @@ class SkillVersionOut(BaseModel):
     change: dict[str, Any] | None = Field(validation_alias="change_json")
     source_code: str | None
     created_at: datetime
+
+    @field_serializer("change")
+    def serialize_change(self, change: dict[str, Any] | None):
+        if change is None:
+            return None
+        return {key: value for key, value in change.items() if key != "fixtures"}
 
 
 class SkillPage(BaseModel):
