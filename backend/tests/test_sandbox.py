@@ -104,6 +104,8 @@ class RuntimeGuardTests(unittest.TestCase):
         "change environment": "import os; os.putenv('X', '1')",
     }
 
+    # A blocked module can surface as ImportError: the import system swallows the guard's PermissionError
+    # when it lists the package directory (seen with ctypes on CI's Python build).
     def attempt(self, code):
         import subprocess
         import sys
@@ -111,7 +113,7 @@ class RuntimeGuardTests(unittest.TestCase):
 
         sandbox = Path(__file__).resolve().parents[1] / "app" / "sandbox"
         script = f"import sys; sys.path.insert(0, {str(sandbox)!r}); import child; child.install_guard()\n" \
-                 f"try:\n    {code}\n    print('ALLOWED')\nexcept PermissionError as error:\n    print('BLOCKED', error)\n"
+                 f"try:\n    {code}\n    print('ALLOWED')\nexcept (PermissionError, ImportError) as error:\n    print('BLOCKED', error)\n"
         done = subprocess.run([sys.executable, "-I", "-S", "-c", script], capture_output=True, text=True, timeout=20)
         return done.stdout.strip() or done.stderr.strip().splitlines()[-1]
 
