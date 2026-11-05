@@ -12,14 +12,14 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 
 | Layer | Done | Missing |
 |---|---|---|
-| Frontend | Themed landing page, workspace, Process view, Skill library, Activity, scroll and pop animations, dark and light modes | `App.jsx` is about 2,400 lines; the crew panel and sample skill cards are still illustrative; no frontend tests |
+| Frontend | Themed landing page, workspace, Process view, Skill library, Activity, scroll and pop animations, dark and light modes | The crew panel and sample skill cards are still illustrative |
 | API | `POST /tasks`, `GET /executions`, `GET /executions/{id}`, `GET /executions/{id}/events`, CSV `input` / `input/confirm`, `GET /skills`, health checks | Metrics, live updates over SSE, repair approval, skill source and diffs |
 | Worker | Reviews requirements; runs the confirmed CSV with **one** built-in skill and validates the result | **Create** and **repair** stages, promoting new versions |
 | Data | `Task`, `Execution`, `ExecutionEvent`, `ExecutionCSVInput`, `SkillVersion` (hash and validation evidence) | Skill source code, contract, parent version, repair history |
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-**Phases 0–6 are done** (plus chat with Claude, Codex and a local model). Next: Phase 7 (frontend code health), then deploy.
+**Phases 0–7 are done** (plus chat with Claude, Codex and a local model). Next: Phase 8 (security and guardrails), then deploy.
 
 ---
 
@@ -240,7 +240,14 @@ _Shipped:_
 
 ---
 
-## Phase 7: frontend code health (3–4 days; can run alongside Phase 6)
+## Phase 7: frontend code health (3–4 days; can run alongside Phase 6) ✅ Done
+
+_Shipped:_
+- _**App.jsx split** from 2,417 to about 410 lines: `routes/` (Workbench, ConsolePage, Guardrails), `state/useLiveRun.js`, and components for the Topbar, Footer, modals, Console, Metrics and more. Two unreachable modals were deleted. No source file is over 500 lines._
+- _**CSS:** 1,317 rules that could never match, 23 unused `@keyframes` and 302 overridden declarations deleted (311.7 KB → 208.5 KB). The theme's custom properties live in `styles/tokens.css`. The 13 stacked layers are merged, in their original order, into five files. A full per-component split would reorder the cascade, so the layers stay in order on purpose. Each step was checked with a computed-style snapshot of every page in both themes._
+- _**Tests:** Vitest (`mergeEvents`, API errors and cursors, the console event mapping and replay, `useSkillForgeProcess`). Playwright smoke tests (landing, Workbench submit → Activity, theme toggle, offline console replay). All run in CI._
+- _**Accessibility:** axe-core WCAG 2 AA passes on all nine pages in both themes (CI-enforced); keyboard navigation test; screen-reader text for animated headings; light-mode contrast fix; focus rings on every focusable control._
+
 
 1. **Split `App.jsx`** into:
    - `src/routes/{Workbench,Library,Console,Activity,Guardrails}.jsx`

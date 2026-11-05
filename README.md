@@ -180,7 +180,8 @@ A `Makefile` wraps the common tasks. Run `make help` to list them.
 | `make db` / `make migrate` / `make seed` | Start Postgres, apply migrations, register the built-in skills |
 | `make api` / `make worker` / `make web` | Run the API (:8000), the worker, and the frontend (:5173) |
 | `make lint` | Run `ruff` (backend) and ESLint (frontend) |
-| `make test` | Backend unit tests |
+| `make test` | Backend unit tests and frontend Vitest tests |
+| `make e2e` | Playwright smoke and accessibility tests against a mocked API (run `npx playwright install chromium` once) |
 | `make check` | Lint, tests and the production build: everything CI runs |
 
 ### CI
@@ -188,7 +189,8 @@ A `Makefile` wraps the common tasks. Run `make help` to list them.
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on every pull request:
 
 - **Backend:** `ruff check` and the unit tests on Python 3.14.
-- **Frontend:** ESLint with zero warnings allowed, then `vite build`.
+- **Frontend:** ESLint with zero warnings allowed, Vitest, then `vite build`.
+- **E2E:** Playwright smoke tests and an axe-core WCAG 2 AA scan of every page in both themes, against a mocked API (traces are uploaded on failure).
 
 > A registered skill version is immutable. Its `implementation_hash` covers its stored source and contract, and the worker refuses to run a version whose stored source no longer matches. To change a built-in skill (`backend/app/skills/`), bump its version and run `make seed`.
 
@@ -196,10 +198,17 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on 
 
 ```text
 src/
-  App.jsx                     workspace routes, demo run, dialogs, theme
-  api/skillforgeProcess.js    API client (VITE_API_BASE_URL)
-  hooks/useSkillForgeProcess.js  submit / poll / reopen an execution
+  App.jsx                     routing, theme, motion, toasts and modal state (~410 lines)
+  navigation.js               the workspace pages and valid #hash routes
+  routes/                     Workbench, ConsolePage, Guardrails
+  state/useLiveRun.js         the Live console's real run and offline replay
+  api/skillforgeProcess.js    API client (VITE_API_BASE_URL), run stream, metrics
+  api/liveRun.js              the console's real run: submit, upload the demo CSV, follow events
+  fixtures/recordedRepairRun.json  a recorded real repair run, replayed when the API is offline
+  hooks/useSkillForgeProcess.js  submit / stream (polling fallback) / reopen an execution
   components/
+    Topbar.jsx · Footer.jsx · AppModals.jsx · Modal.jsx · SkillDetail.jsx
+    Console.jsx · Metrics.jsx · SkillCard.jsx · CrewPanel.jsx · EvolvingCore.jsx · ui.jsx
     Landing.jsx               4-section landing page
     HeroForge.jsx             hero + self-playing learning-loop console
     Pop.jsx                   spring pop-in, word reveals, pixel bursts
@@ -207,7 +216,10 @@ src/
     ChatView.jsx              chat: provider picker (Auto…), CSV attachments, live steps, skill/pipeline cards
     ModelsView.jsx · ReviewView.jsx  model scoreboard and routing; human review queue
     SkillForgeProcessView.jsx · SkillRegistryView.jsx · ExecutionHistory.jsx · CSVInputPanel.jsx
-  *.css                       theme layers (neutral-theme.css holds the palette)
+  styles/                     global CSS in cascade order: tokens.css (palette), base, workspace,
+                              api-views, scroll, landing; component CSS sits next to its component
+  **/*.test.js(x)             Vitest unit tests
+e2e/                          Playwright smoke + accessibility tests, mockApi.js
 backend/
   app/main.py                 FastAPI app and routers (/api/v1)
   app/worker.py               polling worker: requirement review + execution
@@ -230,3 +242,5 @@ compose.yaml                  local Postgres
 - Decorative motion pauses when it's off screen or the tab is hidden.
 - The header has a pause control, and the system "reduce motion" setting is respected; both show all content without animation.
 - Byte and Scout follow a mouse pointer on desktop and never intercept input.
+- Animated headings split text into `aria-hidden` pieces and keep one screen-reader copy of the full text.
+- Every page passes an axe-core WCAG 2 AA scan in dark and light mode (`make e2e`), and the header is keyboard navigable with visible focus rings.
