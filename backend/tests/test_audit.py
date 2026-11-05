@@ -27,3 +27,19 @@ class AuditRecordTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AuditEndpointTests(unittest.TestCase):
+    def test_unknown_actions_are_rejected_before_querying(self):
+        from fastapi.testclient import TestClient
+
+        from app.database.session import get_db
+        from app.main import app
+
+        app.dependency_overrides[get_db] = lambda: None
+        try:
+            response = TestClient(app).get("/api/v1/audit?action=skill.deleted")
+        finally:
+            app.dependency_overrides.clear()
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("skill.promoted", response.json()["detail"])
