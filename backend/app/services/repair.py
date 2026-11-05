@@ -18,6 +18,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.database.skill_models import SkillVersion
 from app.sandbox import PolicyViolation, check_source, run_skill
 from app.schemas.skill_contract import SkillContract
+from app.services import audit
 from app.services.checks import CheckFailed, run_checks
 from app.services.skill_registry import implementation_hash, run_fixture_tests, version_key
 from app.skills import BUILTIN_SKILLS
@@ -133,8 +134,8 @@ def retired_duplicate(db, skill_id, source, contract):
                                                  SkillVersion.implementation_hash == fingerprint)).first()
 
 
-def promote(db, parent, source, contract, evidence, change) -> SkillVersion:
-    """Insert the repaired version. If another worker promoted the same fix first, reuse it."""
+def promote(db, parent, source, contract, evidence, change, actor: str = "worker") -> SkillVersion:
+    """Insert the repaired version and audit it. If another worker promoted the same fix first, reuse it."""
     fingerprint = implementation_hash(source, contract)
     for _ in range(5):
         version = next_version(db, parent.skill_id, parent.version)
@@ -146,6 +147,12 @@ def promote(db, parent, source, contract, evidence, change) -> SkillVersion:
             ).on_conflict_do_nothing(index_elements=["skill_id", "version"])
         ).rowcount
         row = db.get(SkillVersion, (parent.skill_id, version))
+        if inserted:
+            audit.record(db, actor=actor, action="skill.promoted", target=audit.skill_target(row.skill_id, row.version),
+                         reason=change.get("summary") or f"Repaired from v{parent.version}.",
+                         details={"parent_version": parent.version, "strategy": change.get("strategy"),
+                                  "failure": (change.get("failure") or {}).get("code"),
+                                  "tests": evidence.get("test_count"), "implementation_hash": fingerprint})
         if inserted or row.implementation_hash == fingerprint:
             return row
     raise RuntimeError("Could not allocate a version for the repaired skill.")
@@ -167,7 +174,7 @@ class Exhausted:
     last_failure: Failure
 
 
-def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int):
+def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int, actor: str = "worker"):
     """Try up to `budget` strategies. Returns Repaired, or Exhausted for human review."""
     source, contract = skill.source_code, skill.contract_json
     attempts, tried, diagnosed = [], set(), failure
@@ -221,7 +228,7 @@ def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int
                 "fixtures": [encode_fixture(*fixture) for fixture in new_fixtures],
             }
             new = promote(db, skill, patch.source, patch.contract,
-                          {**evidence, "repaired_from": skill.version}, change)
+                          {**evidence, "repaired_from": skill.version}, change, actor=actor)
             emit("repair_applied", "repair", f"The patched skill passed {evidence['test_count']} tests and all contract checks.",
                  {"strategy": strategy.name, "tests": evidence["tests"]})
             emit("skill_promoted", "versioning", f"Saved {new.skill_id} v{new.version} (repaired from v{skill.version}). "
