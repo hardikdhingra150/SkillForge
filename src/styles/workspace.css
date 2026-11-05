@@ -9,7 +9,6 @@
   padding: 0 48px;
   animation: none;
 }
-.is-workspace .main-content :is(section, article, .work-grid > div, .hero-copy, .skill-content, .crew-member > div) { min-width: 0; }
 .is-workspace .main-content :is(.motion-panel, .panel, .metric-card, .skill-card, .guard-card) {
   animation: none;
   transform: none;
@@ -19,7 +18,6 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, .06);
   backdrop-filter: none;
 }
-.is-workspace .main-content :is(.skill-card:hover, .activity-row:hover, .crew-member:hover) { transform: none; }
 .is-workspace .main-content .skill-card:hover { border-color: var(--lime); box-shadow: 0 0 0 1px var(--lime); }
 .is-workspace .main-content button:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
 .is-workspace .main-content .button { min-height: 45px; font-size: 13px; padding: 12px 18px; border-radius: 10px; gap: 12px; }
@@ -54,12 +52,7 @@
 .is-workspace .main-content .hero-copy > p strong { color: var(--text); font-weight: 500; }
 .is-workspace .main-content .hero-copy .desktop-break { display: none; }
 .is-workspace .main-content .hero-actions { flex-wrap: wrap; gap: 12px 20px; }
-.is-workspace .main-content .hero-bottom { margin-top: 25px; gap: 11px; }
-.is-workspace .main-content .hero-bottom > span { font-size: 8px; line-height: 1.6; letter-spacing: .45px; }
-.is-workspace .main-content .hero-bottom .hero-arrow { font-size: 30px; color: var(--muted); margin-left: 0; }
 .is-workspace .main-content .hero > .evolving-core { width: 100%; max-width: 375px; justify-self: center; }
-.is-workspace .main-content .core-caption { font-size: 8px; }
-.is-workspace .main-content .core-coordinate { font-size: 7px; }
 .is-workspace .main-content .section-meta { gap: 18px; margin-bottom: 14px; }
 .is-workspace .main-content .section-meta > span:first-child { color: var(--text); }
 .is-workspace .main-content .section-meta > span:last-child { font-size: 9px; color: var(--muted); letter-spacing: .4px; }
@@ -118,22 +111,6 @@
 .is-workspace .main-content .demo-result { font-size: 11px; padding: 15px; border-color: var(--line); background: var(--surface); }
 .is-workspace .main-content .demo-result > div { font-size: 10px; }
 .is-workspace .main-content .demo-result em { color: var(--text); }
-.is-workspace .main-content .crew-panel { display: flex; flex-direction: column; }
-.is-workspace .main-content .crew-count { font-size: 9px; }
-.is-workspace .main-content .crew-heading { padding: 27px 24px 15px; display: block; }
-.is-workspace .main-content .crew-heading h2 { font: 35px/1.08 var(--pixel); margin: 0 0 12px; }
-.is-workspace .main-content .crew-heading p { max-width: none; font-size: 13px; line-height: 1.7; }
-.is-workspace .main-content .crew-list { padding: 0 18px 16px; }
-.is-workspace .main-content .crew-member { padding: 17px 6px; gap: 13px; border-color: var(--line); }
-.is-workspace .main-content .crew-member:hover { background: var(--soft); }
-.is-workspace .main-content .crew-avatar { width: 48px; height: 48px; border-color: var(--line); background: var(--surface-high); }
-.is-workspace .main-content .crew-avatar .pixel-sprite { width: 42px; height: 42px; }
-.is-workspace .main-content .crew-member h3 { font-size: 25px; margin-bottom: 6px; flex-wrap: wrap; gap: 4px 9px; }
-.is-workspace .main-content .crew-member h3 > span { font-size: 8px; color: var(--muted); letter-spacing: .2px; }
-.is-workspace .main-content .crew-member p { font-size: 12px; line-height: 1.65; color: var(--muted); }
-.is-workspace .main-content .crew-note { padding: 19px 24px; background: var(--surface-high); border-color: var(--line); }
-.is-workspace .main-content .crew-note > span { font-size: 8px; line-height: 1.9; letter-spacing: .4px; color: var(--muted); }
-.is-workspace .main-content .crew-note .crew-heart { font-size: 26px; color: var(--lime); }
 
 /* A card should read as an object: clear artwork, then useful information. */
 .is-workspace .main-content .section-heading { align-items: end; gap: 24px; margin-bottom: 23px; }
@@ -142,21 +119,11 @@
 .is-workspace .main-content .section-heading h2 > span { color: var(--muted); }
 .is-workspace .main-content .skills-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; align-items: stretch; }
 .is-workspace .main-content .skill-card { padding: 10px; gap: 0; display: flex; flex-direction: column; border-radius: 21px; }
-.is-workspace .main-content .skill-scene { min-height: 190px; height: 190px; width: 100%; border-radius: 13px; border-color: var(--line); background: var(--surface-high); }
-.is-workspace .main-content .skill-grid { opacity: .35; }
-.is-workspace .main-content .skill-scene > .pixel-sprite { height: 98px; width: 98px; }
-.is-workspace .main-content .skill-number { font-size: 8px; line-height: 1.5; left: 14px; top: 13px; color: var(--muted); letter-spacing: .4px; }
-.is-workspace .main-content .skill-hover-label { font-size: 8px; line-height: 1.5; right: 14px; top: 13px; color: var(--muted); letter-spacing: .3px; }
-.is-workspace .main-content .skill-tagline { font-size: 8px; line-height: 1.6; bottom: 13px; color: var(--muted); letter-spacing: .4px; padding: 0 15px; }
-.is-workspace .main-content .skill-platform { top: 132px; left: calc(50% - 60px); width: 120px; }
-.is-workspace .main-content .scene-token { color: var(--text); background: var(--surface); border-color: var(--line); }
 .is-workspace .main-content .skill-content { flex: 1; display: flex; flex-direction: column; padding: 22px 13px 10px; }
 .is-workspace .main-content .skill-title { gap: 10px; align-items: start; }
 .is-workspace .main-content .skill-title h3 { font: 31px/1.08 var(--pixel); letter-spacing: -.2px; overflow-wrap: anywhere; }
 .is-workspace .main-content .version { font-size: 9px; line-height: 1.5; padding: 3px 7px; margin-top: 3px; background: var(--surface-high); border-color: var(--line); color: var(--text); white-space: nowrap; }
 .is-workspace .main-content .skill-content > p { color: var(--muted); font-size: 13px; line-height: 1.8; margin: 6px 0 20px; min-height: 68px; }
-.is-workspace .main-content .skill-tags { gap: 6px; margin-top: auto; margin-bottom: 20px; }
-.is-workspace .main-content .skill-tags > span { font-size: 9px; line-height: 1.5; padding: 5px 7px; color: var(--muted); border-color: var(--line); background: var(--surface-high); border-radius: 5px; }
 .is-workspace .main-content .skill-bottom { padding-top: 15px; padding-bottom: 6px; gap: 10px; }
 .is-workspace .main-content .skill-bottom code { min-width: 0; font-size: 9px; overflow-wrap: anywhere; line-height: 1.6; color: var(--muted); }
 .is-workspace .main-content .skill-bottom > span { font-size: 10px; color: var(--text); }
@@ -208,7 +175,6 @@
 .is-workspace .main-content .empty-state p { font-size: 14px; color: var(--muted); }
 .is-workspace[data-theme="light"] .main-content :is(.panel, .metric-card, .skill-card, .guard-card) { box-shadow: 0 8px 24px rgba(27, 56, 42, .035); }
 .is-workspace[data-theme="light"] .main-content .log-line.error { color: #a4352d; }
-.is-workspace[data-theme="light"] .main-content .skill-platform { background: #718c7530; border-color: #54745b55; box-shadow: 0 5px 0 #65826912; }
 .is-workspace[data-theme="light"] .main-content .guard-card > svg { color: var(--lime); }
 .is-workspace[data-theme="light"] .main-content .terminal-output { background: #f1f5ed; }
 
@@ -226,23 +192,13 @@
   .is-workspace .main-content .work-grid { grid-template-columns: minmax(0, 1.65fr) minmax(285px, 1fr); gap: 20px; }
   .is-workspace .main-content .panel-top { padding-right: 18px; padding-left: 18px; font-size: 9px; }
   .is-workspace .main-content .panel-top .status { font-size: 7px; }
-  .is-workspace .main-content .crew-heading { padding-right: 20px; padding-left: 20px; }
-  .is-workspace .main-content .crew-heading h2 { font-size: 32px; }
-  .is-workspace .main-content .crew-member h3 > span { font-size: 7px; }
   .is-workspace .main-content .skill-title h3 { font-size: 29px; }
   .is-workspace .main-content .skill-content { padding-right: 10px; padding-left: 10px; }
   .is-workspace .main-content .skill-content > p { font-size: 12px; min-height: 87px; }
-  .is-workspace .main-content .skill-tags > span { font-size: 8px; }
   .is-workspace .main-content .skill-bottom { flex-wrap: wrap; }
 }
 @media (max-width: 1000px) {
   .is-workspace .main-content .work-grid { grid-template-columns: minmax(0, 1fr); }
-  .is-workspace .main-content .crew-panel { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr); }
-  .is-workspace .main-content .crew-panel .panel-top { grid-column: 1 / -1; }
-  .is-workspace .main-content .crew-heading { grid-column: 1; grid-row: 2; padding: 26px 24px 15px; }
-  .is-workspace .main-content .crew-list { grid-column: 2; grid-row: 2 / 4; padding: 10px 20px 15px; }
-  .is-workspace .main-content .crew-note { grid-column: 1; grid-row: 3; align-self: end; padding: 18px 24px; background: transparent; }
-  .is-workspace .main-content .crew-note .crew-heart { display: none; }
   .is-workspace .main-content .skills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .is-workspace .main-content .skill-content > p { min-height: 68px; font-size: 13px; }
   .is-workspace .main-content .metric-heading { font-size: 11px; }
@@ -250,8 +206,6 @@
   .is-workspace .main-content .mini-bars { display: none; }
   .is-workspace .main-content .hero { grid-template-columns: minmax(0, 1.35fr) minmax(210px, .8fr); gap: 12px; }
   .is-workspace .main-content .hero h1 > span:last-child { font-size: 37px; }
-  .is-workspace .main-content .hero-bottom > span { font-size: 7px; }
-  .is-workspace .main-content .hero-bottom .hero-arrow { display: none; }
   .is-workspace .main-content .hero-copy > p { font-size: 13px; }
   .is-workspace .main-content .hero-kicker { font-size: 8px; }
 }
@@ -264,7 +218,6 @@
   .is-workspace .main-content .hero h1 > span:last-child { font-size: 42px; }
   .is-workspace .main-content .hero-kicker { font-size: 9px; }
   .is-workspace .main-content .hero-copy > p { font-size: 14px; }
-  .is-workspace .main-content .hero-bottom > span { font-size: 8px; }
   .is-workspace .main-content .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .is-workspace .main-content .metric-card { padding: 21px 20px 17px; }
   .is-workspace .main-content .metric-heading { font-size: 12px; min-height: 20px; }
@@ -281,17 +234,6 @@
   .is-workspace .main-content .skill-title { gap: 7px; }
   .is-workspace .main-content .skill-content { padding: 19px 9px 10px; }
   .is-workspace .main-content .skill-content > p { font-size: 12px; min-height: 86px; }
-  .is-workspace .main-content .skill-tags > span { font-size: 8px; }
-  .is-workspace .main-content .skill-number, .is-workspace .main-content .skill-hover-label { font-size: 7px; }
-  .is-workspace .main-content .skill-hover-label { display: none; }
-  .is-workspace .main-content .skill-tagline { font-size: 7px; }
-  .is-workspace .main-content .crew-panel { display: flex; }
-  .is-workspace .main-content .crew-heading { padding: 27px 24px 14px; }
-  .is-workspace .main-content .crew-list { padding: 0 18px 17px; }
-  .is-workspace .main-content .crew-member p { font-size: 13px; }
-  .is-workspace .main-content .crew-member h3 > span { font-size: 9px; }
-  .is-workspace .main-content .crew-note { background: var(--surface-high); width: 100%; }
-  .is-workspace .main-content .crew-note .crew-heart { display: block; }
   .is-workspace .main-content .page-heading { align-items: start; flex-direction: column; gap: 20px; }
   .is-workspace .main-content .page-heading h1 { font-size: 46px; }
   .is-workspace .main-content .page-heading p:last-child { font-size: 14px; }
@@ -320,8 +262,6 @@
   .is-workspace .main-content .hero-actions { gap: 10px; }
   .is-workspace .main-content .hero-actions .button { width: 100%; justify-content: space-between; font-size: 12px; }
   .is-workspace .main-content .hero-actions .quiet-button { font-size: 12px; }
-  .is-workspace .main-content .hero-bottom { gap: 8px; margin-top: 18px; }
-  .is-workspace .main-content .hero-bottom > span { font-size: 7px; }
   .is-workspace .main-content .hero > .evolving-core { max-width: 255px; margin-top: -2px; }
   .is-workspace .main-content .section-meta { font-size: 8px; gap: 10px; }
   .is-workspace .main-content .section-meta > span:last-child { font-size: 7px; max-width: 135px; }
@@ -365,27 +305,13 @@
   .is-workspace .main-content .console-footer .button { width: 100%; justify-content: space-between; margin: 0; font-size: 12px; }
   .is-workspace .main-content .demo-result { padding: 12px; font-size: 10px; }
   .is-workspace .main-content .demo-result > div { font-size: 9px; }
-  .is-workspace .main-content .crew-heading { padding: 25px 21px 14px; }
-  .is-workspace .main-content .crew-heading h2 { font-size: 32px; }
-  .is-workspace .main-content .crew-list { padding: 0 15px 17px; }
-  .is-workspace .main-content .crew-member { padding: 16px 6px; gap: 12px; }
-  .is-workspace .main-content .crew-member h3 { font-size: 24px; }
-  .is-workspace .main-content .crew-member h3 > span { font-size: 8px; }
-  .is-workspace .main-content .crew-member p { font-size: 12px; }
-  .is-workspace .main-content .crew-note { padding: 18px 21px; }
-  .is-workspace .main-content .crew-note > span { font-size: 8px; }
   .is-workspace .main-content .work-grid { margin-bottom: 36px; }
   .is-workspace .main-content .section-heading h2 { font-size: 34px; }
   .is-workspace .main-content .section-heading .eyebrow { font-size: 9px; }
   .is-workspace .main-content .skills-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .is-workspace .main-content .skill-scene { height: 195px; min-height: 195px; }
   .is-workspace .main-content .skill-content { padding: 22px 13px 11px; }
   .is-workspace .main-content .skill-title h3 { font-size: 31px; }
   .is-workspace .main-content .skill-content > p { font-size: 13px; min-height: 0; }
-  .is-workspace .main-content .skill-number, .is-workspace .main-content .skill-hover-label { font-size: 8px; }
-  .is-workspace .main-content .skill-hover-label { display: block; }
-  .is-workspace .main-content .skill-tagline { font-size: 8px; }
-  .is-workspace .main-content .skill-tags > span { font-size: 9px; }
   .is-workspace .main-content .skill-bottom code { font-size: 9px; }
   .is-workspace .main-content .skill-bottom > span { font-size: 10px; }
   .is-workspace .main-content .page-heading { margin-top: 10px; margin-bottom: 27px; }
@@ -435,18 +361,10 @@
   box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 28px rgba(0,0,0,.045);
   position:relative;isolation:isolate;
 }
-.app .landing-final :is(.hero-code-window,.hero-result,.studio-code,.studio-outcome,.application-prompt,.application-demo),
-.app.is-workspace .main-content :is(.terminal-output,.task-input,.skill-scene,.search-field,.demo-result,.console-explain article){background:var(--glass-inset);border-color:var(--glass-edge);backdrop-filter:none}
-.app.is-workspace .main-content :is(.skill-scene,.skill-card.byte .skill-scene,.skill-card.patch .skill-scene,.skill-card.scout .skill-scene){background:var(--glass-inset)}
-.app .landing-final :is(.hero-product-top,.hero-product-bottom,.studio-toolbar,.application-tabs>button,.forge-capability-strip>div),
-.app.is-workspace .main-content :is(.panel-top,.skill-tags>span,.version,.filter-pills>button,.crew-avatar){background:var(--glass-raised);border-color:var(--glass-edge);color:var(--muted)}
+.app .landing-final :is(.hero-code-window,.hero-result,.studio-code,.studio-outcome,.application-prompt,.application-demo){background:var(--glass-inset);border-color:var(--glass-edge);backdrop-filter:none}
+.app .landing-final :is(.hero-product-top,.hero-product-bottom,.studio-toolbar,.application-tabs>button,.forge-capability-strip>div){background:var(--glass-raised);border-color:var(--glass-edge);color:var(--muted)}
 .app .landing-final :is(.application-tabs>button.selected,.studio-steps>button.selected){background:var(--lime);color:var(--ink);border-color:var(--lime)}
 .app.is-workspace .main-content :is(.skill-title h3,.guard-card h2,.metric-value){color:var(--text)}
-.app.is-workspace .main-content :is(.scene-token,.skill-tagline,.skill-bottom,.skill-number){color:var(--muted)}
-.app.is-workspace .main-content .scene-token{background:var(--glass-raised);border-color:var(--glass-edge)}
-.app.is-workspace .main-content .skill-platform{background:var(--soft)}
-.app.is-workspace .main-content .skill-grid{opacity:.55}
-.app .core-heart{backdrop-filter:none}
 .app .modal-backdrop{backdrop-filter:none}
 .app .modal{background:var(--glass);border-color:var(--glass-edge)}
 /* Card frames stay stable; their light, icons, and contents remain alive. */
@@ -459,7 +377,6 @@
 .app .landing-final :is(.forge-system,.learning-studio,.application-panel,.principle-grid article){transition:border-color .25s,transform .25s}
 @media(hover:hover){
  .app.is-workspace .main-content :is(.skill-card:hover,.metric-card:hover,.guard-card:hover){transform:translateY(-3px);border-color:var(--lime)}
- .app.is-workspace .main-content .skill-card:hover .skill-scene>.pixel-sprite{animation:sf-pet-celebrate 1.4s ease-in-out infinite}
  .app button:not(.skill-card):hover>svg{transform:translate(2px,-2px) rotate(5deg)}
  .motion-word:hover>span{transform:translateY(-5px) rotate(-3deg) scale(1.025);color:var(--lime)}
 }
@@ -470,8 +387,8 @@
 .app .kinetic-type.dotted .letter-float{animation-name:sf-dot-wave}
 .app .pixel-sprite.voxel svg{filter:none}
 .app .mini-companion .pixel-sprite{filter:none}
-.app .tiny-crew .pixel-sprite,.app .crew-avatar .pixel-sprite,.app .guard-card>.pixel-sprite,.app .skill-detail-intro>.pixel-sprite{animation:sf-pet-float 3.8s calc(var(--i,0)*-.7s) ease-in-out infinite}
-.app .skill-spark,.app .hero-kicker .pixel-spark,.app .crew-note>.pixel-spark,.app .closing-strip>.pixel-spark{animation:sf-spark-turn 5s ease-in-out infinite}
+.app .guard-card>.pixel-sprite,.app .skill-detail-intro>.pixel-sprite{animation:sf-pet-float 3.8s calc(var(--i,0)*-.7s) ease-in-out infinite}
+.app .skill-spark,.app .hero-kicker .pixel-spark,.app .closing-strip>.pixel-spark{animation:sf-spark-turn 5s ease-in-out infinite}
 .app .motion-button.on svg{animation:equalizer-wiggle 1.8s ease-in-out infinite}
 .app .status i{animation:status-pulse 2.6s ease-in-out infinite}
 .app .mini-companion.busy .pixel-sprite{animation:busy-spin 1.2s ease-in-out infinite}
@@ -535,7 +452,6 @@
 .app .metric-card::after {background:var(--soft)}
 .app .tiny-block {box-shadow:2px 2px 0 var(--line)}
 .app .status i {box-shadow:0 0 0 3px var(--soft)}
-.app .main-content .crew-note {background:var(--glass-raised)}
 .app .main-content .workspace-line>button {background:var(--glass-panel)}
 .app .main-content .task-key {background:var(--glass-inset)}
 .app .modal-backdrop {background:rgba(10,10,10,.76)}
@@ -582,7 +498,6 @@
 }
 
 /* Secondary headings breathe as complete lines; paragraphs remain still. */
-.app.is-workspace .main-content :is(.console-heading h2, .crew-heading h2, .section-heading h2, .guard-card h2, .console-explain h3, .privacy-panel h2),
 .app .landing-final :is(.cinema-section h2, .system-unit h3, .studio-narrative h3, .application-copy h3, .principle-grid h3) {
   animation: sf-auto-heading 5.8s -.7s ease-in-out infinite;
   transform-origin: 15% 85%;
@@ -593,17 +508,10 @@
 }
 
 /* Pet silhouettes move inside their stable holders; cursor pets use JS only. */
-.app .core-node > .pixel-sprite,.app .tiny-crew > .pixel-sprite,.app .crew-avatar > .pixel-sprite,.app .skill-detail-intro > .pixel-sprite {
+.app .skill-detail-intro > .pixel-sprite {
   animation: sf-auto-companion 3.8s calc(var(--i, 0) * -.7s) ease-in-out infinite;
   transform-origin: 50% 80%;
 }
-.app.is-workspace .main-content .skill-card .skill-scene > .pixel-sprite {
-  animation: sf-auto-companion 4.1s calc(var(--i, 0) * -.85s) ease-in-out infinite;
-}
-.app .tiny-crew > .pixel-sprite:nth-child(2),
-.app .core-n2 > .pixel-sprite { animation-delay: -1.4s; }
-.app .tiny-crew > .pixel-sprite:nth-child(3),
-.app .core-n3 > .pixel-sprite { animation-delay: -2.7s; }
 .app .mini-companion:not(.busy) > .pixel-sprite {
   animation: sf-auto-companion 3.9s -.9s ease-in-out infinite;
 }
@@ -619,10 +527,6 @@
   display: inline-block;
   animation: sf-auto-sigil 4s -1.3s ease-in-out infinite;
 }
-.app .main-content :is(.scene-token.token-left, .scene-token.token-right) {
-  animation: sf-auto-token 5s calc(var(--i, 0) * -.5s) ease-in-out infinite;
-}
-.app .main-content .scene-token.token-right { animation-delay: -2.5s; }
 .app :is(.scene-spark, .skill-spark, .hero-kicker > .pixel-spark, .closing-strip > .pixel-spark) {
   animation: sf-auto-spark 4.3s -1s ease-in-out infinite;
 }
