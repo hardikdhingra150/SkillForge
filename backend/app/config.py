@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     rate_limit_writes_per_minute: int = Field(default=60, ge=1)
     rate_limit_reads_per_minute: int = Field(default=600, ge=1)
 
+    # Model budget: agent chat replies per workspace per 24 hours (each reply may make several model calls).
+    chat_turns_per_day: int = Field(default=200, ge=1)
+
     # How many repair strategies the worker may try before asking a person to review.
     repair_budget: int = Field(default=2, ge=0, le=5)
 

@@ -2,7 +2,7 @@ import hashlib
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.tasks import DB, DEV_WORKSPACE_ID
+from app.config import settings
 from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.models import Workspace
 from app.database.session import SessionLocal
@@ -241,6 +242,21 @@ def delete_conversation(conversation_id: UUID, db: DB):
         raise unavailable(error) from None
 
 
+def turns_today(db, workspace_id) -> int:
+    """Agent replies started in this workspace over the last 24 hours (each one may call several models)."""
+    return db.scalar(
+        select(func.count()).select_from(ChatMessage).join(Conversation, Conversation.id == ChatMessage.conversation_id)
+        .where(Conversation.workspace_id == workspace_id, ChatMessage.role == "assistant",
+               ChatMessage.created_at >= func.now() - timedelta(days=1))
+    ) or 0
+
+
+def check_budget(used: int, limit: int):
+    if used >= limit:
+        raise HTTPException(429, f"This workspace used its {limit} chat replies for the last 24 hours. "
+                                 "Try again later, or raise CHAT_TURNS_PER_DAY.")
+
+
 @router.post("/conversations/{conversation_id}/messages", response_model=list[MessageOut], status_code=202)
 def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: BackgroundTasks):
     try:
@@ -256,6 +272,7 @@ def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: Bac
                                                         ChatMessage.status == "pending"))
             if busy:
                 raise HTTPException(409, "Wait for the current reply to finish.")
+            check_budget(turns_today(db, conversation.workspace_id), settings.chat_turns_per_day)
             last = db.scalar(select(func.max(ChatMessage.sequence)).where(ChatMessage.conversation_id == conversation_id)) or 0
             user = ChatMessage(conversation_id=conversation_id, sequence=last + 1, role="user", content=body.content.strip())
             reply = ChatMessage(conversation_id=conversation_id, sequence=last + 2, role="assistant", status="pending",
