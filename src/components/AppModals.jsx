@@ -112,11 +112,11 @@ export function AppModals({
               ],
               [
                 'Skill creation & repair',
-                'SkillSmith Engine · planned',
+                'SkillSmith · Claude, Codex or a local model',
               ],
               [
-                'AI runtime',
-                'Ollama · planned',
+                'Model runtime',
+                'Claude Code CLI · Codex CLI · Ollama',
               ],
               [
                 'Memory & version history',
@@ -124,7 +124,7 @@ export function AppModals({
               ],
               [
                 'Validation',
-                'Deterministic checks + unittest',
+                'Sandbox, contract checks, cross-model verifier',
               ],
             ].map(([label, value]) => (
               <div
@@ -137,11 +137,10 @@ export function AppModals({
             ))}
 
             <p className="modal-note">
-              Process View, Activity, and Skill Library connect
-              to the local FastAPI backend and PostgreSQL.
-              The dashboard metrics and animated console use
-              sample data. Model-based skill creation and
-              repair are planned.
+              Every page runs on the local FastAPI backend and
+              PostgreSQL: the Process view, Live console, metrics,
+              chat, Skill library, Review and Activity. With the API
+              offline, the console replays a recorded real run.
             </p>
           </div>
         </Modal>
