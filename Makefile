@@ -6,7 +6,7 @@ VPY     := $(VENV)/bin/python
 BACKEND := cd backend &&
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend lint lint-backend lint-web build check
+.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend test-web e2e lint lint-backend lint-web build check token
 
 help: ## Show available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -45,6 +45,9 @@ test-backend: ## Run backend unit tests
 
 lint-backend: ## Lint backend Python with ruff
 	$(BACKEND) .venv/bin/ruff check .
+
+token: ## Print a new random API_TOKEN for backend/.env
+	@$(VPY) -c "import secrets; print('API_TOKEN=' + secrets.token_urlsafe(32))"
 
 test-web: ## Run frontend unit tests (Vitest)
 	npm test
