@@ -5,6 +5,7 @@ import {
   Moon,
   Pause,
   Search,
+  Settings2,
   Sun,
   X,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ export function Topbar({
   onToggleNav,
   onSearch,
   onRuntime,
+  connection = 'checking',
 }) {
   return (
     <header className="topbar">
@@ -149,11 +151,12 @@ export function Topbar({
             </button>
           ) : (
             <button
-              className="profile-avatar"
+              className={`profile-avatar ${connection === 'online' ? '' : 'is-off'}`}
               onClick={onRuntime}
-              aria-label="Workspace details"
+              aria-label="Workspace settings"
+              title={connection === 'online' ? 'Workspace settings · connected' : 'Workspace settings · not connected'}
             >
-              H
+              <Settings2 size={15} />
               <span />
             </button>
           )}

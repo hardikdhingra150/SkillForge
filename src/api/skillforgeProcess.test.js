@@ -94,7 +94,7 @@ describe("API access token", () => {
 
   it("explains a 401 and where to add the token", async () => {
     vi.stubGlobal("fetch", respond(401, { detail: { code: "UNAUTHORIZED" } }));
-    await expect(request("/x")).rejects.toMatchObject({ status: 401, message: expect.stringMatching(/Workspace details/) });
+    await expect(request("/x")).rejects.toMatchObject({ status: 401, message: expect.stringMatching(/Workspace settings/) });
   });
 
   it("puts the token in stream URLs, which cannot carry headers", () => {

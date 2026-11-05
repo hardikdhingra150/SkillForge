@@ -98,7 +98,7 @@ export async function request(path, options = {}) {
 
       if (response.status === 401) {
         throw new ProcessApiError(
-          "This SkillForge API needs an access token. Add it under Workspace details (the H button).",
+          "This SkillForge API needs an access token. Add it in Workspace settings (the gear button, top right).",
           401,
         );
       }
