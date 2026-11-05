@@ -6,7 +6,7 @@ VPY     := $(VENV)/bin/python
 BACKEND := cd backend &&
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend test-web e2e lint lint-backend lint-web build check token sandbox-image secrets
+.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend test-web e2e lint lint-backend lint-web build check token sandbox-image secrets rotate-db-password
 
 help: ## Show available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -45,6 +45,9 @@ test-backend: ## Run backend unit tests
 
 lint-backend: ## Lint backend Python with ruff
 	$(BACKEND) .venv/bin/ruff check .
+
+rotate-db-password: ## Set a new random Postgres password in the database and .env.postgres
+	$(VPY) scripts/rotate_db_password.py
 
 secrets: ## Scan the whole git history for leaked secrets (gitleaks, via Docker)
 	docker run --rm -v "$(CURDIR):/repo:ro" zricethezav/gitleaks:v8.24.3 git /repo --no-banner --redact
