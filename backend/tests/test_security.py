@@ -68,5 +68,18 @@ class AccessTests(unittest.TestCase):
             Settings(api_token="too-short", postgres_password="x")
 
 
+class RedactionTests(unittest.TestCase):
+    def test_access_log_hides_the_token(self):
+        import logging
+
+        from app.security import RedactTokens
+        record = logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+                                   ("127.0.0.1:1", "GET", f"/api/v1/x/stream?after=5&access_token={TOKEN}", "1.1", 200), None)
+        RedactTokens().filter(record)
+        line = record.getMessage()
+        self.assertNotIn(TOKEN, line)
+        self.assertIn("stream?after=5&access_token=<redacted>", line)
+
+
 if __name__ == "__main__":
     unittest.main()

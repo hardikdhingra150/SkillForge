@@ -5,6 +5,7 @@ With no token configured, the API stays open in development (local use) and clos
 
 import hmac
 import logging
+import re
 from typing import Annotated
 
 from fastapi import Header, HTTPException, Query, Request
@@ -55,3 +56,23 @@ def require_access(
             headers={"WWW-Authenticate": "Bearer"},
         )
     request.state.authenticated = True
+
+
+class RedactTokens(logging.Filter):
+    """Hide ?access_token= values in log lines (uvicorn's access log prints full URLs)."""
+
+    PATTERN = re.compile(r"(access_token=)[^&\s\"']+")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.args:
+            record.args = tuple(self.PATTERN.sub(r"\1<redacted>", a) if isinstance(a, str) else a for a in record.args)
+        if isinstance(record.msg, str):
+            record.msg = self.PATTERN.sub(r"\1<redacted>", record.msg)
+        return True
+
+
+def redact_access_logs():
+    for name in ("uvicorn.access", "uvicorn.error"):
+        logger = logging.getLogger(name)
+        if not any(isinstance(f, RedactTokens) for f in logger.filters):
+            logger.addFilter(RedactTokens())

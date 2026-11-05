@@ -17,12 +17,14 @@ from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.database.connection import engine
 from app.database.session import SessionLocal
+from app.security import redact_access_logs
 
 logger = logging.getLogger("uvicorn.error")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    redact_access_logs()
     try:
         with SessionLocal.begin() as db:
             fail_interrupted_turns(db)
