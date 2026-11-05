@@ -59,6 +59,23 @@ function Lineage({ family, current }) {
   );
 }
 
+// Ask why before retiring or restoring a version; the answer goes into the audit trail.
+function ReasonForm({ action, onConfirm, onCancel }) {
+  const id = useId();
+  const [reason, setReason] = useState("");
+  return (
+    <form className="sf-registry__reason" onSubmit={(event) => { event.preventDefault(); onConfirm(reason.trim()); }}>
+      <label htmlFor={id}>{action === "retire" ? "Why retire this version?" : "Why restore this version?"}</label>
+      <input id={id} value={reason} maxLength={500} autoFocus onChange={(event) => setReason(event.target.value)}
+        placeholder="Optional. Recorded in the audit trail." />
+      <div>
+        <button type="submit">{action === "retire" ? "Retire (roll back)" : "Restore"}</button>
+        <button type="button" onClick={onCancel}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 export default function SkillRegistryView({ onOpenWorkbench }) {
   const uid = useId();
   const [items, setItems] = useState([]);
@@ -71,6 +88,8 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
   const activeRequest = useRef(null);
+  // { key, action } while asking why a version is retired or restored.
+  const [confirming, setConfirming] = useState(null);
 
   const applyPage = useCallback((page, append) => {
     setItems((previous) => append ? mergeVersions(previous, page.items) : page.items);
@@ -118,10 +137,13 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
     }
   }
 
-  async function changeStatus(skill, action) {
+  async function changeStatus(skill, action, reason) {
     setError("");
+    setConfirming(null);
     try {
-      const updated = action === "retire" ? await retireVersion(skill.skill_id, skill.version) : await restoreVersion(skill.skill_id, skill.version);
+      const updated = action === "retire"
+        ? await retireVersion(skill.skill_id, skill.version, reason)
+        : await restoreVersion(skill.skill_id, skill.version, reason);
       setItems((previous) => previous.map((item) => (
         item.skill_id === skill.skill_id && item.version === skill.version ? { ...item, status: updated.status } : item
       )));
@@ -224,10 +246,17 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
               ))}</pre>
             </details>}
             <div className="sf-registry__actions sf-registry__version-actions">
-              {skill.status === "validated" && <button onClick={() => changeStatus(skill, "retire")} title="Stop using this version; the previous validated version is used again">Retire (roll back)</button>}
-              {skill.status === "retired" && skill.source_code && <button onClick={() => changeStatus(skill, "restore")}>Restore</button>}
+              {skill.status === "validated" && <button onClick={() => setConfirming({ key: `${skill.skill_id}@${skill.version}`, action: "retire" })} title="Stop using this version; the previous validated version is used again">Retire (roll back)</button>}
+              {skill.status === "retired" && skill.source_code && <button onClick={() => setConfirming({ key: `${skill.skill_id}@${skill.version}`, action: "restore" })}>Restore</button>}
               {skill.source_code && <button className="sf-registry__export" onClick={() => downloadBundle(skill.skill_id, skill.version).catch((failure) => setError(failure.message))}>Export bundle</button>}
             </div>
+            {confirming?.key === `${skill.skill_id}@${skill.version}` && (
+              <ReasonForm
+                action={confirming.action}
+                onCancel={() => setConfirming(null)}
+                onConfirm={(reason) => changeStatus(skill, confirming.action, reason)}
+              />
+            )}
             <details>
               <summary>Validation evidence and implementation hash</summary>
               {checks.length > 0 && <ul>{checks.map((check, index) => (

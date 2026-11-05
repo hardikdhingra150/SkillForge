@@ -18,12 +18,13 @@ export function rejectRun(executionId, reason) {
   return post(`/executions/${encodeURIComponent(executionId)}/review/reject`, reason ? { reason } : {});
 }
 
-export function retireVersion(skillId, version) {
-  return post(`/skills/${encodeURIComponent(skillId)}/${encodeURIComponent(version)}/retire`);
+// The optional reason is recorded in the audit trail.
+export function retireVersion(skillId, version, reason) {
+  return post(`/skills/${encodeURIComponent(skillId)}/${encodeURIComponent(version)}/retire`, reason ? { reason } : {});
 }
 
-export function restoreVersion(skillId, version) {
-  return post(`/skills/${encodeURIComponent(skillId)}/${encodeURIComponent(version)}/restore`);
+export function restoreVersion(skillId, version, reason) {
+  return post(`/skills/${encodeURIComponent(skillId)}/${encodeURIComponent(version)}/restore`, reason ? { reason } : {});
 }
 
 export function getAuditTrail(signal, limit = 30) {
