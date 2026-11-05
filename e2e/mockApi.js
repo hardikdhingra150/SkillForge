@@ -43,6 +43,16 @@ export async function mockApi(page) {
         has_more: false, next_before_created_at: null, next_before_execution_id: null,
       });
     }
+    if (path === '/review') {
+      return json({ runs: [] });
+    }
+    if (path === '/audit') {
+      return json([{
+        id: '0193a8f0-0000-7000-8000-000000000003', actor: 'worker', action: 'skill.promoted',
+        target: 'revenue_by_product@1.1.0', reason: "Amounts like '$1,200.50' are export-formatted.",
+        details: { strategy: 'normalize_amounts' }, created_at: now,
+      }]);
+    }
     return json({ detail: 'Not found.' }, 404);
   });
 }

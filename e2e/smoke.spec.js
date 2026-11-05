@@ -45,3 +45,10 @@ test('the Live console replays a recorded real run when the API is offline', asy
   await expect(page.getByText('RECORDED RUN · API OFFLINE')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Replay again' })).toBeVisible({ timeout: 10000 });
 });
+
+test('the Review page shows the audit trail', async ({ page }) => {
+  await page.goto('/#review');
+  const trail = page.getByRole('region', { name: 'Audit trail' });
+  await expect(trail.getByText('revenue_by_product@1.1.0')).toBeVisible();
+  await expect(trail.getByText('by worker')).toBeVisible();
+});

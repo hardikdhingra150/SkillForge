@@ -1,18 +1,54 @@
 import { useCallback, useEffect, useState } from "react";
 import { CircleCheck, RefreshCw, RotateCcw, X } from "lucide-react";
-import { getReviewQueue, rejectRun, retryRun } from "../api/review.js";
+import { getAuditTrail, getReviewQueue, rejectRun, retryRun } from "../api/review.js";
 import "./models.css";
+
+const ACTION_LABELS = {
+  "skill.promoted": "Promoted",
+  "skill.retired": "Retired",
+  "skill.restored": "Restored",
+  "skill.imported": "Imported",
+  "run.retried": "Retried",
+  "run.rejected": "Rejected",
+};
+
+// Who changed what the registry trusts, and why (newest first).
+function AuditTrail({ events }) {
+  if (!events) return null;
+  return (
+    <section className="sf-audit" aria-labelledby="sf-audit-title">
+      <h2 id="sf-audit-title">Audit trail</h2>
+      {!events.length && <p className="sf-models__empty">No promotions, rollbacks or review decisions yet.</p>}
+      {events.length > 0 && (
+        <ol>
+          {events.map((event) => (
+            <li key={event.id}>
+              <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time>
+              <span className="sf-audit__action" data-action={event.action}>{ACTION_LABELS[event.action] || event.action}</span>
+              <code>{event.target}</code>
+              <span className="sf-audit__actor">by {event.actor}</span>
+              <p>{event.reason}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
 
 export default function ReviewView({ onOpenRun }) {
   const [runs, setRuns] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
+  const [audit, setAudit] = useState(null);
 
   const load = useCallback(async () => {
     setError("");
     try {
-      setRuns((await getReviewQueue()).runs);
+      const [queue, events] = await Promise.all([getReviewQueue(), getAuditTrail()]);
+      setRuns(queue.runs);
+      setAudit(events);
     } catch (failure) {
       setError(failure.message);
     }
@@ -77,6 +113,8 @@ export default function ReviewView({ onOpenRun }) {
           </article>
         ))}
       </div>
+
+      <AuditTrail events={audit} />
     </section>
   );
 }

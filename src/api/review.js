@@ -25,3 +25,7 @@ export function retireVersion(skillId, version) {
 export function restoreVersion(skillId, version) {
   return post(`/skills/${encodeURIComponent(skillId)}/${encodeURIComponent(version)}/restore`);
 }
+
+export function getAuditTrail(signal, limit = 30) {
+  return request(`/audit?limit=${limit}`, { signal });
+}

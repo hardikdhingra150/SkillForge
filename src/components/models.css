@@ -34,3 +34,12 @@
 .sf-review__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .sf-review__actions button:disabled { opacity: .5; cursor: default; }
 .sf-models__card dd code { font: 12px 'Space Mono', monospace; }
+
+/* ---- Audit trail (Review page) ---- */
+.sf-audit { margin-top: 36px; }
+.sf-audit h2 { margin: 0 0 12px; font-size: 18px; }
+.sf-audit ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sf-audit li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: 13px; }
+.sf-audit time, .sf-audit__actor { color: var(--muted); font: 11px var(--mono); }
+.sf-audit__action { font: 11px var(--mono); text-transform: uppercase; letter-spacing: .5px; color: var(--text); }
+.sf-audit li p { flex-basis: 100%; margin: 0; color: var(--muted); }
