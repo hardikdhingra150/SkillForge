@@ -17,6 +17,7 @@ from app.api.tasks import router as tasks_router
 from app.config import settings
 from app.database.connection import engine
 from app.database.session import SessionLocal
+from app.rate_limit import rate_limit
 from app.security import redact_access_logs
 
 logger = logging.getLogger("uvicorn.error")
@@ -41,6 +42,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.middleware("http")(rate_limit)
 
 app.add_middleware(
     CORSMiddleware,

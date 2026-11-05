@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     sandbox_backend: Literal["process", "docker"] = "process"
     sandbox_image: str = "python:3.14-slim"
 
+    # Requests per client per minute on /api/v1 (health checks are exempt).
+    rate_limit_writes_per_minute: int = Field(default=60, ge=1)
+    rate_limit_reads_per_minute: int = Field(default=600, ge=1)
+
     # How many repair strategies the worker may try before asking a person to review.
     repair_budget: int = Field(default=2, ge=0, le=5)
 
