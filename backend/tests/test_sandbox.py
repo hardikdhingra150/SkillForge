@@ -122,3 +122,49 @@ class RuntimeGuardTests(unittest.TestCase):
 
     def test_stdlib_imports_still_work(self):
         self.assertEqual(self.attempt("import statistics; statistics.mean([1, 2])"), "ALLOWED")
+
+
+def docker_ready(image):
+    import shutil
+    import subprocess
+    if shutil.which("docker") is None:
+        return False
+    return subprocess.run(["docker", "image", "inspect", image], capture_output=True, check=False).returncode == 0
+
+
+class DockerBackendTests(unittest.TestCase):
+    def test_container_is_locked_down(self):
+        from app.sandbox.runner import docker_command
+        command = docker_command("skillforge-sandbox-test", "python:3.14-slim")
+        joined = " ".join(command)
+        for flag in ("--rm", "--network none", "--read-only", "--cap-drop ALL", "--security-opt no-new-privileges",
+                     "--user 65534:65534", "--pids-limit 32", "--memory 256m"):
+            self.assertIn(flag, joined)
+        self.assertTrue(joined.endswith("python:3.14-slim python -I -S /sandbox/child.py"))
+        self.assertRegex(joined, r"--volume \S+/app/sandbox:/sandbox:ro")
+
+
+@unittest.skipUnless(docker_ready("python:3.14-slim"), "Docker and the python:3.14-slim image are needed")
+class DockerRunTests(unittest.TestCase):
+    def test_skill_runs_in_a_container(self):
+        result = run_skill(
+            skill("h, rows = tools.read_csv('f')\nreturn {'n': len(rows)}"),
+            inputs={}, files={"f": b"a,b\nx,1\ny,2\n"}, tools=["read_csv"], backend="docker",
+        )
+        self.assertTrue(result.ok, result.error)
+        self.assertEqual(result.output, {"n": 2})
+
+    def test_infinite_loop_times_out_in_a_container(self):
+        result = run_skill(skill("while True:\n    pass"), inputs={}, files={}, tools=[], timeout=1.5, backend="docker")
+        self.assertFalse(result.ok)
+        self.assertEqual(result.error["type"], "Timeout")
+
+    def test_container_has_no_network(self):
+        import subprocess
+
+        from app.sandbox.runner import docker_command
+        command = docker_command("skillforge-sandbox-net", "python:3.14-slim")
+        command[-4:] = ["python", "-c", "import socket; socket.create_connection(('1.1.1.1', 53), timeout=2)"]
+        done = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertRegex(done.stderr, r"OSError|unreachable|Network")

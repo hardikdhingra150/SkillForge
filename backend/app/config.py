@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # Bearer token for /api/v1 (generate with `make token`). Unset: open in development, closed in production.
     api_token: SecretStr | None = Field(default=None, min_length=32)
 
+    # Where skills run: "process" (a locked-down child process) or "docker" (a throwaway container with no
+    # network, a read-only filesystem, no capabilities and memory/PID limits). Production requires docker.
+    sandbox_backend: Literal["process", "docker"] = "process"
+    sandbox_image: str = "python:3.14-slim"
+
     # How many repair strategies the worker may try before asking a person to review.
     repair_budget: int = Field(default=2, ge=0, le=5)
 
