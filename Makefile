@@ -6,7 +6,7 @@ VPY     := $(VENV)/bin/python
 BACKEND := cd backend &&
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend test-web e2e lint lint-backend lint-web build check token sandbox-image
+.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend test-web e2e lint lint-backend lint-web build check token sandbox-image secrets
 
 help: ## Show available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -45,6 +45,9 @@ test-backend: ## Run backend unit tests
 
 lint-backend: ## Lint backend Python with ruff
 	$(BACKEND) .venv/bin/ruff check .
+
+secrets: ## Scan the whole git history for leaked secrets (gitleaks, via Docker)
+	docker run --rm -v "$(CURDIR):/repo:ro" zricethezav/gitleaks:v8.24.3 git /repo --no-banner --redact
 
 sandbox-image: ## Pull the image the Docker sandbox runs skills in
 	docker pull python:3.14-slim
