@@ -80,9 +80,9 @@ export function Guardrails() {
             FastAPI for orchestration. PostgreSQL for
             saved tasks, events, and skill versions.
             <br />
-            Process View, Activity, and Skill Library use
-            the local backend. The animated console is
-            a demo; model-based creation and repair are planned.
+            Every page reads from your own API. Skills run in a
+            locked sandbox, and every promotion, retire and restore
+            is written to the audit trail.
           </p>
         </div>
       </div>

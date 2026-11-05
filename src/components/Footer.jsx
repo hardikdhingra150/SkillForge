@@ -24,12 +24,12 @@ export function Footer({ onNavigate, onRuntime }) {
         <button
           onClick={onRuntime}
         >
-          Under the hood
+          Workspace settings
           <ArrowUpRight size={11} />
         </button>
 
         <span>
-          FRONTEND PLAYGROUND / V.03
+          SKILLFORGE · SELF-HOSTED
         </span>
       </div>
     </footer>
