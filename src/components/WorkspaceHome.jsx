@@ -22,9 +22,9 @@ function steps(workspace) {
       done: Boolean(metrics?.runs),
     },
     {
-      title: 'Get a tested skill',
-      text: 'The skill is built or repaired, tested in the sandbox, then saved.',
-      done: Boolean(metrics?.skills),
+      title: 'Get a tested result',
+      text: 'A skill is found, built or repaired, tested in the sandbox, then saved.',
+      done: Boolean(metrics?.succeeded),
     },
     {
       title: 'Reuse it',
