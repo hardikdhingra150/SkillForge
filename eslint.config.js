@@ -31,8 +31,9 @@ export default [
     languageOptions: { globals: globals.node },
   },
   {
+    // Playwright specs run in Node but pass callbacks that run in the page.
     files: ['e2e/**/*.js'],
-    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
   },
   {
     files: ['*.config.js'],
