@@ -1,3 +1,6 @@
+/* The API-backed views (Process, Skill library, Activity) on the workspace theme. */
+
+/* ---- from frontend-harmony.css ---- */
 /*
  * The API-backed views (process, registry, history) were styled on their own
  * palette. This brings them onto the workspace theme tokens: glass panels,

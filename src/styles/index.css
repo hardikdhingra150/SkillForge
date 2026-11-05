@@ -1,15 +1,7 @@
-/* Global styles. Each layer refines the ones above it, so keep this order. */
+/* Global styles, after the component stylesheets. Later files refine earlier ones, so keep this order. */
 @import './tokens.css';
-@import './styles.css';
-@import './experience.css';
-@import './scenes.css';
-@import './cinematic.css';
-@import './final-polish.css';
-@import './workspace-polish.css';
-@import './unified-motion.css';
-@import './neutral-theme.css';
-@import './automatic-motion.css';
-@import './frontend-harmony.css';
-@import './scroll-choreography.css';
-@import './hero-forge.css';
-@import './landing-lx.css';
+@import './base.css';
+@import './workspace.css';
+@import './api-views.css';
+@import './scroll.css';
+@import './landing.css';

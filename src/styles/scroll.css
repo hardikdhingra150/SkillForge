@@ -1,3 +1,6 @@
+/* Scroll choreography: entrances that compose with the ambient motion. */
+
+/* ---- from scroll-choreography.css ---- */
 /*
  * Scroll choreography. Entrances use the individual translate/scale/rotate
  * properties so they compose with the ambient transform loops already running
