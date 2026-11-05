@@ -1,90 +1,49 @@
 import {
   ArrowUpRight,
+  Layers3,
   Search,
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
 
+import { BASE } from '../api/skillforgeProcess.js';
 import { stages } from '../data';
 import { views } from '../navigation.js';
 import { Modal } from './Modal.jsx';
-import { PixelSpark, PixelSprite } from './PixelArt';
-import { SkillDetail } from './SkillDetail.jsx';
-import { Status } from './ui.jsx';
+import { PixelSpark } from './PixelArt';
 import { ApiTokenForm } from './ApiTokenForm.jsx';
+import { StatusPill } from './WorkspaceParts.jsx';
 
-// The modals opened from App: a skill, a crew member, runtime details, the learning loop, and search.
+// The modals opened from App: workspace settings, the learning loop, and search.
 export function AppModals({
   modal,
-  mode,
   skills,
+  connection,
+  onConnectionChanged,
   search,
   onSearch,
   onNavigate,
-  onShowSkill,
-  notify,
   onClose,
 }) {
+  const query = search.trim().toLowerCase();
+  const pages = [
+    ...views,
+    {
+      id: 'governance',
+      label: 'Guardrails',
+      icon: ShieldCheck,
+    },
+  ].filter((item) => item.label.toLowerCase().includes(query));
+  const foundSkills = skills
+    .filter((skill) => `${skill.skill_id} ${skill.capability}`.toLowerCase().includes(query))
+    .slice(0, 5);
+
   return (
     <>
-      {modal?.type === 'skill' && (
-        <SkillDetail
-          key={modal.skill.id}
-          skill={modal.skill}
-          mode={mode}
-          onClose={onClose}
-        />
-      )}
-
-      {modal?.type === 'crew' && (
-        <Modal
-          eyebrow="MEET YOUR LITTLE TEAM"
-          title={
-            `${modal.member.name}, ${
-              modal.member.role.toLowerCase()
-            }.`
-          }
-          onClose={onClose}
-        >
-          <div className="modal-body crew-modal">
-            <PixelSprite
-              kind={modal.member.kind}
-              mode={mode}
-              interactive
-              onPoke={() => {
-                notify(
-                  modal.member.speech[
-                    Math.floor(
-                      Math.random()
-                      * modal.member.speech.length,
-                    )
-                  ],
-                );
-              }}
-            />
-
-            <h3>{modal.member.description}</h3>
-
-            <p>
-              {modal.member.kind === 'byte'
-                ? 'Byte represents skill creation: turning a new task into a candidate with a clear contract and approved tools.'
-                : modal.member.kind === 'patch'
-                  ? 'Patch represents evaluation and repair: finding what failed, improving the candidate, and earning trust through tests.'
-                  : 'Scout represents discovery and reuse: looking through the registry for an existing capability before creating something new.'}
-            </p>
-
-            <span className="modal-note">
-              Original characters for the SkillForge preview.
-              Click to say hello.
-            </span>
-          </div>
-        </Modal>
-      )}
-
       {modal?.type === 'runtime' && (
         <Modal
-          title="A simple engine. A lot of possibility."
-          eyebrow="UNDER THE HOOD"
+          title="Workspace settings"
+          eyebrow="CONNECTION AND ACCESS"
           onClose={onClose}
         >
           <div className="modal-body">
@@ -92,14 +51,14 @@ export function AppModals({
               <Terminal size={22} />
 
               <div>
-                <h3>Local by design.</h3>
+                <h3>Your SkillForge API</h3>
 
                 <p>
-                  Your intelligence has a place to call home.
+                  <code>{BASE}</code>
                 </p>
               </div>
 
-              <Status>LOCAL WORKSPACE</Status>
+              <StatusPill status={connection} />
             </div>
 
             {[
@@ -137,13 +96,12 @@ export function AppModals({
               </div>
             ))}
 
-            <ApiTokenForm />
+            <ApiTokenForm onChange={onConnectionChanged} />
 
             <p className="modal-note">
-              Every page runs on the local FastAPI backend and
-              PostgreSQL: the Process view, Live console, metrics,
-              chat, Skill library, Review and Activity. With the API
-              offline, the console replays a recorded real run.
+              Every page reads from this API and its PostgreSQL database.
+              Nothing is pre-recorded: when the API is offline, pages say so
+              and show how to start it.
             </p>
           </div>
         </Modal>
@@ -199,78 +157,41 @@ export function AppModals({
                 onChange={(event) => {
                   onSearch(event.target.value);
                 }}
-                placeholder="Type a skill or page name..."
+                placeholder="Type a page or saved skill..."
                 aria-label="Search workspace"
               />
             </label>
 
             <div className="search-results">
-              {[
-                ...views,
-                {
-                  id: 'governance',
-                  label: 'Guardrails',
-                  icon: ShieldCheck,
-                },
-              ]
-                .filter((item) => (
-                  item.label
-                    .toLowerCase()
-                    .includes(search.toLowerCase())
-                ))
-                .map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => onNavigate(item.id)}
-                  >
-                    <item.icon size={16} />
-                    <span>{item.label}</span>
-                    <ArrowUpRight size={14} />
-                  </button>
-                ))}
+              {pages.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => onNavigate(item.id)}
+                >
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
+                  <ArrowUpRight size={14} />
+                </button>
+              ))}
 
-              {skills
-                .filter((skill) => (
-                  skill.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase())
-                ))
-                .slice(0, 5)
-                .map((skill) => (
-                  <button
-                    key={skill.id}
-                    onClick={() => onShowSkill(skill)}
-                  >
-                    <PixelSprite kind={skill.kind} />
+              {foundSkills.map((skill) => (
+                <button
+                  key={`${skill.skill_id}@${skill.version}`}
+                  onClick={() => onNavigate('library')}
+                >
+                  <Layers3 size={16} />
+                  <span>{skill.skill_id}</span>
+                  <span className="version">
+                    v{skill.version}
+                  </span>
+                </button>
+              ))}
 
-                    <span>{skill.name}</span>
-
-                    <span className="version">
-                      v{skill.version}
-                    </span>
-                  </button>
-                ))}
-
-              {![
-                ...views,
-                {
-                  label: 'Guardrails',
-                },
-              ].some((item) => (
-                item.label
-                  .toLowerCase()
-                  .includes(search.toLowerCase())
-              ))
-                && !skills.some((skill) => (
-                  skill.name
-                    .toLowerCase()
-                    .includes(search.toLowerCase())
-                ))
-                && (
-                  <p className="empty-search">
-                    Nothing here yet. Try another word.
-                  </p>
-                )}
+              {!pages.length && !foundSkills.length && (
+                <p className="empty-search">
+                  Nothing matches. Try another word.
+                </p>
+              )}
             </div>
           </div>
         </Modal>

@@ -1,4 +1,4 @@
-// A tiny in-memory SkillForge API for smoke tests: one task that the "worker" has reviewed.
+// A tiny in-memory SkillForge API for smoke tests: one saved skill and one task the "worker" has reviewed.
 const RUN = '0193a8f0-0000-7000-8000-000000000001';
 const TASK = '0193a8f0-0000-7000-8000-000000000002';
 
@@ -41,6 +41,26 @@ export async function mockApi(page) {
           status: run.status, current_stage: run.current_stage, created_at: now, started_at: null, finished_at: null,
         })),
         has_more: false, next_before_created_at: null, next_before_execution_id: null,
+      });
+    }
+    if (path === '/health/ready') {
+      return json({ service: 'skillforge', api: 'ready', database: 'ready' });
+    }
+    if (path === '/metrics/summary') {
+      const succeeded = runs.filter((run) => run.status === 'succeeded').length;
+      return json({
+        skills: 1, runs: runs.length, succeeded, success_rate: runs.length ? Math.round((100 * succeeded) / runs.length) : null,
+        repairs: 0, reuses: 0, created: 0, average_seconds: null,
+      });
+    }
+    if (path === '/skills') {
+      return json({
+        items: [{
+          skill_id: 'revenue_by_product', version: '1.1.0', capability: 'revenue_by_product', status: 'validated',
+          implementation_hash: 'x', validation: { passed: true, test_count: 5 }, origin: 'repair', parent_version: '1.0.0',
+          contract: { summary: 'Total revenue per product from a sales CSV.' }, change: null, source_code: null, created_at: now,
+        }],
+        has_more: false, next_after_skill_id: null, next_after_version: null,
       });
     }
     if (path === '/review') {

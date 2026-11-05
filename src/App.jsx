@@ -13,11 +13,6 @@ import {
   PixelSprite,
 } from './components/PixelArt';
 
-import {
-  initialRuns,
-  initialSkills,
-} from './data';
-
 import Landing from './components/Landing';
 
 import LivingBackground from './components/LivingBackground';
@@ -29,8 +24,9 @@ import {
   ScrollProgress,
 } from './components/ScrollStory';
 
-import { Status } from './components/ui.jsx';
+import { StatusPill } from './components/WorkspaceParts.jsx';
 import { useLiveRun } from './state/useLiveRun.js';
+import { useWorkspace } from './state/useWorkspace.js';
 
 import { Guardrails } from './routes/Guardrails.jsx';
 import { Topbar } from './components/Topbar.jsx';
@@ -38,7 +34,7 @@ import { Footer } from './components/Footer.jsx';
 import { Workbench } from './routes/Workbench.jsx';
 import { AppModals } from './components/AppModals.jsx';
 import { ConsolePage } from './routes/ConsolePage.jsx';
-import { VIEW_IDS } from './navigation.js';
+import { VIEW_IDS, views } from './navigation.js';
 
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
@@ -79,15 +75,11 @@ export default function App() {
     ).matches
   ));
 
-  const [mode] = useState('voxel');
-  const [skills] = useState(initialSkills);
-  const [runs] = useState(initialRuns);
-
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState('');
-
-  const [repairs, setRepairs] = useState(8);
   const [search, setSearch] = useState('');
+
+  const workspace = useWorkspace();
 
   useEffect(() => {
     document.documentElement.dataset.scene = scene;
@@ -192,14 +184,12 @@ export default function App() {
 
   const { consoleProps, running, startRun } = useLiveRun({
     notify,
-    onRepaired: () => setRepairs((value) => value + 1),
+    onFinished: workspace.refresh,
   });
 
-  const showSkill = (skill) => {
-    setModal({
-      type: 'skill',
-      skill,
-    });
+  const openRun = (executionId) => {
+    setRequestedExecutionId(executionId);
+    navigate('workbench');
   };
 
   const scrollLanding = (id) => {
@@ -273,11 +263,11 @@ export default function App() {
           onRuntime={() => {
             setModal({ type: 'runtime' });
           }}
+          connection={workspace.status}
         />
 
         {view === 'landing' ? (
           <Landing
-            onLibrary={() => navigate('library')}
             motion={motion}
             onEnter={() => navigate('workbench')}
             onDemo={() => {
@@ -294,16 +284,15 @@ export default function App() {
             <div className="workspace-line">
               <div>
                 <span className="tiny-block" />
-                HARDIK’S PLAYGROUND
+                SKILLFORGE
 
                 <span className="workspace-divider">
                   /
                 </span>
 
                 <span>
-                  {view === 'workbench'
-                    ? 'WORKSPACE 001'
-                    : view.toUpperCase()}
+                  {(views.find((item) => item.id === view)?.label
+                    || (view === 'governance' ? 'Guardrails' : view)).toUpperCase()}
                 </span>
               </div>
 
@@ -311,28 +300,25 @@ export default function App() {
                 onClick={() => {
                   setModal({ type: 'runtime' });
                 }}
+                aria-label="Workspace settings and connection"
               >
-                <Status>LOCAL WORKSPACE</Status>
+                <StatusPill status={workspace.status} />
                 <ChevronRight size={12} />
               </button>
             </div>
 
             {view === 'workbench' && (
               <Workbench
+                workspace={workspace}
                 running={running}
                 motion={motion}
-                mode={mode}
-                skills={skills}
-                runs={runs}
-                repairs={repairs}
                 consoleProps={consoleProps}
                 onRun={startRun}
                 requestedExecutionId={requestedExecutionId}
                 onOpenRequestHandled={setRequestedExecutionId}
+                onOpenRun={openRun}
                 onNavigate={navigate}
-                onShowSkill={showSkill}
                 onOpenModal={setModal}
-                notify={notify}
               />
             )}
 
@@ -343,7 +329,7 @@ export default function App() {
             {view === 'models' && <ModelsView />}
 
             {view === 'review' && (
-              <ReviewView onOpenRun={(id) => { setRequestedExecutionId(id); navigate('workbench'); }} />
+              <ReviewView onOpenRun={openRun} />
             )}
 
             {view === 'library' && (
@@ -357,12 +343,7 @@ export default function App() {
             )}
 
             {view === 'activity' && (
-              <ExecutionHistory
-                onOpen={(executionId) => {
-                  setRequestedExecutionId(executionId);
-                  navigate('workbench');
-                }}
-              />
+              <ExecutionHistory onOpen={openRun} />
             )}
 
             {view === 'governance' && (
@@ -399,13 +380,12 @@ export default function App() {
 
       <AppModals
         modal={modal}
-        mode={mode}
-        skills={skills}
+        skills={workspace.skills}
+        connection={workspace.status}
+        onConnectionChanged={workspace.refresh}
         search={search}
         onSearch={setSearch}
         onNavigate={navigate}
-        onShowSkill={showSkill}
-        notify={notify}
         onClose={() => setModal(null)}
       />
     </div>

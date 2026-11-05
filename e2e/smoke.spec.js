@@ -11,6 +11,16 @@ test('the landing page loads', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Every failure becomes a skill.' })).toBeVisible();
 });
 
+test('a new user without the API sees how to start it', async ({ page }) => {
+  await page.unrouteAll();
+  await page.route('http://127.0.0.1:5999/api/v1/**', (route) => route.abort());
+  await page.goto('/#workbench');
+  const status = page.getByRole('complementary', { name: 'Workspace status' });
+  await expect(status.getByText('Start SkillForge on your machine')).toBeVisible();
+  await expect(status.getByRole('button', { name: 'Copy command: make api' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start a task' }).first()).toBeDisabled();
+});
+
 test('the Workbench submits a task and Activity lists it', async ({ page }) => {
   await page.goto('/#workbench');
   await page.getByPlaceholder('Show revenue by product from my sales data.').fill('Show revenue by product');
