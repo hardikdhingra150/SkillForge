@@ -14,7 +14,7 @@ test('the landing page loads', async ({ page }) => {
 test('the Workbench submits a task and Activity lists it', async ({ page }) => {
   await page.goto('/#workbench');
   await page.getByPlaceholder('Show revenue by product from my sales data.').fill('Show revenue by product');
-  await page.getByRole('button', { name: 'Submit requirement' }).click();
+  await page.getByRole('button', { name: 'Start task', exact: true }).click();
   await expect(page.getByText('Your request has been saved.').first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Activity' }).first().click();

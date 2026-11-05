@@ -60,8 +60,17 @@ function time(value) {
 export default function SkillForgeProcessView({
   requestedExecutionId = "",
   onOpenRequestHandled,
+  onChanged,
 }) {
   const process = useSkillForgeProcess();
+  const runStatus = process.execution?.status;
+
+  // Let the workspace numbers and lists catch up whenever this run moves on.
+  useEffect(() => {
+    if (runStatus) {
+      onChanged?.();
+    }
+  }, [runStatus, onChanged]);
   const lastInputRequest = [...(process.events || [])].reverse().find((event) => event.event_type === "input_required");
   const clarifyQuestion = lastInputRequest?.payload?.next_action === "clarify_requirement"
     ? (lastInputRequest.payload.question || lastInputRequest.message) : "";
@@ -105,22 +114,18 @@ export default function SkillForgeProcessView({
       <header className="sf-process__header">
         <div>
           <p className="sf-process__eyebrow">
-            SkillForge workbench
+            New task
           </p>
 
           <h2 id={`${uid}-title`}>
-            Process View
+            Start a task
           </h2>
 
           <p>
-            Submit a requirement and follow its
-            recorded progress.
+            Describe what you need. SkillForge checks the request,
+            asks for the file it needs, then shows every step here.
           </p>
         </div>
-
-        <span className="sf-process__badge">
-          API mode
-        </span>
       </header>
 
       {process.error && (
@@ -164,8 +169,8 @@ export default function SkillForgeProcessView({
           id={`${uid}-scope`}
           className="sf-process__muted"
         >
-          Submit a requirement for review, then
-          provide the input it needs.
+          Be specific about the result you want. Example: “Total revenue
+          per product from my sales export.” Today SkillForge works on CSV files.
         </p>
 
         {process.pending && (
@@ -184,10 +189,10 @@ export default function SkillForgeProcessView({
             }
           >
             {process.submitting
-              ? "Saving request…"
+              ? "Starting…"
               : process.pending
-                ? "Retry submission"
-                : "Submit requirement"}
+                ? "Retry"
+                : "Start task"}
           </button>
 
           <button
@@ -204,8 +209,7 @@ export default function SkillForgeProcessView({
         </div>
 
         <p className="sf-process__muted">
-          New task clears this view; saved backend
-          executions remain available.
+          New task clears this form. Earlier runs stay in Activity.
         </p>
       </form>
 
