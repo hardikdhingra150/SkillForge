@@ -7,6 +7,7 @@ import {
 
 import ExecutionHistory from "./ExecutionHistory.jsx";
 import CSVInputPanel from "./CSVInputPanel.jsx";
+import { TaskResult } from "./TaskResult.jsx";
 
 import {
   useSkillForgeProcess,
@@ -368,6 +369,10 @@ export default function SkillForgeProcessView({
             />
           )}
 
+          {process.execution?.status === "succeeded" && (
+            <TaskResult result={process.execution.result} />
+          )}
+
           <h3>Recorded process history</h3>
 
           <ol className="sf-process__timeline">
@@ -440,7 +445,7 @@ export default function SkillForgeProcessView({
 
           {process.execution?.result != null && (
             <details>
-              <summary>Result</summary>
+              <summary>Raw result (JSON)</summary>
 
               <pre>
                 {JSON.stringify(

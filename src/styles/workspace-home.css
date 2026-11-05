@@ -119,3 +119,16 @@
 
 /* ---- Live console: the sample-file label must stay readable in both themes ---- */
 .app .file-chip .demo-text { color: var(--muted); border-color: var(--line); }
+
+/* ---- Task result table (Workbench task view) ---- */
+.task-result { margin: 18px 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--glass-inset, var(--soft)); }
+.task-result header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.task-result header button { display: inline-flex; align-items: center; gap: 8px; }
+.task-result__total { display: block; margin: 4px 0 2px; font: 34px var(--pixel); color: var(--text); }
+.task-result table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.task-result th, .task-result td { padding: 9px 10px; border-top: 1px solid var(--line); text-align: left; }
+.task-result thead th { border-top: 0; color: var(--faint); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.task-result td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.task-result tbody th { position: relative; font-weight: 600; }
+.task-result__bar { position: absolute; left: 0; bottom: 0; height: 2px; width: var(--width); background: var(--text); opacity: .55; }
+.task-result__proof { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: var(--muted); font: 11px var(--mono); }
