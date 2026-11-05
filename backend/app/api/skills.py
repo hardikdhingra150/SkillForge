@@ -9,15 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select, tuple_
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, require_development
+from app.api.tasks import DB
 from app.database.skill_models import SkillVersion
 from app.sandbox import PolicyViolation
+from app.security import require_access
 from app.services.skill_bundle import BundleError, export_bundle, import_bundle
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(
     prefix="/api/v1", tags=["Skill registry"],
-    dependencies=[Depends(require_development)],
+    dependencies=[Depends(require_access)],
 )
 
 

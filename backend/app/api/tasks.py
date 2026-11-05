@@ -18,7 +18,6 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.database.models import (
     Execution,
     ExecutionEvent,
@@ -32,6 +31,7 @@ from app.schemas.process import (
     ExecutionOut,
     TaskCreate,
 )
+from app.security import require_access
 from app.services.events import append_event
 
 logger = logging.getLogger("uvicorn.error")
@@ -41,24 +41,10 @@ DEV_WORKSPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
 DB = Annotated[Session, Depends(get_db)]
 
 
-def require_development():
-    if settings.app_env != "development":
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": "LOCAL_API_DISABLED",
-                "message": (
-                    "Workspace authentication must be configured "
-                    "before enabling these routes in production."
-                ),
-            },
-        )
-
-
 router = APIRouter(
     prefix="/api/v1",
     tags=["Tasks and process"],
-    dependencies=[Depends(require_development)],
+    dependencies=[Depends(require_access)],
 )
 
 

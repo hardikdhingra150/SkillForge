@@ -7,13 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, DEV_WORKSPACE_ID, require_development
+from app.api.tasks import DB, DEV_WORKSPACE_ID
 from app.database.chat_models import ChatMessage
 from app.database.models import Execution, ExecutionEvent, Task
 from app.database.skill_models import SkillVersion
+from app.security import require_access
 
 logger = logging.getLogger("uvicorn.error")
-router = APIRouter(prefix="/api/v1", tags=["Metrics"], dependencies=[Depends(require_development)])
+router = APIRouter(prefix="/api/v1", tags=["Metrics"], dependencies=[Depends(require_access)])
 
 FINISHED = {"succeeded", "failed", "waiting_approval"}
 SKILL_EVENTS = {"reused", "created", "repaired"}

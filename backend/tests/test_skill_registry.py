@@ -146,11 +146,11 @@ class SkillRegistryTests(unittest.TestCase):
             with self.subTest(params=params):
                 self.assertEqual(self.request(params)[0], 422)
 
-    def test_existing_development_gate(self):
-        with patch.object(settings, "app_env", "production"):
+    def test_production_without_a_token_stays_closed(self):
+        with patch.object(settings, "app_env", "production"), patch.object(settings, "api_token", None):
             status, body = self.request()
         self.assertEqual(status, 503)
-        self.assertEqual(body["detail"]["code"], "LOCAL_API_DISABLED")
+        self.assertEqual(body["detail"]["code"], "API_TOKEN_REQUIRED")
 
     def test_database_failure_is_retryable_without_internal_details(self):
         failed = Mock()

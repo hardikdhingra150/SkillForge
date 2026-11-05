@@ -13,17 +13,18 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, DEV_WORKSPACE_ID, require_development
+from app.api.tasks import DB, DEV_WORKSPACE_ID
 from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.models import Workspace
 from app.database.session import SessionLocal
 from app.llm import PROVIDERS, provider_statuses
+from app.security import require_access
 from app.services import live, scoreboard
 from app.services.agent import run_turn
 from app.services.csv_inputs import MAX_BYTES, parse_csv
 
 logger = logging.getLogger("uvicorn.error")
-router = APIRouter(prefix="/api/v1", tags=["Chat"], dependencies=[Depends(require_development)])
+router = APIRouter(prefix="/api/v1", tags=["Chat"], dependencies=[Depends(require_access)])
 
 
 class ProviderOut(BaseModel):

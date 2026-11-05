@@ -16,9 +16,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.tasks import (
     DB,
     DEV_WORKSPACE_ID,
-    require_development,
 )
 from app.database.models import Execution, Task
+from app.security import require_access
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -26,7 +26,7 @@ router = APIRouter(
     prefix="/api/v1",
     tags=["Activity"],
     dependencies=[
-        Depends(require_development)
+        Depends(require_access)
     ],
 )
 

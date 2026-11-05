@@ -9,16 +9,17 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, DEV_WORKSPACE_ID, require_development
+from app.api.tasks import DB, DEV_WORKSPACE_ID
 from app.database.input_models import ExecutionCSVInput
 from app.database.models import Execution, Task
+from app.security import require_access
 from app.services.csv_inputs import MAX_BYTES, parse_csv, validate_mapping
 from app.services.events import append_event
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(
     prefix="/api/v1", tags=["Task inputs"],
-    dependencies=[Depends(require_development)],
+    dependencies=[Depends(require_access)],
 )
 
 
