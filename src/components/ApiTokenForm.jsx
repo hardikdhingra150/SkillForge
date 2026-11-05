@@ -3,7 +3,7 @@ import { useId, useState } from 'react';
 import { getApiToken, setApiToken } from '../api/skillforgeProcess.js';
 
 // Paste the server's API_TOKEN once; it is stored in this browser and sent with every request.
-export function ApiTokenForm() {
+export function ApiTokenForm({ onChange }) {
   const id = useId();
   const [saved, setSaved] = useState(() => Boolean(getApiToken()));
   const [draft, setDraft] = useState('');
@@ -13,11 +13,13 @@ export function ApiTokenForm() {
     setApiToken(draft.trim());
     setSaved(Boolean(draft.trim()));
     setDraft('');
+    onChange?.();
   };
 
   const clear = () => {
     setApiToken('');
     setSaved(false);
+    onChange?.();
   };
 
   return (
