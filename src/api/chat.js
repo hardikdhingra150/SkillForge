@@ -1,4 +1,4 @@
-import { BASE, request } from "./skillforgeProcess.js";
+import { request, streamUrl } from "./skillforgeProcess.js";
 
 const json = (body) => ({
   method: "POST",
@@ -39,7 +39,7 @@ export function uploadAttachment(id, file) {
 
 /** Live updates for a conversation (server-sent events). Returns a close function. */
 export function streamConversation(id, { onUpdate, onDone, onError }) {
-  const source = new EventSource(`${BASE}/conversations/${encodeURIComponent(id)}/stream`);
+  const source = new EventSource(streamUrl(`/conversations/${encodeURIComponent(id)}/stream`));
   source.addEventListener("update", (event) => onUpdate(JSON.parse(event.data)));
   source.addEventListener("done", () => { source.close(); onDone?.(); });
   source.onerror = () => { source.close(); onError?.(); };

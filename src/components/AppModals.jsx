@@ -11,6 +11,7 @@ import { Modal } from './Modal.jsx';
 import { PixelSpark, PixelSprite } from './PixelArt';
 import { SkillDetail } from './SkillDetail.jsx';
 import { Status } from './ui.jsx';
+import { ApiTokenForm } from './ApiTokenForm.jsx';
 
 // The modals opened from App: a skill, a crew member, runtime details, the learning loop, and search.
 export function AppModals({
@@ -135,6 +136,8 @@ export function AppModals({
                 <strong>{value}</strong>
               </div>
             ))}
+
+            <ApiTokenForm />
 
             <p className="modal-note">
               Every page runs on the local FastAPI backend and

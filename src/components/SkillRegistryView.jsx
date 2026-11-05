@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { getSkillRegistry } from "../api/skillforgeProcess.js";
 import { restoreVersion, retireVersion } from "../api/review.js";
-import { exportUrl, getMcpConfig, importSkill } from "../api/skills.js";
+import { downloadBundle, getMcpConfig, importSkill } from "../api/skills.js";
 
 function UseInAgents() {
   const [config, setConfig] = useState(null);
@@ -226,7 +226,7 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
             <div className="sf-registry__actions sf-registry__version-actions">
               {skill.status === "validated" && <button onClick={() => changeStatus(skill, "retire")} title="Stop using this version; the previous validated version is used again">Retire (roll back)</button>}
               {skill.status === "retired" && skill.source_code && <button onClick={() => changeStatus(skill, "restore")}>Restore</button>}
-              {skill.source_code && <a className="sf-registry__export" href={exportUrl(skill.skill_id, skill.version)} download>Export bundle</a>}
+              {skill.source_code && <button className="sf-registry__export" onClick={() => downloadBundle(skill.skill_id, skill.version).catch((failure) => setError(failure.message))}>Export bundle</button>}
             </div>
             <details>
               <summary>Validation evidence and implementation hash</summary>

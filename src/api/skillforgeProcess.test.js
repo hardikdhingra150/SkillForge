@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getEventsSince, mergeEvents, ProcessApiError, request } from "./skillforgeProcess.js";
+import { getEventsSince, mergeEvents, ProcessApiError, request, setApiToken, streamUrl } from "./skillforgeProcess.js";
 
 function respond(status, body) {
   return vi.fn().mockResolvedValue({
@@ -10,7 +10,10 @@ function respond(status, body) {
   });
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  setApiToken("");
+});
 
 describe("mergeEvents", () => {
   it("keeps one event per sequence, sorted, with the newest copy winning", () => {
@@ -70,5 +73,34 @@ describe("getEventsSince", () => {
   it("rejects a cursor that moves backwards", async () => {
     vi.stubGlobal("fetch", respond(200, { events: [], next_after: 3, has_more: false }));
     await expect(getEventsSince("run", 5)).rejects.toThrow("invalid event cursor");
+  });
+});
+
+describe("API access token", () => {
+  it("sends no Authorization header without a token", async () => {
+    const fetch = respond(200, {});
+    vi.stubGlobal("fetch", fetch);
+    await request("/x");
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBeUndefined();
+  });
+
+  it("sends the saved token as a bearer token", async () => {
+    setApiToken("secret-token");
+    const fetch = respond(200, {});
+    vi.stubGlobal("fetch", fetch);
+    await request("/x");
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBe("Bearer secret-token");
+  });
+
+  it("explains a 401 and where to add the token", async () => {
+    vi.stubGlobal("fetch", respond(401, { detail: { code: "UNAUTHORIZED" } }));
+    await expect(request("/x")).rejects.toMatchObject({ status: 401, message: expect.stringMatching(/Workspace details/) });
+  });
+
+  it("puts the token in stream URLs, which cannot carry headers", () => {
+    expect(streamUrl("/conversations/c/stream")).not.toContain("access_token");
+    setApiToken("a b");
+    expect(streamUrl("/conversations/c/stream")).toMatch(/\/conversations\/c\/stream\?access_token=a%20b$/);
+    expect(streamUrl("/executions/e/stream?after=3")).toMatch(/after=3&access_token=a%20b$/);
   });
 });

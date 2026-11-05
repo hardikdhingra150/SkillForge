@@ -737,3 +737,12 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- API access token (Workspace details) ---- */
+.api-token { display: grid; gap: 8px; margin: 18px 0 4px; padding-top: 16px; border-top: 1px solid var(--line); }
+.api-token label { display: flex; justify-content: space-between; gap: 12px; font: 12px var(--mono); color: var(--text); }
+.api-token small { color: var(--muted); font-size: 11px; }
+.api-token > div { display: flex; gap: 8px; }
+.api-token input { flex: 1; min-width: 0; min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); }
+.api-token button { min-height: 36px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 12px; }
+.api-token button:disabled { opacity: .5; cursor: not-allowed; }

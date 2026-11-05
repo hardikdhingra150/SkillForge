@@ -3,6 +3,40 @@ export const BASE = (
   || "http://127.0.0.1:8000/api/v1"
 ).replace(/\/+$/, "");
 
+const TOKEN_KEY = "skillforge.apiToken";
+
+// The API access token (API_TOKEN on the server), kept in this browser only.
+export function getApiToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setApiToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {
+    // Storage blocked: the token simply is not remembered.
+  }
+}
+
+// EventSource cannot send headers, so live streams carry the token in the query string.
+export function streamUrl(path) {
+  const token = getApiToken();
+
+  if (!token) {
+    return `${BASE}${path}`;
+  }
+
+  return `${BASE}${path}${path.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(token)}`;
+}
+
 export class ProcessApiError extends Error {
   constructor(message, status = 0) {
     super(message);
@@ -43,6 +77,7 @@ export async function request(path, options = {}) {
         signal: controller.signal,
         headers: {
           Accept: "application/json",
+          ...(getApiToken() ? { Authorization: `Bearer ${getApiToken()}` } : {}),
           ...rest.headers,
         },
       },
@@ -60,6 +95,13 @@ export async function request(path, options = {}) {
         : typeof detail === "string"
           ? detail
           : detail?.message;
+
+      if (response.status === 401) {
+        throw new ProcessApiError(
+          "This SkillForge API needs an access token. Add it under Workspace details (the H button).",
+          401,
+        );
+      }
 
       throw new ProcessApiError(
         message
@@ -193,7 +235,7 @@ export function streamExecution(
   { onExecution, onEvent, onDone, onReconnect, onError },
 ) {
   const source = new EventSource(
-    `${BASE}/executions/${encodeURIComponent(executionId)}/stream?after=${after}`,
+    streamUrl(`/executions/${encodeURIComponent(executionId)}/stream?after=${after}`),
   );
 
   source.addEventListener("execution", (message) => onExecution(JSON.parse(message.data)));
