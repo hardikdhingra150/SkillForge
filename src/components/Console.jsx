@@ -48,7 +48,7 @@ export function Console({
   runComplete,
   stage,
   reused,
-  live = false,
+  offline = false,
   result = null,
   onRun,
   expanded = false,
@@ -72,20 +72,22 @@ export function Console({
         <Status color={running ? 'peach' : ''}>
           {running
             ? 'THINKING + TINKERING'
-            : runComplete
-              ? 'SKILL UNLOCKED'
-              : 'READY WHEN YOU ARE'}
+            : offline
+              ? 'API OFFLINE'
+              : runComplete
+                ? 'SKILL UNLOCKED'
+                : 'READY WHEN YOU ARE'}
         </Status>
       </PanelTop>
 
       <div className="console-heading">
         <div>
           <p className="eyebrow">
-            FAIL A LITTLE. LEARN A LOT.
+            SAMPLE RUN · REAL ENGINE
           </p>
 
           <h2>
-            Watch the magic <span>happen.</span>
+            Watch a repair <span>happen.</span>
           </h2>
         </div>
 
@@ -112,8 +114,8 @@ export function Console({
         <FileText size={11} />
 
         <span>{LIVE_FILE.name}</span>
-        <span>{LIVE_FILE.rows} rows · messy amounts</span>
-        <span className="demo-text">{live ? 'LIVE' : 'REPLAY'}</span>
+        <span>{LIVE_FILE.rows} rows · amounts like “$1,200.50”</span>
+        <span className="demo-text">SAMPLE FILE</span>
       </div>
 
       <div className="lifecycle">
@@ -156,13 +158,13 @@ export function Console({
 
             <div>
               <p>
-                Every great skill starts with a small problem
+                Run the sample to see the whole loop
                 <span className="cursor">_</span>
               </p>
 
               <span>
-                One column mismatch. One clever repair.
-                A capability that sticks.
+                The first run fails on formatted amounts, repairs the skill
+                and saves it. Run it again and the saved skill is reused.
               </span>
             </div>
           </div>
@@ -192,7 +194,7 @@ export function Console({
       <div className="console-footer">
         <span>
           <LockKeyhole size={11} />
-          {live ? 'REAL RUN · SANDBOXED' : 'RECORDED RUN · API OFFLINE'}
+          {offline ? 'START THE API TO RUN' : 'REAL RUN · SANDBOXED'}
         </span>
 
         <Button
@@ -210,8 +212,10 @@ export function Console({
           {running
             ? 'Working on it...'
             : runComplete
-              ? (live ? 'Run again · reuse the skill' : 'Replay again')
-              : 'Let’s run it'}
+              ? 'Run again · reuse the skill'
+              : offline
+                ? 'Try again'
+                : 'Run the sample'}
         </Button>
       </div>
     </section>

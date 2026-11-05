@@ -1,21 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { replayLines, runLive } from '../api/liveRun.js';
-import recordedRun from '../fixtures/recordedRepairRun.json';
+import { runLive } from '../api/liveRun.js';
 
-const sleep = (ms) => (
-  new Promise((resolve) => setTimeout(resolve, ms))
-);
-
-// The Live console's run: real against the API, or a recorded real run when the API is offline.
-export function useLiveRun({ notify, onRepaired }) {
+// The Live console's sample run: a real task against the API with the bundled sample CSV.
+export function useLiveRun({ notify, onFinished }) {
   const [logs, setLogs] = useState([]);
   const [running, setRunning] = useState(false);
   const [runComplete, setRunComplete] = useState(false);
   const [stage, setStage] = useState(-1);
   const [reused, setReused] = useState(false);
-  // The console runs for real against the API; the recorded replay is only a fallback.
-  const [consoleLive, setConsoleLive] = useState(true);
+  const [offline, setOffline] = useState(false);
   const [liveResult, setLiveResult] = useState(null);
 
   const alive = useRef(true);
@@ -28,42 +22,6 @@ export function useLiveRun({ notify, onRepaired }) {
       alive.current = false;
     };
   }, []);
-
-  // Offline: replay a recorded real run (src/fixtures/recordedRepairRun.json) at a readable pace.
-  const playDemo = async () => {
-    if (inFlight.current) {
-      return;
-    }
-
-    inFlight.current = true;
-    setRunning(true);
-    setRunComplete(false);
-    setReused(false);
-    setLiveResult(null);
-    setLogs([]);
-    setStage(0);
-
-    for (const line of replayLines()) {
-      if (!alive.current) {
-        return;
-      }
-
-      setStage(line.stage);
-      setLogs((previous) => [...previous, line]);
-      await sleep(line.type === 'error' ? 1400 : 800);
-    }
-
-    if (!alive.current) {
-      return;
-    }
-
-    setLiveResult(recordedRun.result);
-    setRunComplete(true);
-    setStage(6);
-    setRunning(false);
-    inFlight.current = false;
-    notify('That was a recorded real run. Start the API and worker to run it live.');
-  };
 
   const runController = useRef(null);
 
@@ -124,15 +82,13 @@ export function useLiveRun({ notify, onRepaired }) {
       const ok = execution?.status === 'succeeded';
       const version = execution?.result?.skill?.version;
 
-      setConsoleLive(true);
+      setOffline(false);
       setReused(ok && !repaired);
       setLiveResult(ok ? execution.result : null);
       setRunComplete(ok);
       setStage(ok ? 6 : 4);
 
-      if (ok && repaired) {
-        onRepaired();
-      }
+      onFinished?.();
 
       notify(
         !ok
@@ -146,16 +102,21 @@ export function useLiveRun({ notify, onRepaired }) {
         return;
       }
 
-      // No API at all: fall back to the scripted demo.
+      // No API at all: say how to start it instead of pretending.
       if (error.status === 0 && !lines) {
-        setConsoleLive(false);
-        inFlight.current = false;
-        setRunning(false);
-        await playDemo();
+        setOffline(true);
+        setStage(-1);
+        push({
+          stage: -1,
+          tag: 'OFFLINE',
+          type: 'error',
+          message: 'Can’t reach the SkillForge API. Start it with make api and make worker, then run again.',
+        });
         return;
       }
 
       push({ stage: 4, tag: 'FAIL', type: 'error', message: error.message });
+      onFinished?.();
     } finally {
       if (runController.current === controller) {
         inFlight.current = false;
@@ -170,7 +131,7 @@ export function useLiveRun({ notify, onRepaired }) {
     runComplete,
     stage,
     reused,
-    live: consoleLive,
+    offline,
     result: liveResult,
     onRun: startRun,
   };

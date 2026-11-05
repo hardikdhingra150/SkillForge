@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { consoleLine, LIVE_FILE, replayLines } from "./liveRun.js";
+import { consoleLine, LIVE_FILE } from "./liveRun.js";
 
 describe("consoleLine", () => {
   it("maps recorded events to console stages and tags", () => {
@@ -16,17 +16,8 @@ describe("consoleLine", () => {
   });
 });
 
-describe("replayLines", () => {
-  it("replays the recorded repair run in order with timestamps", () => {
-    const lines = replayLines();
-    const tags = lines.map((line) => line.tag);
-    expect(tags.indexOf("FAIL")).toBeLessThan(tags.indexOf("PATCH"));
-    expect(tags.indexOf("PATCH")).toBeLessThan(tags.indexOf("SAVE"));
-    expect(tags.at(-1)).toBe("DONE");
-    expect(lines.every((line) => /^00:\d\d$/.test(line.time))).toBe(true);
-  });
-
-  it("knows the bundled demo file", () => {
+describe("LIVE_FILE", () => {
+  it("knows the bundled sample file", () => {
     expect(LIVE_FILE).toEqual({ name: "sales_formatted_amounts.csv", rows: 5 });
   });
 });

@@ -1,8 +1,8 @@
-// The Live console's real run: submit a task, give it the bundled messy sales CSV, confirm the
-// columns, and follow the worker's recorded events. The first run on a fresh registry fails on
-// "$1,200.50"-style amounts, repairs the skill and saves a new version; later runs reuse it.
-import demoCsv from "../../demo_data/sales_formatted_amounts.csv?raw";
-import recordedRun from "../fixtures/recordedRepairRun.json";
+// The Live console's sample run: submit a task, give it the bundled sample sales CSV (amounts
+// exported as "$1,200.50"), confirm the columns, and follow the worker's events. The first run on
+// a fresh registry fails on those amounts, repairs the skill and saves a new version; later runs
+// reuse it. Everything shown comes from the real API.
+import sampleCsv from "../../demo_data/sales_formatted_amounts.csv?raw";
 
 import {
   confirmCSVMapping,
@@ -14,12 +14,12 @@ import {
 export const LIVE_REQUIREMENT = "Show revenue by product";
 export const LIVE_FILE = {
   name: "sales_formatted_amounts.csv",
-  rows: demoCsv.trim().split("\n").length - 1,
+  rows: sampleCsv.trim().split("\n").length - 1,
 };
 
 const FINISHED = new Set(["succeeded", "failed", "waiting_approval", "cancelled", "expired"]);
 
-// Console stage index (see `stages` in data.js), tag and style for each recorded event type.
+// Console stage index (see `stages` in data.js), tag and style for each event type.
 const LINES = {
   task_received: [0, "TASK"],
   requirements_checked: [0, "REVIEW"],
@@ -50,19 +50,6 @@ export function consoleLine(event, repaired) {
   const line = LINES[event.event_type];
 
   return line && { stage: line[0], tag: line[1], type: line[2] || "", message: event.message };
-}
-
-// Console lines for the recorded real run, timed as they were recorded.
-export function replayLines() {
-  let repaired = false;
-
-  return recordedRun.events.flatMap((event) => {
-    repaired ||= event.event_type === "skill_promoted";
-    const line = consoleLine(event, repaired);
-    const seconds = Math.floor(event.at_ms / 1000);
-
-    return line ? [{ ...line, time: `00:${String(seconds).padStart(2, "0")}` }] : [];
-  });
 }
 
 // Follow the run's stream until `until(execution)` holds; reconnects when the server rotates it.
@@ -150,7 +137,7 @@ export async function runLive({ onLine, onWaiting, signal }) {
     throw new Error("The requirement review did not accept this task.");
   }
 
-  const file = new File([demoCsv], LIVE_FILE.name, { type: "text/csv" });
+  const file = new File([sampleCsv], LIVE_FILE.name, { type: "text/csv" });
   const input = await uploadCSVInput(id, file, signal);
 
   await confirmCSVMapping(id, {

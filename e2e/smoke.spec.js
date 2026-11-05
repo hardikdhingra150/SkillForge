@@ -34,16 +34,16 @@ test('the theme toggle switches and remembers light mode', async ({ page }) => {
   await expect(html).toHaveAttribute('data-theme', next);
 });
 
-test('the Live console replays a recorded real run when the API is offline', async ({ page }) => {
+test('the Live console says when the API is offline instead of replaying anything', async ({ page }) => {
   await page.unrouteAll();
   await page.route('http://127.0.0.1:5999/api/v1/**', (route) => route.abort());
   await page.goto('/#console');
-  await page.getByRole('button', { name: 'Let’s run it' }).click();
+  await page.getByRole('button', { name: 'Run the sample' }).click();
 
   const log = page.getByLabel('Execution log');
-  await expect(log.getByText('Saved revenue_by_product v1.1.0 (repaired from v1.0.0).', { exact: false })).toBeVisible({ timeout: 20000 });
-  await expect(page.getByText('RECORDED RUN · API OFFLINE')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Replay again' })).toBeVisible({ timeout: 10000 });
+  await expect(log.getByText('Can’t reach the SkillForge API.', { exact: false })).toBeVisible();
+  await expect(page.getByText('START THE API TO RUN')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
 });
 
 test('the Review page shows the audit trail', async ({ page }) => {

@@ -5,9 +5,9 @@ export function ConsolePage({ consoleProps }) {
   return (
     <>
       <PageHeading
-        label="ONE TASK. A WHOLE LEARNING LOOP."
-        title="Let’s see what happens."
-        description="A missing column is not the end of the story. It is where the learning starts."
+        label="SAMPLE RUN · REAL ENGINE"
+        title="See the learning loop."
+        description="This runs a real task against your API with a small sample CSV. Nothing here is pre-recorded."
       />
 
       <Console
