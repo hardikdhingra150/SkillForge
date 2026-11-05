@@ -88,3 +88,37 @@ class RunnerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RuntimeGuardTests(unittest.TestCase):
+    """The child's audit hook blocks escapes even if code got past the static policy."""
+
+    ESCAPES = {
+        "network": "import socket; socket.create_connection(('example.com', 80), timeout=1)",
+        "write a file": "open('escape.txt', 'w').write('x')",
+        "read a file": "open('/etc/hosts').read()",
+        "list a directory": "import os; os.listdir('/')",
+        "start a process": "import subprocess; subprocess.run(['true'])",
+        "shell out": "import os; os.system('true')",
+        "native code": "import ctypes; ctypes.CDLL(None)",
+        "change environment": "import os; os.putenv('X', '1')",
+    }
+
+    def attempt(self, code):
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        sandbox = Path(__file__).resolve().parents[1] / "app" / "sandbox"
+        script = f"import sys; sys.path.insert(0, {str(sandbox)!r}); import child; child.install_guard()\n" \
+                 f"try:\n    {code}\n    print('ALLOWED')\nexcept PermissionError as error:\n    print('BLOCKED', error)\n"
+        done = subprocess.run([sys.executable, "-I", "-S", "-c", script], capture_output=True, text=True, timeout=20)
+        return done.stdout.strip() or done.stderr.strip().splitlines()[-1]
+
+    def test_escapes_are_blocked(self):
+        for name, code in self.ESCAPES.items():
+            with self.subTest(name):
+                self.assertTrue(self.attempt(code).startswith("BLOCKED"), self.attempt(code))
+
+    def test_stdlib_imports_still_work(self):
+        self.assertEqual(self.attempt("import statistics; statistics.mean([1, 2])"), "ALLOWED")
