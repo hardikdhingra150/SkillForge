@@ -33,7 +33,7 @@ export default function Pop({ as: Tag = 'div', className = '', threshold = 0.25,
 
 /** Splits a line into words that pop in one after another. */
 export function PopWords({ text, start = 0, className = '' }) {
-  return <span className={className} aria-label={text}>{text.split(' ').map((word, i) => <span key={`${word}-${i}`} aria-hidden="true" className="pop pop-word" style={{ '--i': start + i }}>{word}{' '}</span>)}</span>;
+  return <span className={className}>{text.split(' ').map((word, i) => <span key={`${word}-${i}`} aria-hidden="true" className="pop pop-word" style={{ '--i': start + i }}>{word}{' '}</span>)}<span className="sr-only">{text}</span></span>;
 }
 
 /** Eight pixel sparks that fly out from a point when their scope pops in. */

@@ -133,9 +133,9 @@ export default function HeroForge({ motion, onEnter, onDemo, onLearn, onToast })
       <button className="hx-pill" onClick={onLearn}><span className="hx-pill-tag">NEW</span>Skills that repair themselves, then remember the fix<ArrowRight size={14} /></button>
       <h1 className="hx-title" aria-label="Every failure becomes a skill.">
         <span className="hx-title-line" aria-hidden="true">Every failure</span>
-        <span className="hx-title-line hx-title-second" aria-hidden="true">
-          <span className="hx-title-soft">becomes a</span>
-          <span className="hx-title-pixel"><KineticType text="SKILL." /></span>
+        <span className="hx-title-line hx-title-second">
+          <span className="hx-title-soft" aria-hidden="true">becomes a</span>
+          <span className="hx-title-pixel" aria-hidden="true"><KineticType text="SKILL." /></span>
           <span className="hx-title-pet"><PixelSprite kind="scout" interactive title="Say hello to Scout" onPoke={() => onToast('Scout is looking for your next great idea.')} /></span>
         </span>
       </h1>

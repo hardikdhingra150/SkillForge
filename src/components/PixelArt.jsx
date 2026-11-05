@@ -4,12 +4,13 @@ import glyphs from './glyphs';
 export function DotText({ text, className = '', as: Tag = 'span', dots = true }) {
   const lines = text.toUpperCase().split('|');
   const width = Math.max(...lines.map(line => line.length)) * 6 - 1;
-  return <Tag className={`dot-text ${className}`} aria-label={text.replaceAll('|', ' ')}>
+  return <Tag className={`dot-text ${className}`}>
     <svg viewBox={`0 0 ${width} ${lines.length * 9 - 2}`} fill="currentColor" aria-hidden="true">
       {lines.flatMap((line, row) => [...line].flatMap((letter, col) => (glyphs[letter] || glyphs[' ']).flatMap((bits, y) => [...bits].map((bit, x) => bit === '1' && (dots
         ? <circle key={`${row}-${col}-${x}-${y}`} cx={col * 6 + x + .5} cy={row * 9 + y + .5} r=".31" />
         : <rect key={`${row}-${col}-${x}-${y}`} x={col * 6 + x} y={row * 9 + y} width=".87" height=".87" />)))))}
     </svg>
+    <span className="sr-only">{text.replaceAll('|', ' ')}</span>
   </Tag>;
 }
 
