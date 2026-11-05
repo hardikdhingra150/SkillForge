@@ -6,9 +6,11 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 
 **Chat** with Claude, Codex or a local model. Repeatable tasks become tested, versioned skills that later messages reuse. When a skill fails or gives a wrong answer, SkillSmith repairs it and saves a new version. The **Workbench** runs the same loop on uploaded CSV files.
 
-> **Status:** create, execute, verify, repair, version and reuse all run for real, from chat (any text task) and from the Workbench (CSV sales analysis). The Live console runs a real task too, and replays a recorded real run when the API is offline. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
+> **Status:** create, execute, verify, repair, version and reuse all run for real, from chat (any text task) and from the Workbench (CSV sales analysis). The Live console runs a real task too, on a bundled sample CSV. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
 
-## What's real and what's simulated
+## What works today
+
+Everything below runs against the real API and database. Nothing in the app is pre-recorded or sample data; when the API is offline, pages say so and show how to start it.
 
 | Area | Status |
 |---|---|
@@ -28,7 +30,9 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | **Files in chat**: attach a CSV; file skills such as `revenue_by_product` are reused and repaired | ✅ |
 | **Multi-step tasks**: 1–4 chained skills, a step can use an earlier step's output (`$step1.field`) | ✅ |
 | **Live streaming** of chat agent steps and Workbench runs over server-sent events, with a polling fallback | ✅ |
-| **Live console**: a real task on a messy CSV (fail → repair → v1.1.0 → reuse); a recorded real run replays when the API is offline | ✅ |
+| **Live console**: a real task on a bundled sample CSV (fail → repair → v1.1.0 → reuse) | ✅ |
+| **Workbench home**: a getting-started checklist that ticks itself off, live API status, latest runs and saved skills; results shown as a table you can download as CSV | ✅ |
+| **Landing page**: shows your live workspace (numbers, runs, saved skills), or how to start the API | ✅ |
 | Workbench metrics from recorded runs (`GET /metrics/summary`); version lineage in the Skill library | ✅ |
 | **Review queue**: retry a run with a bigger repair budget, or reject it; **retire / restore** versions (instant rollback) | ✅ |
 | **Export / import** a skill as one JSON bundle; imports are re-proven (hash, sandbox policy, every fixture) | ✅ |
@@ -41,13 +45,29 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | **Escalation** from the local model to a stronger one when it cannot produce a proven skill | ✅ |
 | Automatic **repair**: classify the failure, patch the skill, prove it on the failing input + lineage regression fixtures + strategy proof fixtures, promote a new version | ✅ Backend (one strategy so far: `normalize_amounts`) |
 | Repair budget, then `waiting_approval` for human review | ✅ (Review page) |
-| Crew panel and the sample skill cards on the Workbench | 🎭 Sample data |
 
 ## Quick start
 
+### Fastest path (with `make`)
+
+**Prerequisites:** Node 20+, Python 3.12+, Docker, and for Chat at least one of Claude Code CLI, Codex CLI or Ollama.
+
+```sh
+cp .env.example .env.local
+cp .env.postgres.example .env.postgres        # set a real POSTGRES_PASSWORD
+cp backend/.env.example backend/.env
+make setup      # npm install + backend virtualenv
+make db         # Postgres in Docker
+make migrate    # create the tables
+make seed       # register the starter skills
+make api        # terminal 1
+make worker     # terminal 2
+make web        # terminal 3, then open http://127.0.0.1:5173/#workbench
+```
+
 ### Frontend only
 
-The landing page and the demo work without the backend.
+The landing page opens without the backend; the workspace then shows the commands to start it.
 
 ```sh
 npm install
@@ -204,16 +224,18 @@ src/
   App.jsx                     routing, theme, motion, toasts and modal state (~410 lines)
   navigation.js               the workspace pages and valid #hash routes
   routes/                     Workbench, ConsolePage, Guardrails
-  state/useLiveRun.js         the Live console's real run and offline replay
+  state/useLiveRun.js         the Live console's real sample run
+  state/useWorkspace.js       live API status, metrics, latest runs and saved skills
   api/skillforgeProcess.js    API client (VITE_API_BASE_URL), run stream, metrics
-  api/liveRun.js              the console's real run: submit, upload the demo CSV, follow events
-  fixtures/recordedRepairRun.json  a recorded real repair run, replayed when the API is offline
+  api/liveRun.js              the console's real run: submit, upload the sample CSV, follow events
   hooks/useSkillForgeProcess.js  submit / stream (polling fallback) / reopen an execution
   components/
-    Topbar.jsx · Footer.jsx · AppModals.jsx · Modal.jsx · SkillDetail.jsx
-    Console.jsx · Metrics.jsx · SkillCard.jsx · CrewPanel.jsx · EvolvingCore.jsx · ui.jsx
+    Topbar.jsx · Footer.jsx · AppModals.jsx · Modal.jsx · ui.jsx
+    Console.jsx · Metrics.jsx · TaskResult.jsx
+    WorkspaceHome.jsx         Workbench home: getting-started checklist and live status
+    WorkspaceParts.jsx        status pill, setup steps, recent runs, saved skills
     Landing.jsx               4-section landing page
-    HeroForge.jsx             hero + self-playing learning-loop console
+    HeroForge.jsx             hero + your live workspace (or how to start the API)
     Pop.jsx                   spring pop-in, word reveals, pixel bursts
     ScrollChoreographer.jsx   scroll reveals, parallax, spotlight
     ChatView.jsx              chat: provider picker (Auto…), CSV attachments, live steps, skill/pipeline cards
