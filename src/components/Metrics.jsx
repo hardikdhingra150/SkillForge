@@ -44,51 +44,21 @@ export function liveMetrics(summary) {
   ];
 }
 
-export function Metrics({
-  skills,
-  repairs,
-  summary,
-}) {
-  const metrics = summary ? liveMetrics(summary) : [
+const EMPTY = [
+  ['Skills in your toolkit', Layers3, 'lime'],
+  ['Successful runs', CheckCheck, 'lavender'],
+  ['Problems → progress', GitBranch, 'peach'],
+  ['Skills reused', Zap, 'blue'],
+].map(([name, icon, color]) => ({ name, icon, color, value: '—', sub: 'WAITING FOR THE API' }));
 
-    {
-      name: 'Skills in your toolkit',
-      value: String(
-        skills.filter((skill) => !skill.draft).length,
-      ).padStart(2, '0'),
-      sub: 'READY FOR THEIR NEXT JOB',
-      icon: Layers3,
-      color: 'lime',
-    },
-    {
-      name: 'Happy executions',
-      value: '98.4',
-      unit: '%',
-      sub: 'GETTING BETTER WITH EVERY RUN',
-      icon: CheckCheck,
-      color: 'lavender',
-    },
-    {
-      name: 'Problems → progress',
-      value: String(repairs).padStart(2, '0'),
-      sub: 'FIXED. TESTED. REMEMBERED.',
-      icon: GitBranch,
-      color: 'peach',
-    },
-    {
-      name: 'Time back for you',
-      value: '4.2',
-      unit: 'h',
-      sub: 'GO MAKE SOMETHING GOOD',
-      icon: Zap,
-      color: 'blue',
-    },
-  ];
+// Real workspace numbers only. Without the API the cards say so instead of guessing.
+export function Metrics({ summary }) {
+  const metrics = summary ? liveMetrics(summary) : EMPTY;
 
   return (
     <section
       className="metrics"
-      aria-label={summary ? 'Workspace metrics' : 'Illustrative workspace metrics'}
+      aria-label="Workspace metrics"
     >
       {metrics.map((metric, index) => (
         <article
