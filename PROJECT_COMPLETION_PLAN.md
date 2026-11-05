@@ -19,7 +19,7 @@ Each phase lists **steps**, the **files** involved, and a **"done when"** check.
 | Quality | 34 backend unit tests | CI, frontend tests, linting |
 | Shipping | Runs locally | Hosting, auth, a public demo |
 
-**Phases 0–7 are done** (plus chat with Claude, Codex and a local model). Next: Phase 8 (security and guardrails), then deploy.
+**Phases 0–8 are done** (plus chat with Claude, Codex and a local model). Next: Phase 9 (deploy).
 
 ---
 
@@ -268,7 +268,15 @@ _Shipped:_
 
 ---
 
-## Phase 8: security and guardrails (2–3 days)
+## Phase 8: security and guardrails (2–3 days) ✅ Done
+
+_Shipped:_
+- _**Auth:** single-user bearer token (`API_TOKEN`, `make token`) on every `/api/v1` route; the frontend stores it per browser and sends it; stream URLs carry it as `access_token`, redacted from logs. Proper accounts (Supabase Auth or Clerk) stay for later._
+- _**Sandbox:** a runtime audit hook in the child blocks network, processes, file writes, reads outside the stdlib and ctypes; tighter rlimits; an optional Docker backend (no network, read-only, no capabilities, nobody, PID and memory limits) that production requires._
+- _**Limits:** per-client rate limits (429 + Retry-After), 2 MiB request bodies, the existing CSV limits, and a per-workspace daily budget of agent chat replies._
+- _**Production settings:** the API refuses to start in production without a token, the Docker sandbox, https origins and a strong database password. `.env` stays ignored, CI scans history with gitleaks, and `make rotate-db-password` rotates the local password._
+- _**Audit trail:** `audit_events` (migration `e4b9c2a7f310`) records promotions by the worker and the agent, and retire, restore, import, retry and reject with who and why; `GET /audit` and the Review page show it; the Skill library asks for a reason._
+
 
 1. **Auth:** start with a single-user API token (`Authorization: Bearer`), then move to proper accounts (Supabase Auth or Clerk) with each workspace scoped to its owner. `Workspace` already exists.
 2. **Harden the sandbox:** run skills in a throwaway container (Docker, or a microVM such as Vercel Sandbox or Firecracker) with no network and a read-only filesystem.

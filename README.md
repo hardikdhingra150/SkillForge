@@ -19,7 +19,8 @@ SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale par
 | CSV upload, column mapping, confirmation, SHA-256 integrity checks | ✅ Backend |
 | Queue + background worker, execution timeline events | ✅ Backend |
 | Versioned skill registry with validation evidence and implementation hash | ✅ Backend |
-| Skills stored as source + contract, run in a sandbox (static policy, approved tools, CPU/time limits, no env or file writes) | ✅ Backend |
+| Skills stored as source + contract, run in a sandbox (static policy, approved tools, CPU/time limits, a runtime audit hook that blocks network, process and file access; optional Docker container with no network and a read-only filesystem) | ✅ Backend |
+| **Security:** bearer-token API access, rate and body-size limits, a daily model budget, safe production settings enforced at startup, and an audit trail of every promotion, rollback, import and review decision | ✅ |
 | Host-side contract checks against independent reference calculations | ✅ Backend |
 | Execution history: search, filter, reopen | ✅ Backend |
 | **Chat** with Claude (Claude Code CLI), Codex (Codex CLI) or a local Ollama model | ✅ |
@@ -182,7 +183,8 @@ A `Makefile` wraps the common tasks. Run `make help` to list them.
 | `make lint` | Run `ruff` (backend) and ESLint (frontend) |
 | `make test` | Backend unit tests and frontend Vitest tests |
 | `make e2e` | Playwright smoke and accessibility tests against a mocked API (run `npx playwright install chromium` once) |
-| `make check` | Lint, tests and the production build: everything CI runs |
+| `make check` | Lint, tests and the production build |
+| `make token` / `make rotate-db-password` / `make secrets` / `make sandbox-image` | New API token; new local DB password; gitleaks scan; pull the Docker sandbox image |
 
 ### CI
 
@@ -190,6 +192,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and on 
 
 - **Backend:** `ruff check` and the unit tests on Python 3.14.
 - **Frontend:** ESLint with zero warnings allowed, Vitest, then `vite build`.
+- **Secrets:** gitleaks over the full git history.
 - **E2E:** Playwright smoke tests and an axe-core WCAG 2 AA scan of every page in both themes, against a mocked API (traces are uploaded on failure).
 
 > A registered skill version is immutable. Its `implementation_hash` covers its stored source and contract, and the worker refuses to run a version whose stored source no longer matches. To change a built-in skill (`backend/app/skills/`), bump its version and run `make seed`.
@@ -236,6 +239,19 @@ backend/
   tests/                      unittest suites
 compose.yaml                  local Postgres
 ```
+
+## Security
+
+| Guard | How |
+|---|---|
+| API access | Set `API_TOKEN` (`make token`) and every `/api/v1` route except the health checks needs `Authorization: Bearer <token>`. Paste the token under **Workspace details** (the H button); it's kept in that browser only. The run and chat streams accept `?access_token=` instead, because EventSource can't send headers, and the logs redact it. With no token the API stays open in development and closed in production. |
+| Sandbox | Static policy (no imports, no dunders, no `open`) → child process with `python -I -S`, an empty environment and CPU, file and process limits → a Python audit hook that raises on sockets, subprocesses, file writes, reads outside the stdlib, and ctypes. `SANDBOX_BACKEND=docker` (`make sandbox-image`) adds a throwaway container: `--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`, user `nobody`, 32 PIDs, 256 MB. |
+| Limits | Per client: 60 writes and 600 reads per minute (`RATE_LIMIT_*`, then 429 with `Retry-After`). Request bodies up to 2 MiB. CSVs up to 1 MiB, 10,000 rows, 50 columns. `CHAT_TURNS_PER_DAY` (200) agent replies per workspace. |
+| Production | With `APP_ENV=production`, the API refuses to start without `API_TOKEN`, without `SANDBOX_BACKEND=docker`, with non-https or `*` origins, or with a weak or default Postgres password. |
+| Audit trail | Every promotion (worker or agent), retire, restore, import, retry and reject writes an `audit_events` row: who, what, why, details. Read it on the **Review** page or at `GET /api/v1/audit`. |
+| Secrets | `.env` files are git-ignored. CI runs gitleaks over the full history (`make secrets` locally). `make rotate-db-password` sets a new local Postgres password in the database and `.env.postgres`. |
+
+The MCP server talks to the database directly over stdio on your machine, so it isn't behind the API token. Only run it locally.
 
 ## Motion and accessibility
 
