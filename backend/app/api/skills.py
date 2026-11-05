@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select, tuple_
@@ -12,7 +12,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.tasks import DB
 from app.database.skill_models import SkillVersion
 from app.sandbox import PolicyViolation
-from app.security import require_access
+from app.security import actor, require_access
+from app.services import audit
 from app.services.skill_bundle import BundleError, export_bundle, import_bundle
 
 logger = logging.getLogger("uvicorn.error")
@@ -120,11 +121,17 @@ def export_skill(skill_id: str, version: str, db: DB):
 
 
 @router.post("/skills/import", response_model=SkillVersionOut)
-def import_skill(db: DB, bundle: dict[str, Any] = Body(...)):
+def import_skill(db: DB, request: Request, bundle: dict[str, Any] = Body(...)):
     """Import a bundle. It is re-proven here: hash, sandbox policy, contract and every fixture must pass."""
     try:
         with db.begin():
             row, created = import_bundle(db, bundle)
+            if created:
+                audit.record(db, actor=actor(request), action="skill.imported",
+                             target=audit.skill_target(row.skill_id, row.version),
+                             reason="Imported from a bundle and re-proven in the sandbox.",
+                             details={"implementation_hash": row.implementation_hash,
+                                      "fixtures": (row.validation_json or {}).get("test_count")})
             out = SkillVersionOut.model_validate(row)
     except (BundleError, PolicyViolation, ValueError) as error:
         raise HTTPException(422, f"Import rejected: {error}") from None

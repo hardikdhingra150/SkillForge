@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -12,7 +12,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.tasks import DB, DEV_WORKSPACE_ID
 from app.database.models import Execution, Task
 from app.database.skill_models import SkillVersion
-from app.security import require_access
+from app.security import actor, require_access
+from app.services import audit
 from app.services.events import append_event
 from app.services.skill_registry import SkillIntegrityError, verify
 
@@ -24,6 +25,12 @@ MAX_BUDGET = 5
 class RetryIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     extra_budget: int = Field(default=2, ge=1, le=MAX_BUDGET)
+    reason: str = Field(default="Retried with a bigger repair budget.", min_length=1, max_length=500)
+
+
+class ReasonIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str | None = Field(default=None, min_length=1, max_length=500)
 
 
 class RejectIn(BaseModel):
@@ -69,7 +76,7 @@ def review_queue(db: DB):
 
 
 @router.post("/executions/{execution_id}/review/retry")
-def retry_run(execution_id: UUID, body: RetryIn, db: DB):
+def retry_run(execution_id: UUID, body: RetryIn, db: DB, request: Request):
     """Queue the run again with a larger repair budget."""
     try:
         with db.begin():
@@ -83,13 +90,15 @@ def retry_run(execution_id: UUID, body: RetryIn, db: DB):
             append_event(db, execution.id, event_key=f"review.retry.{attempt}", stage="skill_discovery",
                          event_type="review_retried", message=f"A reviewer queued this run again with a repair budget of {budget}.",
                          payload={"repair_budget": budget, "attempt": attempt})
+            audit.record(db, actor=actor(request), action="run.retried", target=str(execution_id), reason=body.reason,
+                         details={"repair_budget": budget, "attempt": attempt}, workspace_id=task.workspace_id)
         return {"execution_id": str(execution_id), "status": "queued", "repair_budget": budget}
     except SQLAlchemyError as error:
         raise unavailable(error) from None
 
 
 @router.post("/executions/{execution_id}/review/reject")
-def reject_run(execution_id: UUID, body: RejectIn, db: DB):
+def reject_run(execution_id: UUID, body: RejectIn, db: DB, request: Request):
     try:
         with db.begin():
             execution, task = locked_run(db, execution_id)
@@ -99,12 +108,14 @@ def reject_run(execution_id: UUID, body: RejectIn, db: DB):
             append_event(db, execution.id, event_key=f"review.reject.{task.requirements_json.get('run_attempt', 1)}",
                          stage="failed", event_type="review_rejected", message=f"A reviewer rejected this run: {body.reason}",
                          payload={"reason": body.reason})
+            audit.record(db, actor=actor(request), action="run.rejected", target=str(execution_id), reason=body.reason,
+                         workspace_id=task.workspace_id)
         return {"execution_id": str(execution_id), "status": "failed"}
     except SQLAlchemyError as error:
         raise unavailable(error) from None
 
 
-def set_status(db, skill_id, version, status, note):
+def set_status(db, skill_id, version, status, note, who):
     skill = db.scalars(select(SkillVersion).where(SkillVersion.skill_id == skill_id, SkillVersion.version == version)
                        .with_for_update()).first()
     if skill is None:
@@ -115,27 +126,33 @@ def set_status(db, skill_id, version, status, note):
         except SkillIntegrityError as error:
             raise HTTPException(409, f"Cannot restore: {error}") from None
     history = list((skill.change_json or {}).get("status_history", []))
-    history.append({"from": skill.status, "to": status, "note": note, "at": datetime.now(UTC).isoformat()})
+    history.append({"from": skill.status, "to": status, "note": note, "by": who, "at": datetime.now(UTC).isoformat()})
     skill.change_json = {**(skill.change_json or {}), "status_history": history}
-    skill.status = status
+    previous, skill.status = skill.status, status
+    audit.record(db, actor=who, action="skill.restored" if status == "validated" else "skill.retired",
+                 target=audit.skill_target(skill_id, version), reason=note, details={"from": previous, "to": status})
     return {"skill_id": skill_id, "version": version, "status": status}
 
 
 @router.post("/skills/{skill_id}/{version}/retire")
-def retire_version(skill_id: str, version: str, db: DB):
+def retire_version(skill_id: str, version: str, db: DB, request: Request,
+                   body: ReasonIn | None = Body(default=None)):
     """Stop using a version. The previous validated version is selected again (a rollback)."""
     try:
         with db.begin():
-            return set_status(db, skill_id, version, "retired", "Retired by a reviewer.")
+            return set_status(db, skill_id, version, "retired", (body and body.reason) or "Retired by a reviewer.",
+                              actor(request))
     except SQLAlchemyError as error:
         raise unavailable(error) from None
 
 
 @router.post("/skills/{skill_id}/{version}/restore")
-def restore_version(skill_id: str, version: str, db: DB):
+def restore_version(skill_id: str, version: str, db: DB, request: Request,
+                    body: ReasonIn | None = Body(default=None)):
     """Put a retired version back into use, after re-checking its integrity."""
     try:
         with db.begin():
-            return set_status(db, skill_id, version, "validated", "Restored by a reviewer.")
+            return set_status(db, skill_id, version, "validated", (body and body.reason) or "Restored by a reviewer.",
+                              actor(request))
     except SQLAlchemyError as error:
         raise unavailable(error) from None
