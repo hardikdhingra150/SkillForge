@@ -1,31 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, CheckCheck, Code2, FileText, FlaskConical, GitBranch, Layers3, Play, RotateCcw, Search, ShieldCheck, Sparkles, Terminal, TriangleAlert, Zap } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowDown, ArrowRight, ArrowUpRight, CheckCheck, FileText, Layers3, Play, ShieldCheck, Sparkles, Terminal } from 'lucide-react';
 import { PixelSprite } from './PixelArt';
 import KineticType from './KineticType';
-
-const STAGES = [
-  { name: 'Discover', icon: Search },
-  { name: 'Create', icon: Code2 },
-  { name: 'Execute', icon: Zap },
-  { name: 'Evaluate', icon: FlaskConical },
-  { name: 'Repair', icon: GitBranch },
-  { name: 'Version', icon: Layers3 },
-  { name: 'Reuse', icon: RotateCcw },
-];
-
-// One illustrative run of the learning loop, replayed by the hero console.
-const RUN = [
-  { stage: 0, tag: 'TASK', text: '“Show revenue by product from quarterly_sales.csv”', tone: 'task', ms: 1500 },
-  { stage: 0, tag: 'FIND', text: 'registry.find("sales csv")  →  no matching skill', ms: 1100 },
-  { stage: 1, tag: 'MAKE', text: 'sales_analysis v1.0  ·  contract + approved tools', ms: 1200 },
-  { stage: 2, tag: 'RUN', text: 'read_csv(quarterly_sales.csv)  ·  24 rows', ms: 1100 },
-  { stage: 3, tag: 'FAIL', text: 'KeyError: "revenue"  ·  column is called "Sales"', tone: 'error', ms: 1700 },
-  { stage: 4, tag: 'PATCH', text: 'column_map["revenue"] = "Sales"', tone: 'repair', ms: 1200 },
-  { stage: 4, tag: 'TEST', text: '3 / 3 checks passed  ·  aliases, totals, nulls', tone: 'ok', ms: 1200 },
-  { stage: 5, tag: 'SAVE', text: 'sales_analysis v1.1  →  registry', tone: 'ok', ms: 1200 },
-  { stage: 6, tag: 'REUSE', text: 'next run: 0 repairs  ·  revenue $18,420', tone: 'ok', ms: 3600 },
-];
-
+import { RecentRuns, SavedSkills, SetupSteps, StatusPill } from './WorkspaceParts.jsx';
 
 export function CountUp({ value, pad = 0, suffix = '', display, run }) {
   const [shown, setShown] = useState(run ? 0 : value);
@@ -46,85 +23,59 @@ export function CountUp({ value, pad = 0, suffix = '', display, run }) {
   return <>{String(shown).padStart(pad, '0')}{suffix}</>;
 }
 
-/** The hero's centrepiece: a console that replays one run of the learning loop. */
-function ForgeConsole({ motion }) {
-  const ref = useRef();
-  const [line, setLine] = useState(motion ? 0 : RUN.length - 1);
-  const [visible, setVisible] = useState(true);
-  const [cycle, setCycle] = useState(0);
+function count(value) {
+  return value == null ? '—' : String(value).padStart(2, '0');
+}
 
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || !('IntersectionObserver' in window)) return undefined;
-    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.15 });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
+/** The hero's centrepiece: your real workspace, straight from the API (or how to start it). */
+function WorkspacePulse({ workspace, onEnter }) {
+  const online = workspace.status === 'online';
+  const metrics = workspace.metrics;
+  const numbers = [
+    ['Saved skills', count(metrics?.skills)],
+    ['Runs', count(metrics?.runs)],
+    ['Success rate', metrics?.success_rate == null ? '—' : `${metrics.success_rate}%`],
+    ['Repairs', count(metrics?.repairs)],
+  ];
 
-  useEffect(() => {
-    if (!motion) { setLine(RUN.length - 1); return undefined; }
-    if (!visible) return undefined;
-    const timer = setTimeout(() => {
-      if (line < RUN.length - 1) setLine(line + 1);
-      else { setCycle(c => c + 1); setLine(0); }
-    }, RUN[line].ms);
-    return () => clearTimeout(timer);
-  }, [line, motion, visible]);
-
-  const stage = RUN[line].stage;
-  const failed = line === 4;
-  const repaired = line >= 5;
-  const saved = line >= 7;
-  const testsPassed = line >= 6 ? 3 : line === 4 ? 0 : null;
-
-  return <div className={`hx-stage ${failed ? 'is-failing' : ''} ${saved ? 'is-saved' : ''}`} ref={ref} aria-label="Illustrative replay of a SkillForge learning loop">
+  return <div className="hx-stage hx-pulse" aria-label="Your SkillForge workspace">
     <div className="hx-window-bar">
       <span className="hx-window-dots" aria-hidden="true"><i /><i /><i /></span>
-      <span className="hx-window-title"><Terminal size={13} />forge://workspace-001/run</span>
-      <span className="hx-live"><i />{motion ? 'LIVE REPLAY' : 'REPLAY PAUSED'}</span>
+      <span className="hx-window-title"><Terminal size={13} />your workspace</span>
+      <StatusPill status={workspace.status} />
     </div>
 
-    <div className="hx-pipeline" aria-hidden="true">
-      {STAGES.map((s, i) => <span key={s.name} className={`${i < stage ? 'done' : ''} ${i === stage ? 'current' : ''} ${i === 3 && failed ? 'fail' : ''}`}>
-        <s.icon size={13} /><b>{s.name}</b>
-      </span>)}
-      <i className="hx-pipeline-fill" style={{ '--p': stage / (STAGES.length - 1) }} />
+    {online ? <div className="hx-pulse-body">
+      <dl className="hx-pulse-numbers">
+        {numbers.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      </dl>
+
+      <div className="hx-pulse-lists">
+        <section>
+          <h2>Latest runs</h2>
+          <RecentRuns runs={workspace.runs} limit={3} />
+        </section>
+        <section>
+          <h2>Saved skills</h2>
+          <SavedSkills skills={workspace.skills} limit={3} />
+        </section>
+      </div>
+    </div> : <div className="hx-pulse-body">
+      {workspace.status === 'checking'
+        ? <p className="ws-empty">Looking for your SkillForge API…</p>
+        : <SetupSteps status={workspace.status} onRetry={workspace.refresh} onOpenSettings={onEnter} />}
+    </div>}
+
+    <div className="hx-stage-foot">
+      <span>{online ? 'LIVE FROM YOUR API' : 'RUNS ON YOUR MACHINE'}</span>
+      <span>{online
+        ? (metrics?.runs ? <><CheckCheck size={12} />All numbers are live.</> : <><Sparkles size={12} />Empty for now.</>)
+        : <><ShieldCheck size={12} />Your data stays with you.</>}</span>
     </div>
-
-    <div className="hx-stage-body">
-      <ol className="hx-log" key={cycle}>
-        {RUN.slice(0, line + 1).map((entry, i) => <li key={i} className={`${entry.tone || ''} ${i === line ? 'typing' : ''}`} style={{ '--chars': entry.text.length }}>
-          <span className="hx-log-time">00:{String(Math.round(RUN.slice(0, i).reduce((t, e) => t + e.ms, 0) / 1000)).padStart(2, '0')}</span>
-          <span className="hx-log-tag">{entry.tag}</span>
-          <span className="hx-log-text">{entry.text}</span>
-        </li>)}
-        <li className="hx-log-cursor" aria-hidden="true"><span>›</span><b /></li>
-      </ol>
-
-      <aside className="hx-skill">
-        <div className="hx-skill-top"><span>SKILL CARD</span><span className={`hx-skill-badge ${saved ? 'ok' : failed ? 'fail' : ''}`}>{saved ? 'VALIDATED' : failed ? 'NEEDS REPAIR' : line >= 2 ? 'CANDIDATE' : 'SEARCHING'}</span></div>
-        <div className="hx-skill-name">
-          <PixelSprite kind={failed || line === 5 ? 'patch' : saved ? 'byte' : 'scout'} />
-          <div><strong>{line >= 2 ? 'sales_analysis' : '—'}</strong><small>{line >= 2 ? <>v<span key={repaired ? 'b' : 'a'} className="hx-version">{saved ? '1.1' : '1.0'}</span></> : 'no match yet'}</small></div>
-        </div>
-        <div className="hx-diff" aria-hidden="true">
-          <span className={`removed ${repaired ? 'struck' : ''}`}><b>−</b>column = "revenue"</span>
-          <span className={`added ${repaired ? 'shown' : ''}`}><b>+</b>column = "Sales"</span>
-        </div>
-        <div className="hx-tests">
-          <span>TESTS</span>
-          <div>{[0, 1, 2].map(i => <i key={i} className={testsPassed == null ? '' : i < testsPassed ? 'pass' : 'fail'} />)}</div>
-          <b>{testsPassed == null ? '— / 3' : `${testsPassed} / 3`}</b>
-        </div>
-        <div className="hx-result"><span>RESULT</span><strong>{line >= 8 ? '$18,420' : failed ? 'error' : '…'}</strong></div>
-      </aside>
-    </div>
-
-    <div className="hx-stage-foot"><span>ILLUSTRATIVE DEMO · SAMPLE DATA</span><span>{failed ? <><TriangleAlert size={12} />A failure is useful information.</> : saved ? <><CheckCheck size={12} />Fixed. Tested. Remembered.</> : <><Sparkles size={12} />Learning in progress…</>}</span></div>
   </div>;
 }
 
-export default function HeroForge({ motion, onEnter, onDemo, onLearn, onToast }) {
+export default function HeroForge({ workspace, onEnter, onSampleRun, onLearn, onToast }) {
   return <section className="forge-hero hx" id="top">
     <div className="hx-backdrop" aria-hidden="true"><i className="hx-grid" /><i className="hx-glow" /></div>
     <div className="forge-hero-overline"><span><i />SELF-EVOLVING SKILL INFRASTRUCTURE</span><span>BUILT TO LEARN. MADE TO LAST.</span></div>
@@ -142,12 +93,12 @@ export default function HeroForge({ motion, onEnter, onDemo, onLearn, onToast })
       <p className="hx-sub">SkillForge gives your agents a way to <strong>build what’s missing, repair what breaks, and keep what works</strong>: tested, versioned skills they reuse on every run after.</p>
       <div className="hx-actions">
         <button className="forge-cta" onClick={onEnter}>Open your workspace <ArrowUpRight size={18} /></button>
-        <button className="hx-try" onClick={onDemo}><Play size={14} /><span>Try it:</span><code>“Show revenue by product”</code><ArrowRight size={14} /></button>
+        <button className="hx-try" onClick={onSampleRun}><Play size={14} /><span>Try it with a sample file</span><ArrowRight size={14} /></button>
       </div>
       <div className="hx-proof"><span><ShieldCheck size={14} />Test before trust</span><span><Layers3 size={14} />Every version remembered</span><span><FileText size={14} />Full repair history</span></div>
     </div>
 
-    <div className="hx-stage-wrap"><ForgeConsole motion={motion} /></div>
+    <div className="hx-stage-wrap"><WorkspacePulse workspace={workspace} onEnter={onEnter} /></div>
 
     <button className="hx-scroll-cue" onClick={onLearn} aria-label="See how it learns"><span>SCROLL TO SEE HOW IT LEARNS</span><ArrowDown size={14} /></button>
   </section>;

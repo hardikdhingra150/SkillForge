@@ -90,6 +90,7 @@ const rules = [
   },
 ];
 
+// How the engine is built, not usage numbers: each one is enforced in the backend.
 const stats = [
   {
     value: 7,
@@ -99,16 +100,17 @@ const stats = [
   {
     value: 100,
     suffix: '%',
-    label: 'of new skills tested before reuse',
+    label: 'of saved skills pass their tests first',
   },
   {
     value: 0,
     pad: 2,
-    label: 'raw shell commands, ever',
+    label: 'network access inside the sandbox',
   },
   {
-    display: '∞',
-    label: 'reuses for every solved problem',
+    value: 2,
+    pad: 2,
+    label: 'automatic repairs before a person reviews',
   },
 ];
 
@@ -120,12 +122,12 @@ function MoveVisual({ type }) {
         aria-hidden="true"
       >
         <span>
-          <b>def</b> sales_analysis(csv):
+          <b>skill</b> revenue_by_product v1.0.0
         </span>
 
-        <span>{'  rows = read_csv(csv)'}</span>
+        <span>{'  tools: read_csv, column, to_decimal'}</span>
 
-        <span>{'  return by_product(rows)'}</span>
+        <span>{'  tests: 4 fixtures · contract checks'}</span>
 
         <i className="lx-caret" />
       </div>
@@ -139,18 +141,18 @@ function MoveVisual({ type }) {
         aria-hidden="true"
       >
         <span className="lx-bad">
-          − column = "revenue"
+          − tools.to_decimal("$1,200.50")
         </span>
 
         <span className="lx-good">
-          + column = "Sales"
+          + tools.parse_amount("$1,200.50")
         </span>
 
         <div className="lx-checks">
           <i />
           <i />
           <i />
-          <b>3 / 3</b>
+          <b>ALL PASS</b>
         </div>
       </div>
     );
@@ -161,11 +163,11 @@ function MoveVisual({ type }) {
       className="lx-visual lx-remember"
       aria-hidden="true"
     >
-      <span className="lx-chip">v1.0</span>
+      <span className="lx-chip">v1.0.0</span>
 
       <span className="lx-arrow" />
 
-      <span className="lx-chip now">v1.1</span>
+      <span className="lx-chip now">v1.1.0</span>
 
       <span className="lx-saved">
         SAVED TO REGISTRY
@@ -176,8 +178,9 @@ function MoveVisual({ type }) {
 
 export default function Landing({
   onEnter,
-  onDemo,
+  onSampleRun,
   motion,
+  workspace,
   onToast,
 }) {
   const goTo = (id) => {
@@ -195,9 +198,9 @@ export default function Landing({
       />
 
       <HeroForge
-        motion={motion}
+        workspace={workspace}
         onEnter={onEnter}
-        onDemo={onDemo}
+        onSampleRun={onSampleRun}
         onLearn={() => goTo('how')}
         onToast={onToast}
       />
@@ -387,9 +390,9 @@ export default function Landing({
 
           <button
             className="hx-try"
-            onClick={onDemo}
+            onClick={onSampleRun}
           >
-            Watch a repair run
+            Try it with a sample file
             <ArrowUpRight size={14} />
           </button>
         </div>

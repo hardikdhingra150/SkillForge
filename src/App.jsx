@@ -269,8 +269,9 @@ export default function App() {
         {view === 'landing' ? (
           <Landing
             motion={motion}
+            workspace={workspace}
             onEnter={() => navigate('workbench')}
-            onDemo={() => {
+            onSampleRun={() => {
               navigate('console');
               startRun();
             }}

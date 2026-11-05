@@ -6,9 +6,13 @@ test.beforeEach(async ({ page }) => {
   await mockApi(page);
 });
 
-test('the landing page loads', async ({ page }) => {
+test('the landing page loads and shows the real workspace', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Every failure becomes a skill.' })).toBeVisible();
+  const pulse = page.getByLabel('Your SkillForge workspace');
+  await expect(pulse.getByText('CONNECTED')).toBeVisible();
+  await expect(pulse.getByText('revenue_by_product')).toBeVisible();
+  await expect(pulse.getByText('No runs yet.', { exact: false })).toBeVisible();
 });
 
 test('a new user without the API sees how to start it', async ({ page }) => {
