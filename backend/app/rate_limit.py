@@ -1,4 +1,4 @@
-"""Per-client request limits for /api/v1: a sliding one-minute window, kept in memory per API process.
+"""Request limits for /api/v1: body size, and per-client rates over a sliding one-minute window (in memory).
 
 Writes (POST, DELETE) are limited separately from reads, which the Process view and streams make often.
 """
@@ -15,6 +15,8 @@ from app.config import settings
 
 WINDOW_SECONDS = 60.0
 EXEMPT_PREFIX = "/api/v1/health/"
+# Largest request body: a 1 MiB CSV upload plus multipart framing, or a skill bundle.
+MAX_BODY_BYTES = 2 * 1024 * 1024
 
 
 class RateLimiter:
@@ -48,10 +50,26 @@ def limits_for(method: str) -> tuple[str, int]:
     return "read", settings.rate_limit_reads_per_minute
 
 
+def too_large(request: Request) -> bool:
+    length = request.headers.get("content-length")
+    if length is None:
+        # No declared length (chunked): only bodies with a length are accepted on writes.
+        return request.method in ("POST", "PUT", "PATCH") and "chunked" in request.headers.get("transfer-encoding", "")
+    try:
+        return int(length) > MAX_BODY_BYTES
+    except ValueError:
+        return True
+
+
 async def rate_limit(request: Request, call_next):
     path = request.url.path
     if not path.startswith("/api/v1/") or path.startswith(EXEMPT_PREFIX) or request.method == "OPTIONS":
         return await call_next(request)
+    if too_large(request):
+        return JSONResponse(
+            status_code=413,
+            content={"detail": {"code": "BODY_TOO_LARGE", "message": "Request bodies are limited to 2 MiB."}},
+        )
     kind, limit = limits_for(request.method)
     client = request.client.host if request.client else "unknown"
     wait = limiter.check((client, kind), limit)

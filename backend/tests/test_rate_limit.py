@@ -66,6 +66,15 @@ class MiddlewareTests(unittest.TestCase):
         self.assertGreater(int(blocked.headers["Retry-After"]), 0)
         self.assertEqual(blocked.headers["access-control-allow-origin"], "http://site.test")
 
+    def test_oversized_and_chunked_bodies_are_refused(self):
+        big = self.client.post("/api/v1/tasks", content=b"x" * (rate_limit.MAX_BODY_BYTES + 1))
+        self.assertEqual(big.status_code, 413)
+        self.assertEqual(big.json()["detail"]["code"], "BODY_TOO_LARGE")
+
+        def chunks():
+            yield b"x"
+        self.assertEqual(self.client.post("/api/v1/tasks", content=chunks()).status_code, 413)
+
     def test_health_checks_are_exempt(self):
         self.assertEqual({self.client.get("/api/v1/health/live").status_code for _ in range(5)}, {200})
 
