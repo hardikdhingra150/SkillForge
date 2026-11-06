@@ -42,3 +42,17 @@ class ProductionSettingsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProcessSandboxOptInTests(unittest.TestCase):
+    BASE = {"app_env": "production", "auth_mode": "browser", "frontend_origins": ["https://skillforge.example"],
+            "postgres_password": "a-very-long-password-123", "_env_file": None}
+
+    def test_production_refuses_the_process_sandbox_by_default(self):
+        with self.assertRaises(ValueError) as caught:
+            Settings(**self.BASE, sandbox_backend="process")
+        self.assertIn("ALLOW_PROCESS_SANDBOX", str(caught.exception))
+
+    def test_it_can_be_chosen_deliberately(self):
+        settings = Settings(**self.BASE, sandbox_backend="process", allow_process_sandbox=True)
+        self.assertEqual(settings.sandbox_backend, "process")

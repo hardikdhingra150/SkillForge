@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # True when SANDBOX_IMAGE already holds the sandbox code (backend/docker/sandbox.Dockerfile). Needed when the
     # API and worker run in containers themselves: the host's Docker can't mount files from inside them.
     sandbox_code_in_image: bool = False
+    # Hosts that can't start containers (Hugging Face Spaces, Render, Railway) can only use the process sandbox:
+    # code is checked before it runs, network, file and process access are blocked, CPU and memory are limited,
+    # and it gets no environment variables. That is weaker isolation than a container. Production refuses it
+    # unless this is set, as a deliberate choice.
+    allow_process_sandbox: bool = False
 
     # Requests per client per minute on /api/v1 (health checks are exempt).
     rate_limit_writes_per_minute: int = Field(default=60, ge=1)
@@ -89,8 +94,9 @@ class Settings(BaseSettings):
         problems = []
         if self.api_token is None and self.auth_mode != "browser":
             problems.append("Set AUTH_MODE=browser or API_TOKEN (make token).")
-        if self.sandbox_backend != "docker":
-            problems.append("SANDBOX_BACKEND must be docker.")
+        if self.sandbox_backend != "docker" and not self.allow_process_sandbox:
+            problems.append("SANDBOX_BACKEND must be docker, or set ALLOW_PROCESS_SANDBOX=true on a host that "
+                            "can't run containers (see DEPLOY.md).")
         if not self.frontend_origins:
             problems.append("FRONTEND_ORIGINS must list the site's origin.")
         for origin in self.frontend_origins:
