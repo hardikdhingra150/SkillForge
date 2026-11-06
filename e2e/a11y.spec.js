@@ -30,8 +30,8 @@ test('the workspace can be navigated with the keyboard', async ({ page }) => {
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'SkillForge home' })).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'Workbench' }).first()).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Studio' }).first()).toBeFocused();
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/#chat$/);
+  await expect(page).toHaveURL(/#library$/);
 });

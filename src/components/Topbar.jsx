@@ -144,9 +144,9 @@ export function Topbar({
           {view === 'landing' ? (
             <button
               className="header-enter"
-              onClick={() => onNavigate('workbench')}
+              onClick={() => onNavigate('chat')}
             >
-              Open workspace
+              Open Studio
               <ArrowUpRight size={14} />
             </button>
           ) : (

@@ -8,7 +8,7 @@ import {
 
 import { BASE } from '../api/skillforgeProcess.js';
 import { stages } from '../data';
-import { views } from '../navigation.js';
+import { morePages, views } from '../navigation.js';
 import { Modal } from './Modal.jsx';
 import { PixelSpark } from './PixelArt';
 import { ApiTokenForm } from './ApiTokenForm.jsx';
@@ -29,11 +29,7 @@ export function AppModals({
   const query = search.trim().toLowerCase();
   const pages = [
     ...views,
-    {
-      id: 'governance',
-      label: 'Guardrails',
-      icon: ShieldCheck,
-    },
+    ...morePages.map((page) => ({ ...page, icon: ShieldCheck })),
   ].filter((item) => item.label.toLowerCase().includes(query));
   const foundSkills = skills
     .filter((skill) => `${skill.skill_id} ${skill.capability}`.toLowerCase().includes(query))

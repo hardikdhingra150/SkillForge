@@ -34,7 +34,7 @@ import { Footer } from './components/Footer.jsx';
 import { Workbench } from './routes/Workbench.jsx';
 import { AppModals } from './components/AppModals.jsx';
 import { ConsolePage } from './routes/ConsolePage.jsx';
-import { VIEW_IDS, views } from './navigation.js';
+import { PAGE_LABEL, VIEW_IDS } from './navigation.js';
 
 import SkillRegistryView from './components/SkillRegistryView.jsx';
 import ExecutionHistory from './components/ExecutionHistory.jsx';
@@ -273,7 +273,7 @@ export default function App() {
           <Landing
             motion={motion}
             workspace={workspace}
-            onEnter={() => navigate('workbench')}
+            onEnter={() => navigate('chat')}
             onSampleRun={() => {
               navigate('console');
               startRun();
@@ -295,8 +295,7 @@ export default function App() {
                 </span>
 
                 <span>
-                  {(views.find((item) => item.id === view)?.label
-                    || (view === 'governance' ? 'Guardrails' : view)).toUpperCase()}
+                  {(PAGE_LABEL[view] || view).toUpperCase()}
                 </span>
               </div>
 
@@ -338,7 +337,7 @@ export default function App() {
 
             {view === 'library' && (
               <SkillRegistryView
-                onOpenWorkbench={() => navigate('workbench')}
+                onOpenWorkbench={() => navigate('chat')}
               />
             )}
 

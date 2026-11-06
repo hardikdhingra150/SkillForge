@@ -1,28 +1,20 @@
 import {
-  Box,
   Gauge,
-  History,
   Layers3,
-  MessagesSquare,
-  ShieldCheck,
-  Terminal,
+  Sparkles,
 } from 'lucide-react';
 
-// The workspace pages in the top navigation, in order.
+// The pages in the top navigation, in order. Studio is where everything happens: questions, tasks and
+// spreadsheets in one place, with skills created, reused and repaired as you go.
 export const views = [
   {
-    id: 'workbench',
-    label: 'Workbench',
-    icon: Box,
-  },
-  {
     id: 'chat',
-    label: 'Chat',
-    icon: MessagesSquare,
+    label: 'Studio',
+    icon: Sparkles,
   },
   {
     id: 'library',
-    label: 'Skill library',
+    label: 'Skills',
     icon: Layers3,
   },
   {
@@ -30,22 +22,18 @@ export const views = [
     label: 'Models',
     icon: Gauge,
   },
-  {
-    id: 'review',
-    label: 'Review',
-    icon: ShieldCheck,
-  },
-  {
-    id: 'console',
-    label: 'Live console',
-    icon: Terminal,
-  },
-  {
-    id: 'activity',
-    label: 'Activity',
-    icon: History,
-  },
+];
+
+// Pages linked from the footer rather than the top navigation.
+export const morePages = [
+  { id: 'activity', label: 'Past runs' },
+  { id: 'review', label: 'Review' },
+  { id: 'console', label: 'Live console' },
+  { id: 'workbench', label: 'Classic workbench' },
+  { id: 'governance', label: 'Guardrails' },
 ];
 
 // Every page reachable by #hash; anything else shows the landing page.
-export const VIEW_IDS = [...views.map((item) => item.id), 'governance'];
+export const VIEW_IDS = [...views.map((item) => item.id), ...morePages.map((item) => item.id)];
+
+export const PAGE_LABEL = Object.fromEntries([...views, ...morePages].map((item) => [item.id, item.label]));

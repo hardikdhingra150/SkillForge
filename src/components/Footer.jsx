@@ -1,5 +1,7 @@
 import { ArrowUpRight } from 'lucide-react';
 
+import { morePages } from '../navigation.js';
+
 export function Footer({ onNavigate, onRuntime }) {
   return (
     <footer className="site-footer">
@@ -9,28 +11,18 @@ export function Footer({ onNavigate, onRuntime }) {
       </span>
 
       <div>
-        <button
-          onClick={() => onNavigate('landing')}
-        >
-          Home
-        </button>
+        <button onClick={() => onNavigate('landing')}>Home</button>
 
-        <button
-          onClick={() => onNavigate('governance')}
-        >
-          Guardrails
-        </button>
+        {morePages.map((page) => (
+          <button key={page.id} onClick={() => onNavigate(page.id)}>{page.label}</button>
+        ))}
 
-        <button
-          onClick={onRuntime}
-        >
+        <button onClick={onRuntime}>
           Workspace settings
           <ArrowUpRight size={11} />
         </button>
 
-        <span>
-          SKILLFORGE · SELF-HOSTED
-        </span>
+        <span>SKILLFORGE · SELF-HOSTED</span>
       </div>
     </footer>
   );

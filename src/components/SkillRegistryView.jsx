@@ -180,7 +180,7 @@ export default function SkillRegistryView({ onOpenWorkbench }) {
           <button onClick={() => setRefresh((value) => value + 1)} disabled={loading}>Refresh registry</button>
           <button onClick={() => importRef.current?.click()}>Import bundle</button>
           <input ref={importRef} type="file" accept=".json,application/json" hidden onChange={(e) => importFile(e.target.files?.[0])} />
-          <button onClick={onOpenWorkbench}>Open workbench</button>
+          <button onClick={onOpenWorkbench}>Open Studio</button>
         </div>
       </header>
       {importNote && <p className="sf-registry__count" role="status">{importNote}</p>}
