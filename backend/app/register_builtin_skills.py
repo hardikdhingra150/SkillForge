@@ -12,7 +12,7 @@ def main():
             for skill in BUILTIN_SKILLS:
                 evidence = register_builtin(db, skill)
                 if evidence.get("skipped"):
-                    print(f"Skipped {skill.skill_id} v{skill.version}: {evidence['skipped']}.")
+                    print(f"Kept {skill.skill_id} v{skill.version}: {evidence['skipped']}.")
                 else:
                     print(f"Registered {skill.skill_id} v{skill.version}: {evidence['test_count']} sandbox tests passed.")
     finally:

@@ -132,8 +132,15 @@ def register_builtin(db, skill) -> dict:
     Registered versions are immutable: if the row already holds different
     source, contract or evidence, this refuses instead of overwriting.
     """
-    evidence = run_fixture_tests(skill.source, skill.contract, skill.fixtures)
     fingerprint = implementation_hash(skill.source, skill.contract)
+    stored = db.get(SkillVersion, (skill.skill_id, skill.version))
+    if (stored is not None and stored.origin == "builtin" and stored.status == "validated"
+            and stored.implementation_hash == fingerprint and stored.source_code is not None
+            and (stored.validation_json or {}).get("passed") is True):
+        # Already registered with exactly this code and passing evidence: nothing to re-run. This keeps restarts
+        # quick on small hosts, which start the whole backend again every time they wake up.
+        return {**stored.validation_json, "skipped": "already registered with the same code"}
+    evidence = run_fixture_tests(skill.source, skill.contract, skill.fixtures)
     db.execute(
         insert(SkillVersion).values(
             skill_id=skill.skill_id, version=skill.version, capability=skill.contract["capability"],

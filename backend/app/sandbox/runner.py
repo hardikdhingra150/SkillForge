@@ -16,7 +16,6 @@ from app.sandbox.policy import check_source
 
 SANDBOX_DIR = Path(__file__).resolve().parent
 CHILD = SANDBOX_DIR / "child.py"
-DEFAULT_TIMEOUT = 10.0
 # Starting a container takes time that is not the skill's.
 DOCKER_STARTUP_SECONDS = 15.0
 
@@ -65,7 +64,7 @@ def start(request: bytes, timeout: float, backend: str):
         )
 
 
-def run_skill(source: str, *, inputs: dict, files: dict[str, bytes], tools, timeout: float = DEFAULT_TIMEOUT,
+def run_skill(source: str, *, inputs: dict, files: dict[str, bytes], tools, timeout: float | None = None,
               backend: str | None = None) -> SandboxResult:
     """Check the source, then run `run(inputs, tools)` in a child process or a throwaway container.
 
@@ -74,6 +73,7 @@ def run_skill(source: str, *, inputs: dict, files: dict[str, bytes], tools, time
     PolicyViolation before starting anything if the source breaks the static policy.
     """
     check_source(source)
+    timeout = timeout if timeout is not None else settings.sandbox_timeout_seconds
     request = json.dumps({
         "source": source,
         "inputs": inputs,

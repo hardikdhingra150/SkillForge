@@ -58,4 +58,4 @@ ENV HOME=/home/user \
     PORT=7860
 
 EXPOSE 7860
-CMD ["sh", "docker/start-space.sh"]
+CMD ["sh", "docker/start-all.sh"]
