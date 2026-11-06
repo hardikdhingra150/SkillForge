@@ -130,7 +130,7 @@ def claim_review(db: Session, *, workspace_id: UUID | None = None):
     append_event(db, execution.id, event_key=f"{_prefix(task)}.execution_started", stage="requirement_review",
                  event_type="execution_started", message="A worker started reviewing this request.",
                  payload={"worker": "requirement_review_v2"})
-    return {"execution_id": execution.id, "requirement": task.requirement,
+    return {"execution_id": execution.id, "requirement": task.requirement, "workspace_id": task.workspace_id,
             "clarifications": list((task.requirements_json or {}).get("clarifications", []))}
 
 

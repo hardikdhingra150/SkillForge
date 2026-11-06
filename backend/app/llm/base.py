@@ -5,11 +5,33 @@ import shutil
 import subprocess
 import tempfile
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, replace
 
 # Only what a CLI needs to find its own login; never app settings or database secrets.
 PASSTHROUGH_ENV = ("HOME", "PATH", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "SHELL", "TERM")
 STATUS_TTL = 30.0
+
+# The providers the current request may use (None: all). On a public site, visitors get only the free local
+# model; the CLIs run on the owner's personal logins, so only the owner (API_TOKEN) may use them.
+ALLOWED: ContextVar[frozenset | None] = ContextVar("allowed_providers", default=None)
+OWNER_ONLY = "Only the site owner can use this model here."
+
+
+@contextmanager
+def only(providers):
+    """Limit every provider lookup in this block (and the threads it runs inline) to `providers`."""
+    token = ALLOWED.set(None if providers is None else frozenset(providers))
+    try:
+        yield
+    finally:
+        ALLOWED.reset(token)
+
+
+def allowed(provider_id: str) -> bool:
+    limit = ALLOWED.get()
+    return limit is None or provider_id in limit
 
 
 class LLMError(RuntimeError):
@@ -42,14 +64,19 @@ class Provider:
 
     def status(self, refresh: bool = False) -> ProviderStatus:
         if not refresh and self._cached and time.monotonic() - self._cached[0] < STATUS_TTL:
-            return self._cached[1]
+            return self._visible(self._cached[1])
         try:
             status = self._status()
         except Exception as error:  # status must never take the API down
             status = ProviderStatus(self.id, self.label, self.kind, False, f"Status check failed: {error}")
         status = replace(status, setup=self.setup)
         self._cached = (time.monotonic(), status)
-        return status
+        return self._visible(status)
+
+    def _visible(self, status: ProviderStatus) -> ProviderStatus:
+        if allowed(self.id):
+            return status
+        return replace(status, available=False, detail=OWNER_ONLY, models=[], default_model=None, setup=[])
 
     def _status(self) -> ProviderStatus:
         raise NotImplementedError

@@ -48,6 +48,12 @@ class Settings(BaseSettings):
 
     # Model budget: agent chat replies per workspace per 24 hours (each reply may make several model calls).
     chat_turns_per_day: int = Field(default=200, ge=1)
+    # And across every visitor's workspace together, so opening new browsers can't get around the limit above.
+    # The owner (API_TOKEN, or AUTH_MODE=off) is not counted.
+    chat_turns_per_day_total: int = Field(default=500, ge=1)
+    # Models visitors may use in browser mode. The Claude Code and Codex CLIs run on the owner's own logins,
+    # so by default only the owner can use them; visitors get the local model.
+    public_providers: list[str] = Field(default_factory=lambda: ["ollama"])
 
     # How many repair strategies the worker may try before asking a person to review.
     repair_budget: int = Field(default=2, ge=0, le=5)

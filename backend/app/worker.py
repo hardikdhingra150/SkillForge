@@ -10,7 +10,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.database.connection import engine
 from app.database.session import SessionLocal
-from app.llm import PROVIDERS
+from app.llm import PROVIDERS, only
+from app.security import models_for_workspace
 from app.services import scoreboard
 from app.services.execution_queue import execute_next
 from app.services.request_queue import claim_review, finish_review, review_requested
@@ -65,9 +66,11 @@ def main() -> int:
                     claim = claim_review(db)
                 if claim is not None:
                     # The model call happens between two short transactions, never inside one.
-                    planner = scoreboard.pick_planner()
-                    provider = PROVIDERS[planner] if planner else None
-                    review = review_requested(claim, provider, provider.status().default_model if provider else None)
+                    with only(models_for_workspace(claim["workspace_id"])):
+                        planner = scoreboard.pick_planner()
+                        provider = PROVIDERS[planner] if planner else None
+                        review = review_requested(claim, provider,
+                                                  provider.status().default_model if provider else None)
                     with SessionLocal.begin() as db:
                         execution_id = finish_review(db, claim["execution_id"], review)
                 else:

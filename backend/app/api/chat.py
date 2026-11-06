@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, update
@@ -18,8 +18,8 @@ from app.config import settings
 from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.models import Workspace
 from app.database.session import SessionLocal
-from app.llm import PROVIDERS, provider_statuses
-from app.security import WorkspaceId, require_access
+from app.llm import PROVIDERS, only, provider_statuses
+from app.security import LOCAL_WORKSPACE_ID, WorkspaceId, is_visitor, models_for, require_access
 from app.services import live, scoreboard
 from app.services.agent import run_turn
 from app.services.csv_inputs import MAX_BYTES, parse_csv
@@ -108,8 +108,9 @@ def check_provider(provider_id):
 
 
 @router.get("/providers", response_model=list[ProviderOut])
-def list_providers(refresh: bool = False):
-    return [ProviderOut(**status.payload()) for status in provider_statuses(refresh)]
+def list_providers(request: Request, refresh: bool = False):
+    with only(models_for(request)):
+        return [ProviderOut(**status.payload()) for status in provider_statuses(refresh)]
 
 
 @router.get("/scoreboard")
@@ -257,9 +258,24 @@ def check_budget(used: int, limit: int):
                                  "Try again later, or raise CHAT_TURNS_PER_DAY.")
 
 
+def visitor_turns_today(db) -> int:
+    """Agent replies started in every workspace except the owner's over the last 24 hours."""
+    return db.scalar(
+        select(func.count()).select_from(ChatMessage).join(Conversation, Conversation.id == ChatMessage.conversation_id)
+        .where(Conversation.workspace_id != LOCAL_WORKSPACE_ID, ChatMessage.role == "assistant",
+               ChatMessage.created_at >= func.now() - timedelta(days=1))
+    ) or 0
+
+
+def check_site_budget(used: int, limit: int):
+    if used >= limit:
+        raise HTTPException(429, "SkillForge has reached today's chat limit for everyone. Try again tomorrow.")
+
+
 @router.post("/conversations/{conversation_id}/messages", response_model=list[MessageOut], status_code=202)
 def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: BackgroundTasks,
-                 workspace_id: WorkspaceId):
+                 workspace_id: WorkspaceId, request: Request):
+    allowed = models_for(request)
     try:
         with db.begin():
             conversation = db.scalars(select(Conversation).where(Conversation.id == conversation_id)
@@ -268,12 +284,15 @@ def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: Bac
                 raise HTTPException(404, "Conversation not found.")
             provider_id = body.provider or conversation.provider
             model = body.model if body.provider else (body.model or conversation.model)
-            check_provider(provider_id)
+            with only(allowed):
+                check_provider(provider_id)
             busy = db.scalar(select(func.count()).where(ChatMessage.conversation_id == conversation_id,
                                                         ChatMessage.status == "pending"))
             if busy:
                 raise HTTPException(409, "Wait for the current reply to finish.")
             check_budget(turns_today(db, conversation.workspace_id), settings.chat_turns_per_day)
+            if is_visitor(request):
+                check_site_budget(visitor_turns_today(db), settings.chat_turns_per_day_total)
             last = db.scalar(select(func.max(ChatMessage.sequence)).where(ChatMessage.conversation_id == conversation_id)) or 0
             user = ChatMessage(conversation_id=conversation_id, sequence=last + 1, role="user", content=body.content.strip())
             reply = ChatMessage(conversation_id=conversation_id, sequence=last + 2, role="assistant", status="pending",
@@ -297,7 +316,7 @@ def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: Bac
             out = [MessageOut.model_validate(user), MessageOut.model_validate(reply)]
     except SQLAlchemyError as error:
         raise unavailable(error) from None
-    background.add_task(run_turn, conversation_id, reply.id, provider_id, model)
+    background.add_task(run_turn, conversation_id, reply.id, provider_id, model, allowed)
     return out
 
 

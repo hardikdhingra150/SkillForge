@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from app.llm.base import LLMError, Provider, ProviderStatus, minimal_env, run_cli, scratch_dir
+from app.llm.base import OWNER_ONLY, LLMError, Provider, ProviderStatus, allowed, minimal_env, run_cli, scratch_dir
 
 # In Docker the compose file points this at the host (host.docker.internal).
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
@@ -142,6 +142,8 @@ PROVIDERS: dict[str, Provider] = {p.id: p for p in (ClaudeCLI(), CodexCLI(), Oll
 def get_provider(provider_id: str) -> Provider:
     if provider_id not in PROVIDERS:
         raise LLMError(f"Unknown provider {provider_id!r}.")
+    if not allowed(provider_id):
+        raise LLMError(f"{PROVIDERS[provider_id].label}: {OWNER_ONLY}")
     return PROVIDERS[provider_id]
 
 

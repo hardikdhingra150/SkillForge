@@ -24,7 +24,7 @@ from app.config import settings
 from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.session import SessionLocal
 from app.database.skill_models import SkillVersion
-from app.llm import PROVIDERS, LLMError, complete_json, get_provider
+from app.llm import PROVIDERS, LLMError, complete_json, get_provider, only
 from app.sandbox import PolicyViolation, check_source, run_skill
 from app.sandbox.tools import TOOL_DOCS, TOOL_NAMES
 from app.schemas.skill_contract import SkillContract
@@ -444,7 +444,13 @@ def load_attachments(db, message_id):
                            "preview": row.preview_json, "content": row.content_bytes} for row in rows}
 
 
-def run_turn(conversation_id, assistant_id, provider_id, model):
+def run_turn(conversation_id, assistant_id, provider_id, model, allowed=None):
+    """Answer one chat message using only the `allowed` model providers (None: all of them)."""
+    with only(allowed):
+        _run_turn(conversation_id, assistant_id, provider_id, model)
+
+
+def _run_turn(conversation_id, assistant_id, provider_id, model):
     try:
         with SessionLocal() as db:
             message = db.get(ChatMessage, assistant_id)

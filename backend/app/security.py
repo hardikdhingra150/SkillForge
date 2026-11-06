@@ -87,6 +87,23 @@ def require_access(
     return LOCAL_WORKSPACE_ID
 
 
+def is_visitor(request: Request) -> bool:
+    """A browser-mode visitor, as opposed to the owner (API_TOKEN) or the single user of AUTH_MODE=off."""
+    return getattr(request.state, "browser", False)
+
+
+def models_for(request: Request) -> list[str] | None:
+    """The model providers this caller may use: every one for the owner, the public ones for a visitor."""
+    return list(settings.public_providers) if is_visitor(request) else None
+
+
+def models_for_workspace(workspace_id: UUID | None) -> list[str] | None:
+    """The same rule for background work, which knows only the workspace: the owner's is the local one."""
+    if settings.auth_mode == "browser" and workspace_id != LOCAL_WORKSPACE_ID:
+        return list(settings.public_providers)
+    return None
+
+
 def require_operator(request: Request):
     """Changes to the shared skill library. In browser mode, only the operator's API_TOKEN may make them."""
     if getattr(request.state, "browser", False):
