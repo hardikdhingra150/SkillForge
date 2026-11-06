@@ -1,0 +1,58 @@
+# SkillForge's backend on Render's free plan (Render "Blueprint"). The frontend is on Vercel and the database on
+# Supabase; see DEPLOY.md. Render reads this file when you create the Blueprint, and redeploys on every push.
+services:
+  - type: web
+    name: skillforge-api
+    runtime: docker
+    plan: free
+    # Closest Render region to the Supabase project (ap-south-1, Mumbai).
+    region: singapore
+    dockerContext: .
+    dockerfilePath: ./backend/Dockerfile
+    # The API and the worker in one container (a free plan has no separate background workers).
+    dockerCommand: sh docker/start-all.sh
+    healthCheckPath: /api/v1/health/ready
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: AUTH_MODE
+        value: browser
+      # Render can't start containers, so skills use the process sandbox (see DEPLOY.md).
+      - key: SANDBOX_BACKEND
+        value: process
+      - key: ALLOW_PROCESS_SANDBOX
+        value: "true"
+      # A free instance has a tenth of a CPU: starting each sandboxed run takes seconds, not milliseconds.
+      - key: SANDBOX_TIMEOUT_SECONDS
+        value: "60"
+      - key: FRONTEND_ORIGINS
+        value: '["https://skillforge-beta-lilac.vercel.app"]'
+      # Render's proxy is the only client, so trust its X-Forwarded-For (rate limits see each visitor).
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
+      # Visitors chat with Groq's free models; Claude and Codex stay the owner's.
+      - key: PUBLIC_PROVIDERS
+        value: '["groq"]'
+      - key: CHAT_TURNS_PER_DAY
+        value: "50"
+      - key: CHAT_TURNS_PER_DAY_TOTAL
+        value: "500"
+      # The Claude Code and Codex CLIs, for the owner (also passed to the Docker build as a build argument).
+      - key: INSTALL_AGENT_CLIS
+        value: "true"
+      - key: CODEX_HOME
+        value: /home/skillforge/.codex
+      # Your owner key: Render makes a random one. Copy it from the service's Environment page.
+      - key: API_TOKEN
+        generateValue: true
+      # Filled in by you when you create the Blueprint (Render asks for each):
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Optional, for your own Claude and Codex: see DEPLOY.md.
+      - key: CLAUDE_CODE_OAUTH_TOKEN
+        sync: false
+      - key: CODEX_AUTH_JSON
+        sync: false
