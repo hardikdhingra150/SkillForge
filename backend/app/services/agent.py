@@ -142,6 +142,13 @@ class MatchMismatch(ValueError):
 
 # ---------- step log (each step is its own short transaction so the UI can poll progress) ----------
 
+def workspace_of(db, message_id):
+    """The workspace a chat reply belongs to, so its audit events land there."""
+    message = db.get(ChatMessage, message_id)
+    conversation = db.get(Conversation, message.conversation_id) if message else None
+    return conversation.workspace_id if conversation else None
+
+
 def add_step(message_id, kind, text, payload=None):
     with SessionLocal.begin() as db:
         message = db.get(ChatMessage, message_id)
@@ -673,7 +680,7 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
             parent = db.get(SkillVersion, key)
             emit = lambda kind, _stage, text, payload=None: add_step(message_id, kind, text, payload)  # noqa: E731
             repaired = attempt_repair(db, emit, parent, inputs, files, typed_failure, settings.repair_budget,
-                                      actor=f"agent:{provider_id}")
+                                      actor=f"agent:{provider_id}", workspace_id=workspace_of(db, message_id))
             if isinstance(repaired, Repaired):
                 new_key = (repaired.skill.skill_id, repaired.skill.version)
                 output = repaired.output
@@ -702,7 +709,7 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
             "strategy": "skillsmith_llm", "summary": f"Rewritten by {provider.label} after: {failure}",
             "failure": {"code": "SKILL_ERROR", "message": failure}, "provider": provider_id, "model": model,
             "fixtures": [encode_fixture(*f) for f in fixtures],
-        }, actor=f"agent:{provider_id}")
+        }, actor=f"agent:{provider_id}", workspace_id=workspace_of(db, message_id))
         new_key = (new.skill_id, new.version)
     add_step(message_id, "skill_promoted", f"Saved {new_key[0]} v{new_key[1]} (repaired from v{key[1]}), "
              f"proven by {evidence['test_count']} tests.")
@@ -736,7 +743,8 @@ def create(message_id, provider, provider_id, model, capability, summary, inputs
                          target=audit.skill_target(skill_id, version),
                          reason=f"Created by SkillSmith for: {request[:300]}",
                          details={"origin": "generated", "model": model, "tests": evidence.get("test_count"),
-                                  "implementation_hash": fingerprint})
+                                  "implementation_hash": fingerprint},
+                         **({"workspace_id": ws} if (ws := workspace_of(db, message_id)) else {}))
         key = (row.skill_id, row.version)
     add_step(message_id, "skill_created", f"Created {key[0]} v{key[1]}: passed {evidence['test_count']} examples in the sandbox. "
              "Saved to the registry for reuse.")

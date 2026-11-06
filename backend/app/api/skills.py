@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.tasks import DB
 from app.database.skill_models import SkillVersion
 from app.sandbox import PolicyViolation
-from app.security import actor, require_access
+from app.security import WorkspaceId, actor, require_access, require_operator
 from app.services import audit
 from app.services.skill_bundle import BundleError, export_bundle, import_bundle
 
@@ -121,8 +121,9 @@ def export_skill(skill_id: str, version: str, db: DB):
 
 
 @router.post("/skills/import", response_model=SkillVersionOut)
-def import_skill(db: DB, request: Request, bundle: dict[str, Any] = Body(...)):
+def import_skill(db: DB, request: Request, workspace_id: WorkspaceId, bundle: dict[str, Any] = Body(...)):
     """Import a bundle. It is re-proven here: hash, sandbox policy, contract and every fixture must pass."""
+    require_operator(request)
     try:
         with db.begin():
             row, created = import_bundle(db, bundle)
@@ -131,7 +132,8 @@ def import_skill(db: DB, request: Request, bundle: dict[str, Any] = Body(...)):
                              target=audit.skill_target(row.skill_id, row.version),
                              reason="Imported from a bundle and re-proven in the sandbox.",
                              details={"implementation_hash": row.implementation_hash,
-                                      "fixtures": (row.validation_json or {}).get("test_count")})
+                                      "fixtures": (row.validation_json or {}).get("test_count")},
+                             workspace_id=workspace_id)
             out = SkillVersionOut.model_validate(row)
     except (BundleError, PolicyViolation, ValueError) as error:
         raise HTTPException(422, f"Import rejected: {error}") from None

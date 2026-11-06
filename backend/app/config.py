@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     postgres_user: str = "skillforge"
     postgres_password: SecretStr
 
+    # off: one shared local workspace, no sign-in (laptop use). accounts: people sign up and sign in, and each
+    # gets a private workspace for tasks, chats, reviews and history. The skill library stays shared.
+    auth_mode: Literal["off", "accounts"] = "off"
+    # Anyone may create an account (accounts mode). Set false once your people have signed up.
+    allow_signup: bool = True
+    session_days: int = Field(default=30, ge=1, le=365)
+
     # Bearer token for /api/v1 (generate with `make token`). Unset: open in development, closed in production.
     api_token: SecretStr | None = Field(default=None, min_length=32)
 
@@ -49,8 +56,8 @@ class Settings(BaseSettings):
         if self.app_env != "production":
             return self
         problems = []
-        if self.api_token is None:
-            problems.append("API_TOKEN is required (make token).")
+        if self.api_token is None and self.auth_mode != "accounts":
+            problems.append("Set AUTH_MODE=accounts or API_TOKEN (make token).")
         if self.sandbox_backend != "docker":
             problems.append("SANDBOX_BACKEND must be docker.")
         if not self.frontend_origins:

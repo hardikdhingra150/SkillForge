@@ -31,12 +31,12 @@ from app.schemas.process import (
     ExecutionOut,
     TaskCreate,
 )
-from app.security import require_access
+from app.security import LOCAL_WORKSPACE_ID, WorkspaceId, require_access
 from app.services.events import append_event
 
 logger = logging.getLogger("uvicorn.error")
 
-DEV_WORKSPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
+DEV_WORKSPACE_ID = LOCAL_WORKSPACE_ID
 
 DB = Annotated[Session, Depends(get_db)]
 
@@ -66,13 +66,13 @@ def log_database_error(error: SQLAlchemyError):
         reason,
     )
 
-def lookup_execution(db: Session, execution_id: UUID):
+def lookup_execution(db: Session, execution_id: UUID, workspace_id: UUID = LOCAL_WORKSPACE_ID):
     return db.execute(
         select(Execution, Task)
         .join(Task, Task.id == Execution.task_id)
         .where(
             Execution.id == execution_id,
-            Task.workspace_id == DEV_WORKSPACE_ID,
+            Task.workspace_id == workspace_id,
         )
     ).first()
 
@@ -129,9 +129,10 @@ def create_task(
         Header(alias="Idempotency-Key"),
     ],
     db: DB,
+    workspace_id: WorkspaceId,
 ):
     execution_id = uuid5(
-        DEV_WORKSPACE_ID,
+        workspace_id,
         str(idempotency_key),
     )
 
@@ -140,19 +141,19 @@ def create_task(
             db.execute(
                 insert(Workspace)
                 .values(
-                    id=DEV_WORKSPACE_ID,
+                    id=workspace_id,
                     name="Local development",
                 )
                 .on_conflict_do_nothing(index_elements=["id"])
             )
 
-            existing = lookup_execution(db, execution_id)
+            existing = lookup_execution(db, execution_id, workspace_id)
 
             if existing is not None:
                 return replay_submission(existing, body, response)
 
             task = Task(
-                workspace_id=DEV_WORKSPACE_ID,
+                workspace_id=workspace_id,
                 requirement=body.requirement,
                 requirements_json={},
             )
@@ -197,7 +198,7 @@ def create_task(
         db.rollback()
 
         # A concurrent request may have saved this submission.
-        existing = lookup_execution(db, execution_id)
+        existing = lookup_execution(db, execution_id, workspace_id)
 
         if existing is not None:
             return replay_submission(existing, body, response)
@@ -232,8 +233,8 @@ def create_task(
     "/executions/{execution_id}",
     response_model=ExecutionOut,
 )
-def get_execution(execution_id: UUID, db: DB):
-    row = lookup_execution(db, execution_id)
+def get_execution(execution_id: UUID, db: DB, workspace_id: WorkspaceId):
+    row = lookup_execution(db, execution_id, workspace_id)
 
     if row is None:
         raise HTTPException(
@@ -252,10 +253,11 @@ def get_execution(execution_id: UUID, db: DB):
 def get_events(
     execution_id: UUID,
     db: DB,
+    workspace_id: WorkspaceId,
     after: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ):
-    if lookup_execution(db, execution_id) is None:
+    if lookup_execution(db, execution_id, workspace_id) is None:
         raise HTTPException(
             status_code=404,
             detail="Execution not found.",
@@ -322,16 +324,17 @@ def stream_frames(
 @router.get("/executions/{execution_id}/stream")
 def stream_execution(
     execution_id: UUID,
+    workspace_id: WorkspaceId,
     after: Annotated[int, Query(ge=0)] = 0,
 ):
     """Live updates for one run over server-sent events; the Process view falls back to polling."""
     with SessionLocal() as db:
-        if lookup_execution(db, execution_id) is None:
+        if lookup_execution(db, execution_id, workspace_id) is None:
             raise HTTPException(status_code=404, detail="Execution not found.")
 
     def load(cursor: int):
         with SessionLocal() as db:
-            execution, task = lookup_execution(db, execution_id)
+            execution, task = lookup_execution(db, execution_id, workspace_id)
             rows = db.scalars(
                 select(ExecutionEvent)
                 .where(ExecutionEvent.execution_id == execution_id, ExecutionEvent.sequence > cursor)

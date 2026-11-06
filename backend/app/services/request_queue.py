@@ -21,19 +21,20 @@ STALE_CLAIM = timedelta(minutes=10)
 DEV_WORKSPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
-def queued_execution_statement(workspace_id: UUID):
-    return (
+def queued_execution_statement(workspace_id: UUID | None):
+    """The oldest request waiting for review, in one workspace or (None) across all of them."""
+    statement = (
         select(Execution)
         .join(Task, Task.id == Execution.task_id)
         .where(
             Execution.status == "queued",
             Execution.current_stage == "admission",
-            Task.workspace_id == workspace_id,
         )
         .order_by(Execution.created_at, Execution.id)
         .limit(1)
         .with_for_update(of=Execution, skip_locked=True)
     )
+    return statement if workspace_id is None else statement.where(Task.workspace_id == workspace_id)
 
 
 def review_next(
@@ -109,14 +110,15 @@ def _prefix(task) -> str:
     return "review.v1" if rounds == 1 else f"review.v1.round{rounds}"
 
 
-def claim_review(db: Session, *, workspace_id: UUID = DEV_WORKSPACE_ID):
+def claim_review(db: Session, *, workspace_id: UUID | None = None):
     """Claim one queued request (or one whose review was abandoned by a crashed worker)."""
     execution = db.scalars(queued_execution_statement(workspace_id)).first()
     if execution is None:
         execution = db.scalars(
             select(Execution).join(Task, Task.id == Execution.task_id)
             .where(Execution.status == "running", Execution.current_stage == "requirement_review",
-                   Execution.started_at < datetime.now(UTC) - STALE_CLAIM, Task.workspace_id == workspace_id)
+                   Execution.started_at < datetime.now(UTC) - STALE_CLAIM,
+                   *([Task.workspace_id == workspace_id] if workspace_id is not None else []))
             .order_by(Execution.created_at).limit(1).with_for_update(of=Execution, skip_locked=True)
         ).first()
         if execution is None:

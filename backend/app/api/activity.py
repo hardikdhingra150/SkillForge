@@ -15,10 +15,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.tasks import (
     DB,
-    DEV_WORKSPACE_ID,
 )
 from app.database.models import Execution, Task
-from app.security import require_access
+from app.security import WorkspaceId, require_access
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -81,6 +80,7 @@ def utc(value):
 )
 def list_executions(
     db: DB,
+    workspace_id: WorkspaceId,
     limit: Annotated[
         int,
         Query(ge=1, le=100),
@@ -139,7 +139,7 @@ def list_executions(
         )
         .where(
             Task.workspace_id
-            == DEV_WORKSPACE_ID
+            == workspace_id
         )
     )
 

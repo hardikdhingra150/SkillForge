@@ -10,9 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, DEV_WORKSPACE_ID
+from app.api.tasks import DB
 from app.database.audit_models import ACTIONS, AuditEvent
-from app.security import require_access
+from app.security import WorkspaceId, require_access
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/v1", tags=["Audit"], dependencies=[Depends(require_access)])
@@ -33,6 +33,7 @@ class AuditEventOut(BaseModel):
 @router.get("/audit", response_model=list[AuditEventOut])
 def audit_trail(
     db: DB,
+    workspace_id: WorkspaceId,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     action: Annotated[str | None, Query(max_length=40)] = None,
     target: Annotated[str | None, Query(max_length=160)] = None,
@@ -40,7 +41,7 @@ def audit_trail(
     """Newest first. Filter by action (e.g. skill.retired) or by an exact target (e.g. slugify@1.0.0)."""
     if action is not None and action not in ACTIONS:
         raise HTTPException(422, f"Unknown action. Use one of: {', '.join(ACTIONS)}.")
-    query = select(AuditEvent).where(AuditEvent.workspace_id == DEV_WORKSPACE_ID)
+    query = select(AuditEvent).where(AuditEvent.workspace_id == workspace_id)
     if action:
         query = query.where(AuditEvent.action == action)
     if target:

@@ -9,12 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, DEV_WORKSPACE_ID
+from app.api.tasks import DB
 from app.database.input_models import ExecutionCSVInput
 from app.database.models import Execution, Task
-from app.security import require_access
-from app.services.csv_inputs import MAX_BYTES, parse_csv, validate_mapping
+from app.security import WorkspaceId, require_access
+from app.services.csv_inputs import MAX_XLSX_BYTES, parse_csv, xlsx_to_csv
 from app.services.events import append_event
+from app.services.workflows import WORKFLOWS, describe_mapping, suggest_mapping, validate_columns
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(
@@ -33,29 +34,53 @@ class CSVInputOut(BaseModel):
     preview: list[list[str]]
     column_mapping: dict[str, str] | None
     confirmed: bool
+    workflow: dict | None = None
+    suggested_mapping: dict[str, str] = {}
 
 
 class MappingConfirm(BaseModel):
     model_config = ConfigDict(extra="forbid")
     file_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     file_version: int = Field(ge=1)
-    product_column: str = Field(min_length=1, max_length=120)
-    revenue_column: str = Field(min_length=1, max_length=120)
+    # {role: header} for the task's workflow, e.g. {"group": "Region", "amount": "Total"}.
+    columns: dict[str, str] | None = Field(default=None, max_length=10)
+    # Older clients (revenue by product only).
+    product_column: str | None = Field(default=None, min_length=1, max_length=120)
+    revenue_column: str | None = Field(default=None, min_length=1, max_length=120)
+
+    def mapping(self) -> dict:
+        if self.columns is not None:
+            return {role: header.strip() and header for role, header in self.columns.items()}
+        return {"product": self.product_column or "", "revenue": self.revenue_column or ""}
 
 
-def output(item):
+def workflow_of(task):
+    return ((task.requirements_json or {}).get("review") or {}).get("candidate_workflow")
+
+
+def output(item, task=None):
+    workflow_id = workflow_of(task) if task is not None else None
+    workflow = WORKFLOWS.get(workflow_id)
+    suggested = {}
+    if workflow is not None and item.confirmed_at is None:
+        try:
+            headers, rows = parse_csv(item.content_bytes)
+            suggested = suggest_mapping(workflow.id, headers, rows, task.requirement)
+        except ValueError:
+            suggested = {}
     return CSVInputOut(
         execution_id=item.execution_id, filename=item.filename,
         sha256=item.sha256, version=item.version,
         headers=item.headers_json, row_count=item.row_count,
         preview=item.preview_json, column_mapping=item.mapping_json,
         confirmed=item.confirmed_at is not None,
+        workflow=workflow.public() if workflow else None, suggested_mapping=suggested,
     )
 
 
-def execution_row(db, execution_id, *, lock=False):
+def execution_row(db, execution_id, workspace_id, *, lock=False):
     statement = select(Execution, Task).join(Task, Task.id == Execution.task_id).where(
-        Execution.id == execution_id, Task.workspace_id == DEV_WORKSPACE_ID,
+        Execution.id == execution_id, Task.workspace_id == workspace_id,
     )
     if lock:
         statement = statement.with_for_update(of=Execution)
@@ -74,28 +99,31 @@ def database_error(error):
 
 
 @router.get("/executions/{execution_id}/input", response_model=CSVInputOut)
-def get_input(execution_id: UUID, db: DB):
+def get_input(execution_id: UUID, db: DB, workspace_id: WorkspaceId):
     try:
-        execution_row(db, execution_id)
+        _execution, task = execution_row(db, execution_id, workspace_id)
         item = db.get(ExecutionCSVInput, execution_id)
         if item is None:
-            raise HTTPException(404, "No CSV has been uploaded for this task.")
-        return output(item)
+            raise HTTPException(404, "No file has been uploaded for this task.")
+        return output(item, task)
     except SQLAlchemyError as error:
         raise database_error(error) from None
 
 
 @router.post("/executions/{execution_id}/input", response_model=CSVInputOut, status_code=201)
 def upload_input(
-    execution_id: UUID, db: DB, response: Response,
+    execution_id: UUID, db: DB, response: Response, workspace_id: WorkspaceId,
     file: Annotated[UploadFile, File()],
 ):
     filename = (file.filename or "").replace("\\", "/").rsplit("/", 1)[-1]
-    if not filename.casefold().endswith(".csv"):
-        raise HTTPException(422, "Choose a .csv file.")
+    kind = filename.casefold().rsplit(".", 1)[-1] if "." in filename else ""
+    if kind not in {"csv", "xlsx"}:
+        raise HTTPException(422, "Choose a .csv or .xlsx file. Older .xls files: save them as .xlsx or CSV first.")
     filename = "".join(char for char in filename if char.isprintable())[:200]
-    content = file.file.read(MAX_BYTES + 1)
+    content = file.file.read(MAX_XLSX_BYTES + 1)
     try:
+        if kind == "xlsx":
+            content = xlsx_to_csv(content)
         headers, rows = parse_csv(content)
     except ValueError as error:
         raise HTTPException(422, str(error)) from None
@@ -103,16 +131,16 @@ def upload_input(
 
     try:
         with db.begin():
-            execution, task = execution_row(db, execution_id, lock=True)
-            review = (task.requirements_json or {}).get("review", {})
-            if review.get("candidate_workflow") != "revenue_by_product":
-                raise HTTPException(409, "This task needs clarification before accepting a sales CSV.")
+            execution, task = execution_row(db, execution_id, workspace_id, lock=True)
+            workflow = WORKFLOWS.get(workflow_of(task))
+            if workflow is None:
+                raise HTTPException(409, "This task needs clarification before accepting a file.")
             item = db.get(ExecutionCSVInput, execution_id)
             if item is not None and item.sha256 == digest:
                 response.status_code = 200
-                return output(item)
+                return output(item, task)
             if execution.status != "waiting_input" or execution.current_stage not in {"awaiting_input", "column_mapping"}:
-                raise HTTPException(409, "This task is not accepting a new CSV. Start a new task to use different input.")
+                raise HTTPException(409, "This task is not accepting a new file. Start a new task to use different input.")
             if item is None:
                 item = ExecutionCSVInput(execution_id=execution_id, version=1)
                 db.add(item)
@@ -138,43 +166,46 @@ def upload_input(
             append_event(
                 db, execution_id, event_key=f"input.csv_inspected.v{item.version}",
                 stage="column_mapping", event_type="csv_inspected",
-                message=f"Read {len(rows)} data rows and {len(headers)} columns. Confirm the product and revenue columns.",
-                payload={"headers": headers, "row_count": len(rows)},
+                message=f"Read {len(rows)} data rows and {len(headers)} columns. "
+                        + ("Confirm the suggested columns." if workflow.roles else "Confirm to run it."),
+                payload={"headers": headers, "row_count": len(rows), "converted_from": "xlsx" if kind == "xlsx" else None},
             )
             db.flush()
-            result = output(item)
+            result = output(item, task)
         return result
     except SQLAlchemyError as error:
         raise database_error(error) from None
 
 
 @router.post("/executions/{execution_id}/input/confirm", response_model=CSVInputOut)
-def confirm_input(execution_id: UUID, body: MappingConfirm, db: DB):
+def confirm_input(execution_id: UUID, body: MappingConfirm, db: DB, workspace_id: WorkspaceId):
     try:
         with db.begin():
-            execution, task = execution_row(db, execution_id, lock=True)
+            execution, task = execution_row(db, execution_id, workspace_id, lock=True)
             item = db.get(ExecutionCSVInput, execution_id)
             if item is None:
-                raise HTTPException(409, "Upload a CSV before confirming columns.")
+                raise HTTPException(409, "Upload a file before confirming columns.")
             if item.sha256 != body.file_sha256 or item.version != body.file_version:
                 raise HTTPException(409, "The uploaded file changed. Refresh the page and confirm its current columns.")
-            mapping = {"product": body.product_column, "revenue": body.revenue_column}
+            workflow = WORKFLOWS.get(workflow_of(task))
+            if workflow is None:
+                raise HTTPException(409, "This task has no workflow to run.")
+            try:
+                headers, rows = parse_csv(item.content_bytes)
+                mapping = validate_columns(workflow.id, headers, rows, body.mapping())
+            except ValueError as error:
+                raise HTTPException(422, str(error)) from None
             if item.confirmed_at is not None:
                 if item.mapping_json == mapping:
-                    return output(item)
+                    return output(item, task)
                 raise HTTPException(409, "These columns are already confirmed. Start a new task to use a different mapping.")
             if execution.status != "waiting_input" or execution.current_stage != "column_mapping":
                 raise HTTPException(409, "This task is not waiting for column confirmation.")
-            try:
-                headers, rows = parse_csv(item.content_bytes)
-                validate_mapping(headers, rows, body.product_column, body.revenue_column)
-            except ValueError as error:
-                raise HTTPException(422, str(error)) from None
             item.mapping_json = mapping
             item.confirmed_at = datetime.now(UTC)
             task.requirements_json = {
                 **(task.requirements_json or {}),
-                "confirmed_operation": "revenue_by_product",
+                "confirmed_operation": workflow.id,
                 "confirmed_input": {
                     "kind": "csv", "sha256": item.sha256,
                     "version": item.version, "column_mapping": mapping,
@@ -183,8 +214,8 @@ def confirm_input(execution_id: UUID, body: MappingConfirm, db: DB):
             append_event(
                 db, execution_id, event_key=f"input.columns_confirmed.v{item.version}",
                 stage="column_mapping", event_type="column_mapping_confirmed",
-                message=f"Confirmed {body.product_column} as product and {body.revenue_column} as revenue.",
-                payload={"column_mapping": mapping, "sha256": item.sha256},
+                message=f"Confirmed the columns for {workflow.title.lower()}: {describe_mapping(workflow.id, mapping)}.",
+                payload={"column_mapping": mapping, "sha256": item.sha256, "workflow": workflow.id},
             )
             execution.status = "queued"
             execution.current_stage = "skill_discovery"
@@ -192,10 +223,10 @@ def confirm_input(execution_id: UUID, body: MappingConfirm, db: DB):
                 db, execution_id, event_key=f"input.discovery_queued.v{item.version}",
                 stage="skill_discovery", event_type="execution_queued",
                 message="Inputs confirmed. Queued for skill discovery.",
-                payload={"operation": "revenue_by_product"},
+                payload={"operation": workflow.id},
             )
             db.flush()
-            result = output(item)
+            result = output(item, task)
         return result
     except SQLAlchemyError as error:
         raise database_error(error) from None
@@ -210,11 +241,11 @@ MAX_REVIEW_ROUNDS = 5
 
 
 @router.post("/executions/{execution_id}/clarify", status_code=202)
-def clarify_requirement(execution_id: UUID, body: ClarificationIn, db: DB):
+def clarify_requirement(execution_id: UUID, body: ClarificationIn, db: DB, workspace_id: WorkspaceId):
     """Answer the reviewer's question; the request is queued for another review round."""
     try:
         with db.begin():
-            execution, task = execution_row(db, execution_id, lock=True)
+            execution, task = execution_row(db, execution_id, workspace_id, lock=True)
             meta = dict(task.requirements_json or {})
             review = meta.get("review", {})
             if execution.status != "waiting_input" or review.get("next_action") != "clarify_requirement":

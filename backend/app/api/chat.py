@@ -13,13 +13,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, DEV_WORKSPACE_ID
+from app.api.tasks import DB
 from app.config import settings
 from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.models import Workspace
 from app.database.session import SessionLocal
 from app.llm import PROVIDERS, provider_statuses
-from app.security import require_access
+from app.security import WorkspaceId, require_access
 from app.services import live, scoreboard
 from app.services.agent import run_turn
 from app.services.csv_inputs import MAX_BYTES, parse_csv
@@ -121,23 +121,23 @@ def get_scoreboard(db: DB):
 
 
 @router.get("/conversations", response_model=list[ConversationOut])
-def list_conversations(db: DB, limit: Annotated[int, Query(ge=1, le=100)] = 50):
+def list_conversations(db: DB, workspace_id: WorkspaceId, limit: Annotated[int, Query(ge=1, le=100)] = 50):
     try:
-        return db.scalars(select(Conversation).where(Conversation.workspace_id == DEV_WORKSPACE_ID)
+        return db.scalars(select(Conversation).where(Conversation.workspace_id == workspace_id)
                           .order_by(Conversation.updated_at.desc()).limit(limit)).all()
     except SQLAlchemyError as error:
         raise unavailable(error) from None
 
 
 @router.post("/conversations", response_model=ConversationOut, status_code=201)
-def create_conversation(body: ConversationIn, db: DB):
+def create_conversation(body: ConversationIn, db: DB, workspace_id: WorkspaceId):
     if body.provider not in PROVIDERS and body.provider != "auto":
         raise HTTPException(422, f"Unknown provider {body.provider!r}.")
     try:
         with db.begin():
-            db.execute(insert(Workspace).values(id=DEV_WORKSPACE_ID, name="Local development")
+            db.execute(insert(Workspace).values(id=workspace_id, name="Local development")
                        .on_conflict_do_nothing(index_elements=["id"]))
-            conversation = Conversation(workspace_id=DEV_WORKSPACE_ID, title="New chat", provider=body.provider, model=body.model)
+            conversation = Conversation(workspace_id=workspace_id, title="New chat", provider=body.provider, model=body.model)
             db.add(conversation)
             db.flush()
             db.refresh(conversation)
@@ -146,23 +146,23 @@ def create_conversation(body: ConversationIn, db: DB):
         raise unavailable(error) from None
 
 
-def load_conversation(db, conversation_id):
+def load_conversation(db, conversation_id, workspace_id):
     conversation = db.get(Conversation, conversation_id)
-    if conversation is None or conversation.workspace_id != DEV_WORKSPACE_ID:
+    if conversation is None or conversation.workspace_id != workspace_id:
         raise HTTPException(404, "Conversation not found.")
     return conversation
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
-def get_conversation(conversation_id: UUID, db: DB):
+def get_conversation(conversation_id: UUID, db: DB, workspace_id: WorkspaceId):
     try:
-        return conversation_payload(db, conversation_id)
+        return conversation_payload(db, conversation_id, workspace_id)
     except SQLAlchemyError as error:
         raise unavailable(error) from None
 
 
-def conversation_payload(db, conversation_id):
-    conversation = load_conversation(db, conversation_id)
+def conversation_payload(db, conversation_id, workspace_id):
+    conversation = load_conversation(db, conversation_id, workspace_id)
     messages = db.scalars(select(ChatMessage).where(ChatMessage.conversation_id == conversation_id)
                           .order_by(ChatMessage.sequence)).all()
     files = db.scalars(select(ChatAttachment).where(ChatAttachment.conversation_id == conversation_id,
@@ -182,17 +182,17 @@ STREAM_MAX_SECONDS = 15 * 60
 
 
 @router.get("/conversations/{conversation_id}/stream")
-def stream_conversation(conversation_id: UUID):
+def stream_conversation(conversation_id: UUID, workspace_id: WorkspaceId):
     """Server-sent events: the full conversation each time it changes, until no reply is pending."""
     with SessionLocal() as db:
-        load_conversation(db, conversation_id)
+        load_conversation(db, conversation_id, workspace_id)
 
     def events():
         started, last = time.monotonic(), None
         seen = live.version(conversation_id)
         while time.monotonic() - started < STREAM_MAX_SECONDS:
             with SessionLocal() as db:
-                payload = conversation_payload(db, conversation_id).model_dump_json()
+                payload = conversation_payload(db, conversation_id, workspace_id).model_dump_json()
             if payload != last:
                 last = payload
                 yield f"event: update\ndata: {payload}\n\n"
@@ -208,7 +208,7 @@ def stream_conversation(conversation_id: UUID):
 
 
 @router.post("/conversations/{conversation_id}/attachments", response_model=AttachmentOut, status_code=201)
-def upload_attachment(conversation_id: UUID, db: DB, file: Annotated[UploadFile, File()]):
+def upload_attachment(conversation_id: UUID, db: DB, workspace_id: WorkspaceId, file: Annotated[UploadFile, File()]):
     filename = (file.filename or "").replace("\\", "/").rsplit("/", 1)[-1]
     if not filename.casefold().endswith(".csv"):
         raise HTTPException(422, "Attach a .csv file.")
@@ -220,7 +220,7 @@ def upload_attachment(conversation_id: UUID, db: DB, file: Annotated[UploadFile,
         raise HTTPException(422, str(error)) from None
     try:
         with db.begin():
-            load_conversation(db, conversation_id)
+            load_conversation(db, conversation_id, workspace_id)
             item = ChatAttachment(conversation_id=conversation_id, filename=filename, sha256=hashlib.sha256(content).hexdigest(),
                                   size_bytes=len(content), content_bytes=content, headers_json=headers,
                                   preview_json=rows[:5], row_count=len(rows))
@@ -233,10 +233,10 @@ def upload_attachment(conversation_id: UUID, db: DB, file: Annotated[UploadFile,
 
 
 @router.delete("/conversations/{conversation_id}", status_code=204)
-def delete_conversation(conversation_id: UUID, db: DB):
+def delete_conversation(conversation_id: UUID, db: DB, workspace_id: WorkspaceId):
     try:
         with db.begin():
-            db.delete(load_conversation(db, conversation_id))
+            db.delete(load_conversation(db, conversation_id, workspace_id))
         return Response(status_code=204)
     except SQLAlchemyError as error:
         raise unavailable(error) from None
@@ -258,12 +258,13 @@ def check_budget(used: int, limit: int):
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=list[MessageOut], status_code=202)
-def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: BackgroundTasks):
+def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: BackgroundTasks,
+                 workspace_id: WorkspaceId):
     try:
         with db.begin():
             conversation = db.scalars(select(Conversation).where(Conversation.id == conversation_id)
                                       .with_for_update()).first()
-            if conversation is None or conversation.workspace_id != DEV_WORKSPACE_ID:
+            if conversation is None or conversation.workspace_id != workspace_id:
                 raise HTTPException(404, "Conversation not found.")
             provider_id = body.provider or conversation.provider
             model = body.model if body.provider else (body.model or conversation.model)

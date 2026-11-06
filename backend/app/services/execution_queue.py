@@ -11,7 +11,6 @@ from app.sandbox import PolicyViolation, run_skill
 from app.services.checks import CheckFailed, run_checks
 from app.services.events import append_event
 from app.services.repair import Exhausted, attempt_repair, classify_check, classify_run_error
-from app.services.request_queue import DEV_WORKSPACE_ID
 from app.services.skill_registry import latest_validated, verify
 
 
@@ -27,6 +26,8 @@ def bind_inputs(contract, item):
             files[field.name] = item.content_bytes
         elif field.type == "column":
             key = field.name.removesuffix("_column")
+            if key not in item.mapping_json and not field.required:
+                continue
             if key not in item.mapping_json:
                 raise ValueError(f"The confirmed mapping has no column for {field.name}.")
             inputs[field.name] = item.mapping_json[key]
@@ -43,7 +44,6 @@ def execute_next(db):
         .where(
             Execution.status == "queued",
             Execution.current_stage == "skill_discovery",
-            Task.workspace_id == DEV_WORKSPACE_ID,
         )
         .order_by(Execution.created_at, Execution.id).limit(1)
         .with_for_update(of=Execution, skip_locked=True)
@@ -55,10 +55,15 @@ def execute_next(db):
     run_attempt = (task.requirements_json or {}).get("run_attempt", 1)
     prefix = "run.v1" if run_attempt == 1 else f"run.v1.retry{run_attempt}"
 
+    seen_kinds = {}
+
     def emit(kind, stage, message, payload=None):
+        # Repairs can emit the same kind more than once (one candidate per attempt): number the repeats.
+        seen_kinds[kind] = seen_kinds.get(kind, 0) + 1
+        suffix = "" if seen_kinds[kind] == 1 else f".{seen_kinds[kind]}"
         execution.current_stage = stage
         append_event(
-            db, execution.id, event_key=f"{prefix}.{kind}", stage=stage,
+            db, execution.id, event_key=f"{prefix}.{kind}{suffix}", stage=stage,
             event_type=kind, message=message, payload=payload,
         )
 
@@ -73,7 +78,7 @@ def execute_next(db):
         confirmed = (task.requirements_json or {}).get("confirmed_input", {})
         capability = (task.requirements_json or {}).get("confirmed_operation")
         if item is None or item.confirmed_at is None:
-            raise ValueError("A confirmed CSV is required.")
+            raise ValueError("A confirmed file is required.")
         if (
             hashlib.sha256(item.content_bytes).hexdigest() != item.sha256
             or confirmed.get("sha256") != item.sha256
@@ -122,7 +127,7 @@ def execute_next(db):
 
         if failure is not None:
             budget = (task.requirements_json or {}).get("repair_budget", settings.repair_budget)
-            outcome = attempt_repair(db, emit, skill, inputs, files, failure, budget)
+            outcome = attempt_repair(db, emit, skill, inputs, files, failure, budget, workspace_id=task.workspace_id)
             if isinstance(outcome, Exhausted):
                 execution.status = "waiting_approval"
                 execution.result_json = {"error": {
@@ -139,8 +144,8 @@ def execute_next(db):
         emit("validation_passed", "validation", "All contract checks passed.", validation)
         execution.result_json = {**output, "skill": selected, "input_sha256": item.sha256, "validation": validation}
         execution.status = "succeeded"
-        emit("execution_completed", "completed", f"{capability} completed successfully.", {
-            key: output[key] for key in ("rows_processed", "total_revenue") if key in output
+        emit("execution_completed", "completed", f"{capability.replace('_', ' ').capitalize()} completed successfully.", {
+            key: output[key] for key in ("rows_processed", "total_revenue", "total", "kept", "removed") if key in output
         })
     except SQLAlchemyError:
         raise

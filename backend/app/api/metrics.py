@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.tasks import DB, DEV_WORKSPACE_ID
-from app.database.chat_models import ChatMessage
+from app.api.tasks import DB
+from app.database.chat_models import ChatMessage, Conversation
 from app.database.models import Execution, ExecutionEvent, Task
 from app.database.skill_models import SkillVersion
-from app.security import require_access
+from app.security import WorkspaceId, require_access
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/v1", tags=["Metrics"], dependencies=[Depends(require_access)])
@@ -59,7 +59,7 @@ def summarize(runs: list[Run], skills: int, repaired_versions: int) -> dict:
 
 
 @router.get("/metrics/summary")
-def metrics_summary(db: DB):
+def metrics_summary(db: DB, workspace_id: WorkspaceId):
     try:
         skills = db.scalar(select(func.count(func.distinct(SkillVersion.skill_id))).where(SkillVersion.status == "validated"))
         repaired = db.scalar(select(func.count()).select_from(SkillVersion).where(SkillVersion.origin == "repaired"))
@@ -74,12 +74,14 @@ def metrics_summary(db: DB):
                    func.extract("epoch", Execution.finished_at - run_started.c.at))
             .join(Task, Task.id == Execution.task_id)
             .outerjoin(run_started, run_started.c.execution_id == Execution.id)
-            .where(Task.workspace_id == DEV_WORKSPACE_ID, Execution.status.in_(FINISHED))
+            .where(Task.workspace_id == workspace_id, Execution.status.in_(FINISHED))
         ).all()
         replies = db.execute(
             select(ChatMessage.status, ChatMessage.skill_json,
                    func.extract("epoch", ChatMessage.updated_at - ChatMessage.created_at))
-            .where(ChatMessage.role == "assistant", ChatMessage.status.in_(("done", "failed")))
+            .join(Conversation, Conversation.id == ChatMessage.conversation_id)
+            .where(Conversation.workspace_id == workspace_id, ChatMessage.role == "assistant",
+                   ChatMessage.status.in_(("done", "failed")))
         ).all()
     except SQLAlchemyError as error:
         logger.error("Metrics query failed: %s", getattr(error, "orig", error))

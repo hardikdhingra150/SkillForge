@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.activity import router as activity_router
 from app.api.audit import router as audit_router
+from app.api.auth import router as auth_router
 from app.api.chat import fail_interrupted_turns
 from app.api.chat import router as chat_router
 from app.api.inputs import router as inputs_router
@@ -54,6 +55,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
 )
 
+app.include_router(auth_router)
 app.include_router(tasks_router)
 app.include_router(inputs_router)
 app.include_router(skills_router)

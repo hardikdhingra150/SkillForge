@@ -1,16 +1,22 @@
-"""API access: a single bearer token (API_TOKEN) guards every /api/v1 route except the health checks.
+"""API access for every /api/v1 route except the health checks and sign-in.
 
-With no token configured, the API stays open in development (local use) and closed in production.
+AUTH_MODE=off: one shared local workspace. A single bearer token (API_TOKEN) guards it; with no token the API
+stays open in development and closed in production.
+AUTH_MODE=accounts: a signed-in session token (sfs_...) selects that person's workspace. API_TOKEN, if set,
+still works for tools such as the MCP server and selects the shared local workspace.
 """
 
 import hmac
 import logging
 import re
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import Header, HTTPException, Query, Request
+from fastapi import Depends, Header, HTTPException, Query, Request
 
 from app.config import settings
+
+LOCAL_WORKSPACE_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -28,16 +34,43 @@ def presented_token(request: Request, authorization: str | None, access_token: s
 
 
 def actor(request: Request) -> str:
-    """Who made this request, for the audit trail: the token holder, or the local developer."""
+    """Who made this request, for the audit trail: the signed-in person, the token holder, or the local developer."""
+    if getattr(request.state, "user_email", None):
+        return f"user:{request.state.user_email}"[:40]
     return "api-token" if getattr(request.state, "authenticated", False) else "local-dev"
+
+
+def unauthorized(code: str, message: str):
+    return HTTPException(status_code=401, detail={"code": code, "message": message},
+                         headers={"WWW-Authenticate": "Bearer"})
 
 
 def require_access(
     request: Request,
     authorization: Annotated[str | None, Header()] = None,
     access_token: Annotated[str | None, Query(include_in_schema=False)] = None,
-):
+) -> UUID:
+    """Check the caller and return the workspace this request acts on."""
     expected = settings.api_token.get_secret_value() if settings.api_token else None
+    request.state.workspace_id = LOCAL_WORKSPACE_ID
+    if settings.auth_mode == "accounts":
+        token = presented_token(request, authorization, access_token)
+        if token and token.startswith("sfs_"):
+            from app.database.session import SessionLocal
+            from app.services.accounts import session_user
+
+            with SessionLocal() as db:
+                user = session_user(db, token)
+            if user is None:
+                raise unauthorized("SESSION_EXPIRED", "Your session has ended. Sign in again.")
+            request.state.workspace_id = user.workspace_id
+            request.state.user_email = user.email
+            request.state.authenticated = True
+            return user.workspace_id
+        if expected and token and hmac.compare_digest(token.encode(), expected.encode()):
+            request.state.authenticated = True
+            return LOCAL_WORKSPACE_ID
+        raise unauthorized("SIGN_IN_REQUIRED", "Sign in to use this SkillForge workspace.")
     if expected is None:
         if settings.app_env != "development":
             raise HTTPException(
@@ -47,15 +80,23 @@ def require_access(
                     "message": "Set API_TOKEN before enabling the API in production.",
                 },
             )
-        return
+        return LOCAL_WORKSPACE_ID
     token = presented_token(request, authorization, access_token)
     if token is None or not hmac.compare_digest(token.encode(), expected.encode()):
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "UNAUTHORIZED", "message": "This SkillForge API needs a valid access token."},
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise unauthorized("UNAUTHORIZED", "This SkillForge API needs a valid access token.")
     request.state.authenticated = True
+    return LOCAL_WORKSPACE_ID
+
+
+def require_operator(request: Request):
+    """Changes to the shared skill library. With accounts on, only the operator's API_TOKEN may make them."""
+    if settings.auth_mode == "accounts" and getattr(request.state, "user_email", None):
+        raise HTTPException(403, "The skill library is shared by everyone on this server. Only its operator "
+                                 "(with API_TOKEN) can retire, restore or import skills.")
+
+
+# The workspace a request acts on. FastAPI caches require_access per request, so this adds no second check.
+WorkspaceId = Annotated[UUID, Depends(require_access)]
 
 
 class RedactTokens(logging.Filter):
