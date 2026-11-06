@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -23,14 +23,16 @@ class Settings(BaseSettings):
     postgres_port: int = Field(default=5432, ge=1, le=65535)
     postgres_db: str = "skillforge"
     postgres_user: str = "skillforge"
-    postgres_password: SecretStr
+    postgres_password: SecretStr | None = None
 
-    # off: one shared local workspace, no sign-in (laptop use). accounts: people sign up and sign in, and each
-    # gets a private workspace for tasks, chats, reviews and history. The skill library stays shared.
-    auth_mode: Literal["off", "accounts"] = "off"
-    # Anyone may create an account (accounts mode). Set false once your people have signed up.
-    allow_signup: bool = True
-    session_days: int = Field(default=30, ge=1, le=365)
+    # Or one connection string, e.g. Supabase's "Session pooler" URI. When set it replaces the POSTGRES_* values
+    # above (POSTGRES_PASSWORD may then be left out).
+    database_url: SecretStr | None = None
+
+    # browser: no sign-in; every browser silently gets its own private workspace for tasks, chats, reviews and
+    # history (the skill library stays shared). off: one shared workspace. .env.example and compose.yaml turn
+    # browser on; the code default stays off so tools and tests see the shared workspace.
+    auth_mode: Literal["off", "browser"] = "off"
 
     # Bearer token for /api/v1 (generate with `make token`). Unset: open in development, closed in production.
     api_token: SecretStr | None = Field(default=None, min_length=32)
@@ -50,14 +52,32 @@ class Settings(BaseSettings):
     # How many repair strategies the worker may try before asking a person to review.
     repair_budget: int = Field(default=2, ge=0, le=5)
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def blank_means_unset(cls, value):
+        return value or None
+
+    @model_validator(mode="after")
+    def has_a_database(self):
+        if self.database_url is None and self.postgres_password is None:
+            raise ValueError("Set DATABASE_URL or POSTGRES_PASSWORD in backend/.env (see backend/.env.example).")
+        return self
+
+    def database_password(self) -> str:
+        if self.database_url is not None:
+            from sqlalchemy import make_url
+
+            return make_url(self.database_url.get_secret_value()).password or ""
+        return self.postgres_password.get_secret_value()
+
     @model_validator(mode="after")
     def production_is_locked_down(self):
         """Refuse to start in production with settings that are only safe on a laptop."""
         if self.app_env != "production":
             return self
         problems = []
-        if self.api_token is None and self.auth_mode != "accounts":
-            problems.append("Set AUTH_MODE=accounts or API_TOKEN (make token).")
+        if self.api_token is None and self.auth_mode != "browser":
+            problems.append("Set AUTH_MODE=browser or API_TOKEN (make token).")
         if self.sandbox_backend != "docker":
             problems.append("SANDBOX_BACKEND must be docker.")
         if not self.frontend_origins:
@@ -65,7 +85,7 @@ class Settings(BaseSettings):
         for origin in self.frontend_origins:
             if origin == "*" or not origin.startswith("https://"):
                 problems.append(f"FRONTEND_ORIGINS entries must be https:// origins, not {origin!r}.")
-        password = self.postgres_password.get_secret_value()
+        password = self.database_password()
         if len(password) < 16 or password in {"change-me", "skillforge", "postgres", "password"}:
             problems.append("POSTGRES_PASSWORD must be a strong, non-default password (16+ characters).")
         if problems:

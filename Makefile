@@ -50,7 +50,7 @@ mcp: ## Run the MCP server on stdio (for testing; agents launch backend/bin/skil
 	backend/bin/skillforge-mcp
 
 test-backend: ## Run backend unit tests
-	$(BACKEND) .venv/bin/python -m unittest discover tests
+	$(BACKEND) AUTH_MODE=off .venv/bin/python -m unittest discover tests
 
 lint-backend: ## Lint backend Python with ruff
 	$(BACKEND) .venv/bin/ruff check .

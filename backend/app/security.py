@@ -2,8 +2,8 @@
 
 AUTH_MODE=off: one shared local workspace. A single bearer token (API_TOKEN) guards it; with no token the API
 stays open in development and closed in production.
-AUTH_MODE=accounts: a signed-in session token (sfs_...) selects that person's workspace. API_TOKEN, if set,
-still works for tools such as the MCP server and selects the shared local workspace.
+AUTH_MODE=browser: no sign-in. Each browser gets its own private workspace and a random key (sfb_...) that selects
+it. API_TOKEN, if set, still works for tools such as the MCP server and selects the shared local workspace.
 """
 
 import hmac
@@ -34,9 +34,9 @@ def presented_token(request: Request, authorization: str | None, access_token: s
 
 
 def actor(request: Request) -> str:
-    """Who made this request, for the audit trail: the signed-in person, the token holder, or the local developer."""
-    if getattr(request.state, "user_email", None):
-        return f"user:{request.state.user_email}"[:40]
+    """Who made this request, for the audit trail: a browser workspace, the token holder, or the local developer."""
+    if getattr(request.state, "browser", False):
+        return "browser"
     return "api-token" if getattr(request.state, "authenticated", False) else "local-dev"
 
 
@@ -53,24 +53,23 @@ def require_access(
     """Check the caller and return the workspace this request acts on."""
     expected = settings.api_token.get_secret_value() if settings.api_token else None
     request.state.workspace_id = LOCAL_WORKSPACE_ID
-    if settings.auth_mode == "accounts":
+    if settings.auth_mode == "browser":
         token = presented_token(request, authorization, access_token)
-        if token and token.startswith("sfs_"):
+        if token and token.startswith("sfb_"):
             from app.database.session import SessionLocal
-            from app.services.accounts import session_user
+            from app.services.browser_workspaces import workspace_for
 
             with SessionLocal() as db:
-                user = session_user(db, token)
-            if user is None:
-                raise unauthorized("SESSION_EXPIRED", "Your session has ended. Sign in again.")
-            request.state.workspace_id = user.workspace_id
-            request.state.user_email = user.email
-            request.state.authenticated = True
-            return user.workspace_id
+                workspace_id = workspace_for(db, token)
+            if workspace_id is None:
+                raise unauthorized("BROWSER_KEY_UNKNOWN", "This browser's workspace no longer exists.")
+            request.state.workspace_id = workspace_id
+            request.state.browser = True
+            return workspace_id
         if expected and token and hmac.compare_digest(token.encode(), expected.encode()):
             request.state.authenticated = True
             return LOCAL_WORKSPACE_ID
-        raise unauthorized("SIGN_IN_REQUIRED", "Sign in to use this SkillForge workspace.")
+        raise unauthorized("BROWSER_KEY_NEEDED", "Ask POST /api/v1/workspace/browser for this browser's workspace.")
     if expected is None:
         if settings.app_env != "development":
             raise HTTPException(
@@ -89,8 +88,8 @@ def require_access(
 
 
 def require_operator(request: Request):
-    """Changes to the shared skill library. With accounts on, only the operator's API_TOKEN may make them."""
-    if settings.auth_mode == "accounts" and getattr(request.state, "user_email", None):
+    """Changes to the shared skill library. In browser mode, only the operator's API_TOKEN may make them."""
+    if getattr(request.state, "browser", False):
         raise HTTPException(403, "The skill library is shared by everyone on this server. Only its operator "
                                  "(with API_TOKEN) can retire, restore or import skills.")
 
