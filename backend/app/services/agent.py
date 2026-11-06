@@ -62,7 +62,7 @@ MAX_HISTORY = 10
 # The workspace the current chat turn belongs to: it sees the shared skills plus its own.
 TURN_WORKSPACE: ContextVar = ContextVar("turn_workspace", default=LOCAL_WORKSPACE_ID)
 # Strongest first: used to pick an independent verifier and an escalation target.
-STRENGTH_ORDER = ["claude", "codex", "ollama"]
+STRENGTH_ORDER = ["claude", "codex", "groq", "ollama"]
 LOCAL = "ollama"
 SMITH_ATTEMPTS = 3
 CHAT_TOOLS = [name for name in TOOL_NAMES if name not in ("read_csv", "column")]  # value-only skills

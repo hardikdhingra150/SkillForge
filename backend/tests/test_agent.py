@@ -109,7 +109,7 @@ class SmithProofTests(unittest.TestCase):
 class JudgeChoiceTests(unittest.TestCase):
     def available(self, *ids):
         statuses = {pid: type("S", (), {"available": pid in ids, "default_model": None})()
-                    for pid in ("claude", "codex", "ollama")}
+                    for pid in ("claude", "codex", "groq", "ollama")}
         return patch.multiple("app.llm.registry.Provider", status=lambda self, refresh=False: statuses[self.id])
 
     def test_local_author_is_judged_by_a_stronger_model(self):
@@ -123,6 +123,11 @@ class JudgeChoiceTests(unittest.TestCase):
             self.assertEqual(pick_judge("codex", None)[0].id, "codex")
         with self.available("codex", "claude", "ollama"):
             self.assertEqual(pick_judge("codex", None)[0].id, "claude")
+
+    def test_groq_can_judge_the_local_model(self):
+        from app.services.agent import pick_judge
+        with self.available("groq", "ollama"):
+            self.assertEqual(pick_judge("ollama", None)[0].id, "groq")
         with self.available("ollama"):
             self.assertEqual(pick_judge("ollama", None)[0].id, "ollama")
 

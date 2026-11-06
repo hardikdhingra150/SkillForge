@@ -18,7 +18,7 @@ from app.llm import PROVIDERS
 logger = logging.getLogger("skillforge.scoreboard")
 
 # Cheapest first: auto-routing prefers the cheapest model that is good enough.
-COST_ORDER = ["ollama", "codex", "claude"]
+COST_ORDER = ["ollama", "groq", "codex", "claude"]
 MIN_SAMPLES = 2
 TRUST_RATE = 0.6
 

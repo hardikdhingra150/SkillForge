@@ -45,7 +45,7 @@ class LLMError(RuntimeError):
 class ProviderStatus:
     id: str
     label: str
-    kind: str  # "cli" or "local"
+    kind: str  # "cli", "api" or "local"
     available: bool
     detail: str
     models: list[str] = field(default_factory=list)

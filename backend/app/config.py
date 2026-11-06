@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # and it gets no environment variables. That is weaker isolation than a container. Production refuses it
     # unless this is set, as a deliberate choice.
     allow_process_sandbox: bool = False
+    # How long one skill run may take (wall clock). Its CPU time is capped one second past this as well. Raise it
+    # on hosts with a small slice of a CPU (Render's free plan), where starting the sandboxed process alone is slow.
+    sandbox_timeout_seconds: float = Field(default=10.0, ge=1, le=300)
 
     # Requests per client per minute on /api/v1 (health checks are exempt).
     rate_limit_writes_per_minute: int = Field(default=60, ge=1)
@@ -60,8 +63,8 @@ class Settings(BaseSettings):
     # The owner (API_TOKEN, or AUTH_MODE=off) is not counted.
     chat_turns_per_day_total: int = Field(default=500, ge=1)
     # Models visitors may use in browser mode. The Claude Code and Codex CLIs run on the owner's own logins,
-    # so by default only the owner can use them; visitors get the local model.
-    public_providers: list[str] = Field(default_factory=lambda: ["ollama"])
+    # so by default only the owner can use them; visitors get Groq's free hosted models and the local model.
+    public_providers: list[str] = Field(default_factory=lambda: ["groq", "ollama"])
     # Browser mode: delete a visitor's workspace after this many days without a visit, task or chat (0: never).
     workspace_retention_days: int = Field(default=30, ge=0)
 
