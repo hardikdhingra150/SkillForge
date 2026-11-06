@@ -43,8 +43,8 @@ export async function mockApi(page) {
         has_more: false, next_before_created_at: null, next_before_execution_id: null,
       });
     }
-    if (path === '/auth/config') {
-      return json({ mode: 'off', allow_signup: true });
+    if (path === '/workspace/config') {
+      return json({ mode: 'off' });
     }
     if (path === '/health/ready') {
       return json({ service: 'skillforge', api: 'ready', database: 'ready' });

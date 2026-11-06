@@ -1,7 +1,6 @@
 import {
   ArrowUpRight,
   Layers3,
-  LogOut,
   Search,
   ShieldCheck,
   Terminal,
@@ -13,6 +12,7 @@ import { views } from '../navigation.js';
 import { Modal } from './Modal.jsx';
 import { PixelSpark } from './PixelArt';
 import { ApiTokenForm } from './ApiTokenForm.jsx';
+import { getApiToken } from '../api/skillforgeProcess.js';
 import { StatusPill } from './WorkspaceParts.jsx';
 
 // The modals opened from App: workspace settings, the learning loop, and search.
@@ -21,7 +21,6 @@ export function AppModals({
   skills,
   connection,
   onConnectionChanged,
-  auth,
   search,
   onSearch,
   onNavigate,
@@ -98,19 +97,13 @@ export function AppModals({
               </div>
             ))}
 
-            {auth?.mode === 'accounts' ? (
+            {getApiToken().startsWith('sfb_') ? (
               <div className="runtime-account">
                 <div>
-                  <span>Signed in as</span>
-                  <strong>{auth.user ? auth.user.email : 'Nobody yet'}</strong>
-                  {auth.user?.workspace && <small>{auth.user.workspace}</small>}
+                  <span>Workspace</span>
+                  <strong>Private to this browser</strong>
+                  <small>No sign-in needed. Your tasks, chats and history stay here; another browser or device starts its own workspace.</small>
                 </div>
-                {auth.user && (
-                  <button type="button" className="ws-link" onClick={() => { auth.signOut(); onClose(); }}>
-                    <LogOut size={13} />
-                    Sign out
-                  </button>
-                )}
               </div>
             ) : (
               <ApiTokenForm onChange={onConnectionChanged} />

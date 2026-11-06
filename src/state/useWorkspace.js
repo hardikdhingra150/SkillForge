@@ -92,6 +92,6 @@ export const STATUS_LABEL = {
   checking: 'CHECKING THE API',
   online: 'CONNECTED',
   offline: 'API OFFLINE',
-  locked: 'SIGN-IN NEEDED',
+  locked: 'TOKEN NEEDED',
   degraded: 'DATABASE UNAVAILABLE',
 };

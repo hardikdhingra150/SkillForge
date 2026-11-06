@@ -38,15 +38,52 @@ export function streamUrl(path) {
 }
 
 export class ProcessApiError extends Error {
-  constructor(message, status = 0) {
+  constructor(message, status = 0, code = "") {
     super(message);
 
     this.name = "ProcessApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
+// Servers in browser mode give each browser its own private workspace, with no sign-in. The first request without
+// a key (or with a key the server no longer knows) is answered 401; we then ask for a new workspace once, keep its
+// key, and retry. Parallel requests share the one ask, so a first visit creates exactly one workspace.
+const KEY_CODES = new Set(["BROWSER_KEY_NEEDED", "BROWSER_KEY_UNKNOWN"]);
+let pendingKey = null;
+
+function browserKey() {
+  pendingKey ??= send("/workspace/browser", { method: "POST" })
+    .then((result) => {
+      setApiToken(result.key);
+      return result.key;
+    })
+    .finally(() => {
+      pendingKey = null;
+    });
+  return pendingKey;
+}
+
 export async function request(path, options = {}) {
+  const sentWith = getApiToken();
+  try {
+    return await send(path, options);
+  } catch (error) {
+    if (!(error instanceof ProcessApiError) || !KEY_CODES.has(error.code)) {
+      throw error;
+    }
+    if (pendingKey) {
+      await pendingKey;
+    } else if (getApiToken() === sentWith) {
+      // Nobody has replaced the key this request used: ask for a workspace. Otherwise just retry with the new key.
+      await browserKey();
+    }
+    return send(path, options);
+  }
+}
+
+async function send(path, options = {}) {
   const { signal, ...rest } = options;
 
   const controller = new AbortController();
@@ -100,6 +137,7 @@ export async function request(path, options = {}) {
         throw new ProcessApiError(
           "This SkillForge API needs an access token. Add it in Workspace settings (the gear button, top right).",
           401,
+          detail?.code || "",
         );
       }
 

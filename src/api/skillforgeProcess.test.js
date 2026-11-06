@@ -104,3 +104,55 @@ describe("API access token", () => {
     expect(streamUrl("/executions/e/stream?after=3")).toMatch(/after=3&access_token=a%20b$/);
   });
 });
+
+describe("private browser workspaces", () => {
+  const reply = (status, body) => ({ ok: status < 300, status, json: () => Promise.resolve(body) });
+  const needKey = reply(401, { detail: { code: "BROWSER_KEY_NEEDED", message: "no key" } });
+
+  it("asks once for a workspace, keeps its key and retries every waiting request", async () => {
+    const fetch = vi.fn((url, options) => {
+      if (url.endsWith("/workspace/browser")) {
+        return Promise.resolve(reply(201, { key: "sfb_new" }));
+      }
+      const sent = options.headers.Authorization;
+      return Promise.resolve(sent === "Bearer sfb_new" ? reply(200, { ok: url }) : needKey);
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const results = await Promise.all([request("/a"), request("/b"), request("/c")]);
+
+    expect(results.map((result) => result.ok.slice(-2))).toEqual(["/a", "/b", "/c"]);
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith("/workspace/browser"))).toHaveLength(1);
+    expect(streamUrl("/s")).toContain("access_token=sfb_new");
+  });
+
+  it("a request that fails after the key arrived retries without asking again", async () => {
+    let calls = 0;
+    const fetch = vi.fn((url, options) => {
+      if (url.endsWith("/workspace/browser")) {
+        return Promise.resolve(reply(201, { key: "sfb_one" }));
+      }
+      calls += 1;
+      if (options.headers.Authorization === "Bearer sfb_one") {
+        return Promise.resolve(reply(200, { ok: url }));
+      }
+      // The second request's 401 arrives only after the first one has fetched a key.
+      return calls === 1 ? Promise.resolve(needKey) : new Promise((done) => setTimeout(() => done(needKey), 20));
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    await request("/a");
+    setApiToken("");
+    const slow = request("/b");
+    setApiToken("sfb_one");
+    await expect(slow).resolves.toEqual({ ok: expect.stringContaining("/b") });
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith("/workspace/browser"))).toHaveLength(1);
+  });
+
+  it("does not retry other 401s", async () => {
+    const fetch = vi.fn().mockResolvedValue(reply(401, { detail: { code: "UNAUTHORIZED", message: "token" } }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(request("/x")).rejects.toMatchObject({ status: 401 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});

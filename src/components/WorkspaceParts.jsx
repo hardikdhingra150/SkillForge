@@ -94,12 +94,12 @@ export function SetupSteps({ status, onRetry, onOpenSettings }) {
   if (status === 'locked') {
     return (
       <div className="ws-setup">
-        <h3>Sign in to continue</h3>
-        <p>This SkillForge server keeps each workspace private. Sign in, or paste the server&rsquo;s access token in Workspace settings.</p>
+        <h3>Add the access token</h3>
+        <p>This SkillForge server needs its access token. Paste it in Workspace settings; it stays in this browser.</p>
         <div className="ws-setup-actions">
           <button type="button" className="ws-link" onClick={onOpenSettings}>
             <KeyRound size={13} />
-            Sign in or add a token
+            Add the token
           </button>
         </div>
       </div>

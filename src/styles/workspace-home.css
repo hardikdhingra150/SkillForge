@@ -180,26 +180,6 @@
 }
 
 /* ---- Sign in (AUTH_MODE=accounts) ---- */
-.auth-screen { display: grid; place-items: center; min-height: 62vh; padding: 32px 0 48px; }
-.auth-card { width: min(440px, 100%); padding: clamp(22px, 4vw, 34px); border: 1px solid var(--glass-edge, var(--line)); border-radius: 22px; background: var(--glass-panel, var(--surface)); backdrop-filter: blur(18px); }
-.auth-eyebrow { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--muted); font: 10px var(--mono); letter-spacing: 1.4px; }
-.auth-card h1 { margin: 0 0 10px; font: clamp(24px, 4vw, 30px) var(--pixel); color: var(--text); line-height: 1.15; }
-.auth-lead { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.55; }
-.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 12px; }
-.auth-tabs button { padding: 9px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 500 13px 'Space Grotesk', sans-serif; cursor: pointer; }
-.auth-tabs button[aria-selected="true"] { background: var(--glass-raised, var(--surface-high)); color: var(--text); }
-.auth-tabs button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-.auth-form { display: grid; gap: 14px; }
-.auth-form label { display: grid; gap: 6px; color: var(--muted); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
-.auth-form label span { text-transform: none; letter-spacing: 0; color: var(--faint); }
-.auth-form input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--glass-inset, transparent); color: var(--text); font: 15px 'Space Grotesk', sans-serif; text-transform: none; letter-spacing: 0; }
-.auth-form input:focus { outline: none; border-color: var(--text); }
-.auth-hint { margin: -6px 0 0; color: var(--faint); font-size: 12px; }
-.auth-error { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 13px; }
-.auth-submit { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; margin-top: 4px; border: 1px solid var(--lime, var(--text)); border-radius: 11px; background: var(--lime, var(--text)); color: var(--ink, var(--surface)); font: 600 14px 'Space Grotesk', sans-serif; cursor: pointer; transition: transform .2s; }
-.auth-submit:not(:disabled):hover { transform: translateY(-2px); }
-.auth-submit:disabled { opacity: .6; cursor: default; }
-.auth-submit:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .runtime-account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 6px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
 .runtime-account span, .runtime-account small { display: block; color: var(--muted); font: 10px var(--mono); letter-spacing: 1px; }
 .runtime-account strong { display: block; margin: 3px 0; color: var(--text); }

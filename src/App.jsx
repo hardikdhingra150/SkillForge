@@ -27,8 +27,6 @@ import {
 import { StatusPill } from './components/WorkspaceParts.jsx';
 import { useLiveRun } from './state/useLiveRun.js';
 import { useWorkspace } from './state/useWorkspace.js';
-import { useAuth } from './state/useAuth.js';
-import { AuthScreen } from './components/AuthScreen.jsx';
 
 import { Guardrails } from './routes/Guardrails.jsx';
 import { Topbar } from './components/Topbar.jsx';
@@ -82,7 +80,6 @@ export default function App() {
   const [search, setSearch] = useState('');
 
   const workspace = useWorkspace();
-  const auth = useAuth({ onChange: workspace.refresh });
 
   useEffect(() => {
     document.documentElement.dataset.scene = scene;
@@ -311,7 +308,6 @@ export default function App() {
               </button>
             </div>
 
-            {auth.needsSignIn ? <AuthScreen auth={auth} /> : (<>
             {view === 'workbench' && (
               <Workbench
                 workspace={workspace}
@@ -354,7 +350,6 @@ export default function App() {
             {view === 'governance' && (
               <Guardrails />
             )}
-            </>)}
 
             <Footer
               onNavigate={navigate}
@@ -389,7 +384,6 @@ export default function App() {
         skills={workspace.skills}
         connection={workspace.status}
         onConnectionChanged={workspace.refresh}
-        auth={auth}
         search={search}
         onSearch={setSearch}
         onNavigate={navigate}
