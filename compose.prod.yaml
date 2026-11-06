@@ -1,0 +1,131 @@
+# SkillForge on one server, for everyone, at no cost. See DEPLOY.md for the whole walkthrough.
+#
+#   cp .env.production.example .env.production   # then fill it in
+#   docker compose --env-file .env.production -f compose.prod.yaml up -d --build
+#
+# Caddy serves the site over HTTPS on your domain (free certificates from Let's Encrypt) and sends /api to the API.
+# The database is Supabase (DATABASE_URL). Visitors chat with the local model (Ollama); Claude Code and Codex run
+# on your own logins and only you, with API_TOKEN, can use them. Skills run in throwaway containers.
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+    args:
+      INSTALL_AGENT_CLIS: "true"
+  image: skillforge-backend
+  environment:
+    APP_ENV: production
+    AUTH_MODE: browser
+    DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.production}
+    API_TOKEN: ${API_TOKEN:?Set API_TOKEN in .env.production}
+    FRONTEND_ORIGINS: '["https://${SITE_DOMAIN:?Set SITE_DOMAIN in .env.production}"]'
+    SANDBOX_BACKEND: docker
+    SANDBOX_IMAGE: skillforge-sandbox
+    SANDBOX_CODE_IN_IMAGE: "true"
+    DOCKER_HOST: tcp://docker-proxy:2375
+    OLLAMA_URL: http://ollama:11434
+    PUBLIC_PROVIDERS: '["ollama"]'
+    CHAT_TURNS_PER_DAY: ${CHAT_TURNS_PER_DAY:-50}
+    CHAT_TURNS_PER_DAY_TOTAL: ${CHAT_TURNS_PER_DAY_TOTAL:-500}
+    WORKSPACE_RETENTION_DAYS: ${WORKSPACE_RETENTION_DAYS:-30}
+    # Only Caddy can reach the API, so trust its X-Forwarded-For (rate limits then see each visitor's address).
+    FORWARDED_ALLOW_IPS: "*"
+    # Where `claude auth login` and `codex login` keep your logins (the agent_logins volume).
+    CLAUDE_CONFIG_DIR: /home/skillforge/logins/claude
+    CODEX_HOME: /home/skillforge/logins/codex
+  volumes:
+    - agent_logins:/home/skillforge/logins
+  restart: unless-stopped
+
+services:
+  caddy:
+    image: caddy:2.8
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_BASE_URL: /api/v1
+    restart: unless-stopped
+
+  api:
+    <<: *backend
+    depends_on:
+      sandbox-image:
+        condition: service_completed_successfully
+      docker-proxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Builds the image skills run in, then exits.
+  sandbox-image:
+    build:
+      context: .
+      dockerfile: backend/docker/sandbox.Dockerfile
+    image: skillforge-sandbox
+    command: ["true"]
+    restart: "no"
+
+  # The API and worker start sandbox containers through this proxy, which passes on only the Docker API calls
+  # `docker run` needs (no exec, volumes, networks, swarm or system calls). It has no published port.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    environment:
+      CONTAINERS: 1
+      POST: 1
+      IMAGES: 1
+      INFO: 1
+      VERSION: 1
+      PING: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.12.6
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+  # Downloads the local model visitors chat with (about 1.9 GB, once), then exits.
+  ollama-pull:
+    image: ollama/ollama:0.12.6
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["sh", "-c", "sleep 5 && ollama pull ${OLLAMA_MODEL:-qwen2.5-coder:3b}"]
+    depends_on:
+      - ollama
+    restart: "no"
+
+volumes:
+  caddy_data:
+  caddy_config:
+  ollama_models:
+  agent_logins:

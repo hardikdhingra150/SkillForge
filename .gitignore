@@ -15,6 +15,7 @@ venv/
 .env.local
 .env.*.local
 .env.postgres
+.env.production
 backend/.env
 
 # Large generated media

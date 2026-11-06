@@ -36,7 +36,7 @@ def log_database_error(error: SQLAlchemyError) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="SkillForge local worker")
+    parser = argparse.ArgumentParser(description="SkillForge worker")
     parser.add_argument("--once", action="store_true", help="Process at most one eligible queued task and exit")
     parser.add_argument("--poll-seconds", type=float, default=2.0)
     args = parser.parse_args()
@@ -48,9 +48,8 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    if settings.app_env != "development":
-        logger.error("This local worker requires APP_ENV=development.")
-        return 2
+    # Production settings already refuse to start without the Docker sandbox (config.Settings), so the worker
+    # runs anywhere the API does.
 
     stop = threading.Event()
 

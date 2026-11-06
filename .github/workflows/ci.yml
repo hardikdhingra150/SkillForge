@@ -72,6 +72,11 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker compose config --quiet
       - run: docker compose build
+      - name: Production compose file is valid
+        run: >
+          printf 'SITE_DOMAIN=example.com\nDATABASE_URL=postgresql://u:p@db.example.com/postgres\nAPI_TOKEN=x\n' > ci.env
+          && docker compose --env-file ci.env -f compose.prod.yaml config --quiet
+      - run: docker build -f backend/docker/sandbox.Dockerfile .
 
   secrets:
     name: Secret scan (gitleaks)

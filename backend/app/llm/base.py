@@ -10,7 +10,8 @@ from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, replace
 
 # Only what a CLI needs to find its own login; never app settings or database secrets.
-PASSTHROUGH_ENV = ("HOME", "PATH", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "SHELL", "TERM")
+PASSTHROUGH_ENV = ("HOME", "PATH", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "SHELL", "TERM",
+                   "CLAUDE_CONFIG_DIR", "CODEX_HOME")
 STATUS_TTL = 30.0
 
 # The providers the current request may use (None: all). On a public site, visitors get only the free local

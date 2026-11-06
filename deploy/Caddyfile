@@ -1,0 +1,20 @@
+# HTTPS for SkillForge. Caddy gets and renews a free Let's Encrypt certificate for SITE_DOMAIN by itself.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# The API (including its live streams, which Caddy passes through unbuffered).
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	# Everything else is the web app.
+	handle {
+		reverse_proxy web:80
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
