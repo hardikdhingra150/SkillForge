@@ -64,7 +64,7 @@ Everything below runs against the real API and database. Nothing in the app is p
 
 ### Put it online for free
 
-[DEPLOY.md](DEPLOY.md) walks through hosting SkillForge for everyone at no cost and with no server to manage: the frontend on **Vercel**, the backend (API, worker and a local model) on a free **Hugging Face Space**, and the database on **Supabase**. Visitors chat with the local model; your own Claude and Codex logins are kept for you. If you have your own server, `compose.prod.yaml` runs everything there with HTTPS.
+[DEPLOY.md](DEPLOY.md) walks through hosting SkillForge for everyone at no cost and with no server to manage: the frontend on **Vercel**, the backend (API and worker) on **Render**'s free plan from [`render.yaml`](render.yaml), visitors' chat on **Groq**'s free models, and the database on **Supabase**. Your own Claude and Codex logins are kept for you. If you have your own server, `compose.prod.yaml` runs everything there with HTTPS.
 
 ### One command (Docker)
 
