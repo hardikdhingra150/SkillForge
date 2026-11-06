@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, CheckCheck, Clapperboard, FileText, Layers3, Play, ShieldCheck, Sparkles, Terminal } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, CheckCheck, Clapperboard, FileText, Layers3, Play, ShieldCheck, Sparkles, Star, Terminal } from 'lucide-react';
 import { PixelSprite } from './PixelArt';
 import KineticType from './KineticType';
 import { SavedSkills, SetupSteps, StatusPill } from './WorkspaceParts.jsx';
@@ -71,6 +71,9 @@ function WorkspacePulse({ workspace, onEnter }) {
   </div>;
 }
 
+// The project's source code. Starring it helps others find SkillForge.
+const REPO_URL = 'https://github.com/hardikdhingra150/SkillForge';
+
 export default function HeroForge({ workspace, onEnter, onSampleRun, onLearn, onToast, onTour }) {
   return <section className="forge-hero hx" id="top">
     <div className="hx-backdrop" aria-hidden="true"><i className="hx-grid" /><i className="hx-glow" /></div>
@@ -93,6 +96,9 @@ export default function HeroForge({ workspace, onEnter, onSampleRun, onLearn, on
         {onTour && <button className="hx-try" onClick={onTour}><Clapperboard size={14} /><span>Watch the 2-minute tour</span></button>}
       </div>
       <div className="hx-proof"><span><ShieldCheck size={14} />Test before trust</span><span><Layers3 size={14} />Every version remembered</span><span><FileText size={14} />Full repair history</span></div>
+      <a className="hx-star" href={REPO_URL} target="_blank" rel="noopener noreferrer">
+        <Star size={14} />Like SkillForge? Star it on GitHub<ArrowUpRight size={13} />
+      </a>
     </div>
 
     <div className="hx-stage-wrap"><WorkspacePulse workspace={workspace} onEnter={onEnter} /></div>

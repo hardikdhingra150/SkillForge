@@ -65,6 +65,10 @@
 .hx-try:hover { border-style: solid; border-color: var(--text); color: var(--text); background: var(--glass-panel); }
 .hx-proof { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 26px; margin-top: 26px; color: var(--faint); font: 10px 'Space Mono', monospace; letter-spacing: .5px; text-transform: uppercase; }
 .hx-proof span { display: inline-flex; align-items: center; gap: 7px; }
+.hx-star { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 99px; color: var(--text); font: 500 13px 'Space Grotesk', sans-serif; text-decoration: none; transition: border-color .2s, translate .3s cubic-bezier(.34, 1.56, .64, 1); }
+.hx-star svg:first-child { color: #f5c542; }
+.hx-star:hover { border-color: var(--text); translate: 0 -2px; }
+.hx-star:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 
 /* Load choreography for everything above the fold. */
 .hx-copy > *, .app .forge-hero.hx > .forge-hero-overline { animation: hx-in 1s var(--sf-ease-out) both; }

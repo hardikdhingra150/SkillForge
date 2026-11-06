@@ -66,3 +66,11 @@ test('the Review page shows the audit trail', async ({ page }) => {
   await expect(trail.getByText('revenue_by_product@1.1.0')).toBeVisible();
   await expect(trail.getByText('by worker')).toBeVisible();
 });
+
+test('the landing page invites people to star the repository', async ({ page }) => {
+  await page.goto('/');
+  const star = page.getByRole('link', { name: 'Like SkillForge? Star it on GitHub' });
+  await expect(star).toHaveAttribute('href', 'https://github.com/hardikdhingra150/SkillForge');
+  await expect(star).toHaveAttribute('target', '_blank');
+  await expect(star).toHaveAttribute('rel', /noopener/);
+});
