@@ -17,7 +17,6 @@ export function Workbench({
   onRun,
   requestedExecutionId,
   onOpenRequestHandled,
-  onOpenRun,
   onNavigate,
   onOpenModal,
 }) {
@@ -38,7 +37,6 @@ export function Workbench({
           consoleRef.current?.scrollIntoView({ behavior, block: 'center' });
           onRun();
         }}
-        onOpenRun={onOpenRun}
         onOpenSettings={() => onOpenModal({ type: 'runtime' })}
         onNavigate={onNavigate}
         onHowItWorks={() => onOpenModal({ type: 'lifecycle' })}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowRight, ArrowUpRight, CheckCheck, FileText, Layers3, Play, ShieldCheck, Sparkles, Terminal } from 'lucide-react';
 import { PixelSprite } from './PixelArt';
 import KineticType from './KineticType';
-import { RecentRuns, SavedSkills, SetupSteps, StatusPill } from './WorkspaceParts.jsx';
+import { SavedSkills, SetupSteps, StatusPill } from './WorkspaceParts.jsx';
 
 export function CountUp({ value, pad = 0, suffix = '', display, run }) {
   const [shown, setShown] = useState(run ? 0 : value);
@@ -51,10 +51,6 @@ function WorkspacePulse({ workspace, onEnter }) {
       </dl>
 
       <div className="hx-pulse-lists">
-        <section>
-          <h2>Latest runs</h2>
-          <RecentRuns runs={workspace.runs} limit={3} />
-        </section>
         <section>
           <h2>Saved skills</h2>
           <SavedSkills skills={workspace.skills} limit={3} />

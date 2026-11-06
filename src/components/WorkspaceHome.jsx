@@ -3,7 +3,7 @@ import { ArrowUpRight, Check, FileUp, Play } from 'lucide-react';
 import MotionText from './MotionText';
 import { DotText, PixelSpark, PixelSprite } from './PixelArt';
 import { Button, PanelTop } from './ui.jsx';
-import { RecentRuns, SetupSteps, StatusPill, timeAgo } from './WorkspaceParts.jsx';
+import { SetupSteps, StatusPill, timeAgo } from './WorkspaceParts.jsx';
 
 // The top of the Workbench: what to do next, and what the workspace really holds.
 function steps(workspace) {
@@ -39,7 +39,6 @@ export function WorkspaceHome({
   running,
   onStartTask,
   onSampleRun,
-  onOpenRun,
   onOpenSettings,
   onNavigate,
   onHowItWorks,
@@ -130,9 +129,6 @@ export function WorkspaceHome({
                   </small>
                 </div>
               </div>
-
-              <h2 className="ws-subhead">Latest runs</h2>
-              <RecentRuns runs={workspace.runs} onOpen={onOpenRun} />
 
               <button type="button" className="ws-link" onClick={() => onNavigate('activity')}>
                 All activity

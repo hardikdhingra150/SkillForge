@@ -317,7 +317,6 @@ export default function App() {
                 onRun={startRun}
                 requestedExecutionId={requestedExecutionId}
                 onOpenRequestHandled={setRequestedExecutionId}
-                onOpenRun={openRun}
                 onNavigate={navigate}
                 onOpenModal={setModal}
               />

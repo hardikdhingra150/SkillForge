@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   ArrowUpRight,
   Check,
-  CircleDashed,
   Copy,
   KeyRound,
   Layers3,
@@ -131,37 +130,6 @@ export function SetupSteps({ status, onRetry, onOpenSettings }) {
         </button>
       </div>
     </div>
-  );
-}
-
-export function RecentRuns({ runs, onOpen, limit = 5 }) {
-  if (!runs.length) {
-    return (
-      <p className="ws-empty">
-        <CircleDashed size={14} />
-        No runs yet. Your first task will appear here.
-      </p>
-    );
-  }
-
-  return (
-    <ul className="ws-list">
-      {runs.slice(0, limit).map((run) => {
-        const [label, tone] = runTone(run.status);
-
-        return (
-          <li key={run.execution_id}>
-            <button type="button" onClick={() => onOpen?.(run.execution_id)} disabled={!onOpen}>
-              <span className="ws-list-main">
-                <strong>{run.requirement_preview}</strong>
-                <small>{timeAgo(run.created_at)}</small>
-              </span>
-              <span className={`ws-chip ${tone}`}>{label}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 
