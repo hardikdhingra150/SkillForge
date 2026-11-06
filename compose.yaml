@@ -21,7 +21,7 @@ x-backend: &backend
     POSTGRES_USER: ${POSTGRES_USER:-skillforge}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skillforge-local-only}
     FRONTEND_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
-    AUTH_MODE: ${AUTH_MODE:-browser}
+    AUTH_MODE: ${AUTH_MODE:-off}
     # Set DATABASE_URL (e.g. Supabase) to use a hosted database instead of the postgres service.
     DATABASE_URL: ${DATABASE_URL:-}
     OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
