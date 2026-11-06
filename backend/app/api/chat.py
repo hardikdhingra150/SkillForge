@@ -18,10 +18,11 @@ from app.config import settings
 from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.models import Workspace
 from app.database.session import SessionLocal
-from app.llm import PROVIDERS, only, provider_statuses
+from app.llm import PROVIDERS, bridged, only, provider_statuses
 from app.security import LOCAL_WORKSPACE_ID, WorkspaceId, is_visitor, models_for, require_access
 from app.services import live, scoreboard
 from app.services.agent import run_turn
+from app.services.bridge import WorkspaceBridge
 from app.services.csv_inputs import MAX_XLSX_BYTES, parse_csv, xlsx_to_csv
 
 logger = logging.getLogger("uvicorn.error")
@@ -107,9 +108,14 @@ def check_provider(provider_id):
         raise HTTPException(409, f"{status.label} is not ready: {status.detail}")
 
 
+def visitor_bridge(request: Request, workspace_id):
+    """For a visitor, Claude and Codex are their own computer's (or nothing); the owner uses the server's."""
+    return WorkspaceBridge(workspace_id) if is_visitor(request) else None
+
+
 @router.get("/providers", response_model=list[ProviderOut])
-def list_providers(request: Request, refresh: bool = False):
-    with only(models_for(request)):
+def list_providers(request: Request, workspace_id: WorkspaceId, refresh: bool = False):
+    with only(models_for(request)), bridged(visitor_bridge(request, workspace_id)):
         return [ProviderOut(**status.payload()) for status in provider_statuses(refresh)]
 
 
@@ -287,7 +293,7 @@ def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: Bac
                 raise HTTPException(404, "Conversation not found.")
             provider_id = body.provider or conversation.provider
             model = body.model if body.provider else (body.model or conversation.model)
-            with only(allowed):
+            with only(allowed), bridged(visitor_bridge(request, workspace_id)):
                 check_provider(provider_id)
             busy = db.scalar(select(func.count()).where(ChatMessage.conversation_id == conversation_id,
                                                         ChatMessage.status == "pending"))
@@ -319,7 +325,7 @@ def send_message(conversation_id: UUID, body: MessageIn, db: DB, background: Bac
             out = [MessageOut.model_validate(user), MessageOut.model_validate(reply)]
     except SQLAlchemyError as error:
         raise unavailable(error) from None
-    background.add_task(run_turn, conversation_id, reply.id, provider_id, model, allowed)
+    background.add_task(run_turn, conversation_id, reply.id, provider_id, model, allowed, is_visitor(request))
     return out
 
 

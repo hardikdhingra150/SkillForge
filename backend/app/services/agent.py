@@ -25,12 +25,13 @@ from app.config import settings
 from app.database.chat_models import ChatAttachment, ChatMessage, Conversation
 from app.database.session import SessionLocal
 from app.database.skill_models import SkillVersion
-from app.llm import PROVIDERS, LLMError, complete_json, get_provider, only
+from app.llm import PROVIDERS, LLMError, bridged, complete_json, get_provider, only
 from app.sandbox import PolicyViolation, check_source, run_skill
 from app.sandbox.tools import TOOL_DOCS, TOOL_NAMES
 from app.schemas.skill_contract import SkillContract
 from app.security import LOCAL_WORKSPACE_ID
 from app.services import audit, live, scoreboard
+from app.services.bridge import WorkspaceBridge
 from app.services.checks import CheckFailed, run_checks
 from app.services.csv_inputs import parse_csv
 from app.services.discovery import discover
@@ -510,15 +511,15 @@ def run_spreadsheet_task(message_id, workflow_id, attachments, request, provider
                            {workflow.file_input: attachment["content"]}, model_check=False)
 
 
-def run_turn(conversation_id, assistant_id, provider_id, model, allowed=None):
+def run_turn(conversation_id, assistant_id, provider_id, model, allowed=None, visitor=False):
     """Answer one chat message using only the `allowed` model providers (None: all of them), seeing only the
-    shared skills and this conversation's workspace's own."""
+    shared skills and this conversation's workspace's own. A visitor's Claude and Codex run on their computer."""
     with SessionLocal() as db:
         conversation = db.get(Conversation, conversation_id)
         workspace_id = conversation.workspace_id if conversation else LOCAL_WORKSPACE_ID
     token = TURN_WORKSPACE.set(workspace_id)
     try:
-        with only(allowed):
+        with only(allowed), bridged(WorkspaceBridge(workspace_id) if visitor else None):
             _run_turn(conversation_id, assistant_id, provider_id, model)
     finally:
         TURN_WORKSPACE.reset(token)

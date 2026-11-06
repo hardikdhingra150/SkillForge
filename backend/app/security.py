@@ -93,8 +93,11 @@ def is_visitor(request: Request) -> bool:
 
 
 def models_for(request: Request) -> list[str] | None:
-    """The model providers this caller may use: every one for the owner, the public ones for a visitor."""
-    return list(settings.public_providers) if is_visitor(request) else None
+    """The model providers this caller may use: every one for the owner. A visitor gets the public ones, plus
+    Claude and Codex on their own computer when it is connected (services/bridge.py), never the server's."""
+    if not is_visitor(request):
+        return None
+    return [*settings.public_providers, "claude", "codex"]
 
 
 def is_visitor_workspace(workspace_id: UUID | None) -> bool:

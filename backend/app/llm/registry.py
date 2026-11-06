@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from app.llm.base import OWNER_ONLY, LLMError, Provider, ProviderStatus, allowed, minimal_env, run_cli, scratch_dir
+from app.llm.base import BRIDGE, OWNER_ONLY, LLMError, Provider, ProviderStatus, allowed, minimal_env, run_cli, scratch_dir
 
 # In Docker the compose file points this at the host (host.docker.internal).
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
@@ -30,8 +30,20 @@ OLLAMA_SETUP = [
 ]
 
 
-class ClaudeCLI(Provider):
-    id, label, kind = "claude", "Claude (Claude Code CLI)", "cli"
+class BridgeableCLI(Provider):
+    """A CLI that, for a visitor, runs on the visitor's own computer instead (services/bridge.py)."""
+
+    server_label = ""
+    bridged_label = ""
+
+    @property
+    def label(self):
+        return self.bridged_label if BRIDGE.get() is not None else self.server_label
+
+
+class ClaudeCLI(BridgeableCLI):
+    id, kind = "claude", "cli"
+    server_label, bridged_label = "Claude (Claude Code CLI)", "Claude (your computer)"
     setup = CLAUDE_SETUP
 
     def _status(self):
@@ -52,6 +64,8 @@ class ClaudeCLI(Provider):
                               ["default", "sonnet", "opus", "haiku"], "default")
 
     def complete(self, prompt, *, system=None, model=None, timeout=180):
+        if (bridge := BRIDGE.get()) is not None:
+            return bridge.complete(self.id, prompt, system=system, model=model, timeout=timeout)
         args = ["claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence",
                 "--strict-mcp-config", "--disable-slash-commands"]
         if system:
@@ -69,8 +83,9 @@ class ClaudeCLI(Provider):
         return reply.get("result", "")
 
 
-class CodexCLI(Provider):
-    id, label, kind = "codex", "Codex (OpenAI Codex CLI)", "cli"
+class CodexCLI(BridgeableCLI):
+    id, kind = "codex", "cli"
+    server_label, bridged_label = "Codex (OpenAI Codex CLI)", "Codex (your computer)"
     setup = CODEX_SETUP
 
     def _status(self):
@@ -84,6 +99,8 @@ class CodexCLI(Provider):
                               ["default"], "default")
 
     def complete(self, prompt, *, system=None, model=None, timeout=180):
+        if (bridge := BRIDGE.get()) is not None:
+            return bridge.complete(self.id, prompt, system=system, model=model, timeout=timeout)
         full = f"{system}\n\n---\n\n{prompt}" if system else prompt
         with scratch_dir() as cwd:
             out = Path(cwd) / "reply.txt"

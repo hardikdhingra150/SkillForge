@@ -32,6 +32,22 @@ def only(providers):
         ALLOWED.reset(token)
 
 
+# Claude and Codex for a visitor run on the visitor's own computer, through their connector (services/bridge.py),
+# never on the server's logins. Set for a visitor's request or chat turn; None means the server's own CLIs.
+BRIDGE: ContextVar = ContextVar("connector_bridge", default=None)
+BRIDGED = ("claude", "codex")
+
+
+@contextmanager
+def bridged(bridge):
+    """Send Claude and Codex to this bridge (a visitor's own computer) inside the block; None leaves them alone."""
+    token = BRIDGE.set(bridge)
+    try:
+        yield
+    finally:
+        BRIDGE.reset(token)
+
+
 def allowed(provider_id: str) -> bool:
     limit = ALLOWED.get()
     return limit is None or provider_id in limit
@@ -66,6 +82,9 @@ class Provider:
     setup: list[dict] = []
 
     def status(self, refresh: bool = False) -> ProviderStatus:
+        bridge = BRIDGE.get()
+        if bridge is not None and self.id in BRIDGED:
+            return self._visible(bridge.status(self))
         if not refresh and self._cached and time.monotonic() - self._cached[0] < STATUS_TTL:
             return self._visible(self._cached[1])
         try:

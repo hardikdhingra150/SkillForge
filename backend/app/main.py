@@ -11,6 +11,8 @@ from app.api.audit import router as audit_router
 from app.api.browser import router as browser_router
 from app.api.chat import fail_interrupted_turns
 from app.api.chat import router as chat_router
+from app.api.connector import device as connector_device_router
+from app.api.connector import studio as connector_router
 from app.api.inputs import router as inputs_router
 from app.api.metrics import router as metrics_router
 from app.api.review import router as review_router
@@ -56,6 +58,8 @@ app.add_middleware(
 )
 
 app.include_router(browser_router)
+app.include_router(connector_router)
+app.include_router(connector_device_router)
 app.include_router(tasks_router)
 app.include_router(inputs_router)
 app.include_router(skills_router)

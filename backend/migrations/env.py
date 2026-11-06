@@ -7,6 +7,7 @@ from app.database import (
     audit_models,  # noqa: F401  (registers tables on Base.metadata)
     browser_models,  # noqa: F401  (registers tables on Base.metadata)
     chat_models,  # noqa: F401  (registers tables on Base.metadata)
+    connector_models,  # noqa: F401  (registers tables on Base.metadata)
     input_models,  # noqa: F401  (registers tables on Base.metadata)
     outcome_models,  # noqa: F401  (registers tables on Base.metadata)
     skill_models,  # noqa: F401  (registers tables on Base.metadata)

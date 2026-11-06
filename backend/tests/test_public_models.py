@@ -38,7 +38,7 @@ class OwnerOnlyModelTests(unittest.TestCase):
         visitor = SimpleNamespace(state=SimpleNamespace(browser=True))
         owner = SimpleNamespace(state=SimpleNamespace())
         with mock.patch("app.security.settings.public_providers", ["ollama"]):
-            self.assertEqual(models_for(visitor), ["ollama"])
+            self.assertEqual(models_for(visitor), ["ollama", "claude", "codex"])
             self.assertIsNone(models_for(owner))
             with mock.patch("app.security.settings.auth_mode", "browser"):
                 self.assertEqual(models_for_workspace(uuid4()), ["ollama"])
