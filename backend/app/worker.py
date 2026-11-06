@@ -54,7 +54,7 @@ def main() -> int:
 
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
-    logger.info("Worker ready. Reviewing requests and executing confirmed sales tasks.")
+    logger.info("Worker ready. Reviewing requests and running confirmed file tasks.")
 
     try:
         while not stop.is_set():

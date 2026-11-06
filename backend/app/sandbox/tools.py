@@ -8,6 +8,7 @@ import csv
 import io
 import json
 import re
+from datetime import date
 from decimal import Decimal, InvalidOperation, localcontext
 from types import SimpleNamespace
 
@@ -26,6 +27,90 @@ class ToolError(ValueError):
         super().__init__(message)
         self.code = code
         self.details = details
+
+
+ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+YMD = re.compile(r"^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T].*)?$")
+NUMERIC = re.compile(r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})(?:[ T].*)?$")
+MONTHS = {name: number for number, names in enumerate((
+    ("jan", "january"), ("feb", "february"), ("mar", "march"), ("apr", "april"), ("may",), ("jun", "june"),
+    ("jul", "july"), ("aug", "august"), ("sep", "sept", "september"), ("oct", "october"), ("nov", "november"),
+    ("dec", "december")), start=1) for name in names}
+DAY_MONTH = re.compile(r"^(\d{1,2})[ -]([a-z]+)\.?[ -,]+(\d{4})$")
+MONTH_DAY = re.compile(r"^([a-z]+)\.?[ -](\d{1,2})(?:st|nd|rd|th)?,?[ -]+(\d{4})$")
+
+
+def _iso(year, month, day, raw):
+    try:
+        return date(int(year), int(month), int(day)).isoformat()
+    except ValueError:
+        raise ToolError("DATE_FORMAT", f"{raw!r} is not a real calendar date.", value=raw[:80]) from None
+
+
+def iso_dates(values):
+    """Strict: every value must be an ISO date (2026-03-15). Returns the dates as ISO strings."""
+    result = []
+    for value in values:
+        raw = str(value).strip()
+        match = ISO_DATE.match(raw)
+        if not match:
+            raise ToolError("DATE_FORMAT", f"{raw!r} is not an ISO date (YYYY-MM-DD).", value=raw[:80])
+        result.append(_iso(*match.groups(), raw))
+    return result
+
+
+def date_order(values):
+    """For numeric dates like 03/04/2026, decide from the whole column whether the day or month comes first."""
+    day_first = month_first = False
+    for value in values:
+        match = NUMERIC.match(str(value).strip())
+        if match:
+            first, second = int(match.group(1)), int(match.group(2))
+            day_first = day_first or first > 12
+            month_first = month_first or second > 12
+    if day_first and month_first:
+        raise ToolError("DATE_AMBIGUOUS", "This column mixes day-first and month-first dates.")
+    return "day_first" if day_first else "month_first"
+
+
+def parse_dates(values):
+    """Dates as exported: ISO, 2026/03/15, 15/03/2026 or 03/15/2026 (order read from the whole column),
+    15 Mar 2026, Mar 15, 2026. Returns ISO strings; rejects anything it cannot read for certain."""
+    values = [str(value).strip() for value in values]
+    order = date_order(values)
+    result = []
+    for raw in values:
+        text = raw.casefold()
+        if match := YMD.match(text):
+            result.append(_iso(*match.groups(), raw))
+        elif match := NUMERIC.match(text):
+            first, second, year = match.groups()
+            year = int(year) + (2000 if len(year) == 2 and int(year) < 70 else 1900 if len(year) == 2 else 0)
+            day, month = (first, second) if order == "day_first" else (second, first)
+            result.append(_iso(year, month, day, raw))
+        elif (match := DAY_MONTH.match(text)) and match.group(2) in MONTHS:
+            result.append(_iso(match.group(3), MONTHS[match.group(2)], match.group(1), raw))
+        elif (match := MONTH_DAY.match(text)) and match.group(1) in MONTHS:
+            result.append(_iso(match.group(3), MONTHS[match.group(1)], match.group(2), raw))
+        else:
+            raise ToolError("DATE_FORMAT", f"{raw!r} is not a recognizable date.", value=raw[:80])
+    return result
+
+
+def loose(name):
+    """Header comparison that ignores case, surrounding spaces, underscores and hyphens."""
+    return " ".join(str(name).casefold().replace("_", " ").replace("-", " ").split())
+
+
+def resolve_column(headers, name):
+    """The header a column name refers to: an exact match, else the one header that matches loosely."""
+    if name in headers:
+        return name
+    matches = [header for header in headers if loose(header) == loose(name)]
+    if len(matches) == 1:
+        return matches[0]
+    raise ToolError("MISSING_COLUMN", f"Column {name!r} not found. Available columns: {', '.join(headers)}.",
+                    column=str(name), available=list(headers))
 
 
 class Toolbox(SimpleNamespace):
@@ -49,6 +134,11 @@ def make_tools(files: dict[str, bytes], allowed) -> Toolbox:
             raise ToolError("MISSING_COLUMN", f"Column {name!r} not found. Available columns: {', '.join(headers)}.",
                             column=name, available=list(headers))
         index = headers.index(name)
+        return [row[index] for row in rows]
+
+    def find_column(headers, rows, name):
+        """Like column(), but also finds a header that differs only in case, spaces, underscores or hyphens."""
+        index = headers.index(resolve_column(headers, name))
         return [row[index] for row in rows]
 
     def to_decimal(text):
@@ -123,7 +213,8 @@ def make_tools(files: dict[str, bytes], allowed) -> Toolbox:
         return json.dumps(value, sort_keys=True)
 
     available = {
-        "read_csv": read_csv, "column": column, "to_decimal": to_decimal, "parse_amount": parse_amount,
+        "read_csv": read_csv, "column": column, "find_column": find_column, "iso_dates": iso_dates,
+        "parse_dates": parse_dates, "to_decimal": to_decimal, "parse_amount": parse_amount,
         "decimal_sum": decimal_sum, "group_sum": group_sum, "format_decimal": format_decimal,
         "regex_findall": regex_findall, "regex_sub": regex_sub, "regex_split": regex_split,
         "parse_json": parse_json, "to_json": to_json,
@@ -134,13 +225,16 @@ def make_tools(files: dict[str, bytes], allowed) -> Toolbox:
     return Toolbox(**{name: available[name] for name in allowed})
 
 
-TOOL_NAMES = ("read_csv", "column", "to_decimal", "parse_amount", "decimal_sum", "group_sum", "format_decimal",
+TOOL_NAMES = ("read_csv", "column", "find_column", "iso_dates", "parse_dates", "to_decimal", "parse_amount", "decimal_sum", "group_sum", "format_decimal",
               "regex_findall", "regex_sub", "regex_split", "parse_json", "to_json")
 
 # One-line docs shown to SkillSmith when it writes a new skill.
 TOOL_DOCS = {
     "read_csv": "read_csv(name) -> (headers, rows) for a CSV input",
     "column": "column(headers, rows, name) -> list of that column's string values",
+    "find_column": "find_column(headers, rows, name) -> like column, but tolerant of case/spaces/underscores",
+    "iso_dates": "iso_dates(values) -> list of ISO date strings; strict YYYY-MM-DD only",
+    "parse_dates": "parse_dates(values) -> list of ISO date strings from exported formats (15/03/2026, Mar 15, 2026)",
     "to_decimal": "to_decimal(text) -> Decimal, plain numbers only",
     "parse_amount": "parse_amount(text) -> Decimal, also $1,200.50 / (300) / -€100",
     "decimal_sum": "decimal_sum(values) -> Decimal sum",

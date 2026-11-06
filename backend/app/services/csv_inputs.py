@@ -97,3 +97,75 @@ def validate_mapping(headers, rows, product_column, revenue_column):
                 f"Revenue on data row {row_number} must be finite, "
                 "with at most 18 integer digits and 6 decimal places."
             )
+
+
+MAX_XLSX_BYTES = 5 * 1024 * 1024
+MAX_XLSX_UNPACKED = 80 * 1024 * 1024
+
+
+def _cell_text(value) -> str:
+    """An Excel cell as the text a CSV export would hold."""
+    from datetime import date, datetime, time
+
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if isinstance(value, datetime):
+        return value.date().isoformat() if value.time() == time(0) else value.isoformat(sep=" ")
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, float):
+        return str(int(value)) if value.is_integer() and abs(value) < 1e15 else repr(value)
+    return str(value)
+
+
+def xlsx_to_csv(content: bytes) -> bytes:
+    """Convert the first worksheet of an .xlsx file to UTF-8 CSV bytes (values, not formulas).
+
+    Guards against zip bombs before opening, and stops reading past the CSV row and column limits.
+    """
+    import zipfile
+
+    if not content or len(content) > MAX_XLSX_BYTES:
+        raise ValueError("Upload a non-empty Excel file no larger than 5 MiB.")
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(content))
+        if sum(item.file_size for item in archive.infolist()) > MAX_XLSX_UNPACKED:
+            raise ValueError("The Excel file expands to too much data.")
+    except zipfile.BadZipFile:
+        raise ValueError("This is not a valid .xlsx file. Save it as Excel Workbook (.xlsx) or CSV.") from None
+
+    from openpyxl import load_workbook
+
+    try:
+        workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    except Exception:
+        raise ValueError("The Excel file could not be read. Save it again as .xlsx or CSV.") from None
+    try:
+        sheet = workbook.worksheets[0]
+        out = io.StringIO()
+        writer = csv.writer(out, lineterminator="\n")
+        width = None
+        for index, row in enumerate(sheet.iter_rows(values_only=True)):
+            cells = [_cell_text(value) for value in row]
+            if width is None:
+                while cells and not cells[-1].strip():
+                    cells.pop()
+                if not cells:
+                    continue  # leading blank rows before the header
+                width = len(cells)
+                if width > MAX_COLUMNS:
+                    raise ValueError("The sheet must have between 2 and 50 columns.")
+            elif any(cell.strip() for cell in cells[width:]):
+                raise ValueError(f"Row {index + 1} of the sheet has values outside the header's columns.")
+            cells = (cells + [""] * width)[:width]
+            writer.writerow(cells)
+            if index > MAX_ROWS + 50:
+                raise ValueError("The sheet exceeds 10,000 data rows.")
+    finally:
+        workbook.close()
+    data = out.getvalue().encode()
+    if len(data) > MAX_BYTES:
+        raise ValueError("The sheet is larger than 1 MiB once converted to CSV.")
+    return data
