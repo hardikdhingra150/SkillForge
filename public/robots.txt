@@ -1,0 +1,5 @@
+# SkillForge: everything here may be indexed.
+User-agent: *
+Allow: /
+
+Sitemap: https://skillforge-beta-lilac.vercel.app/sitemap.xml

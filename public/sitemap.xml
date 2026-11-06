@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The app's pages (Studio, Skills, Models) are #-addresses on this one page, so the home page is the only URL. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  <url>
+    <loc>https://skillforge-beta-lilac.vercel.app/</loc>
+    <lastmod>2026-11-06</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <video:video>
+      <video:thumbnail_loc>https://skillforge-beta-lilac.vercel.app/tour/poster.jpg</video:thumbnail_loc>
+      <video:title>SkillForge in two minutes</video:title>
+      <video:description>A tour of every feature: ask in plain words or attach a spreadsheet, watch a tested skill do the work, see a broken skill repair itself, connect your own Claude Code or Codex, and browse the shared skill library and model scoreboard.</video:description>
+      <video:content_loc>https://skillforge-beta-lilac.vercel.app/tour/skillforge-tour.webm</video:content_loc>
+      <video:duration>153</video:duration>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+  </url>
+</urlset>
