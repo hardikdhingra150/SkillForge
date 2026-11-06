@@ -20,24 +20,28 @@ function download(filename, text) {
   URL.revokeObjectURL(url);
 }
 
-/** The shape each operation returns, normalized to one of two views. */
+const every = (items, ...keys) => items.every((item) => item && keys.every((key) => key in item));
+
+/** The shape each built-in spreadsheet skill returns, normalized to one of two views. Anything else (a skill
+ * created in Studio, with its own output) is shown field by field instead. */
 function describe(result) {
-  if (Array.isArray(result?.products)) {
+  if (!result || typeof result.rows_processed !== 'number') return null;
+  if (Array.isArray(result.products) && 'total_revenue' in result && every(result.products, 'product', 'revenue')) {
     return { kind: 'totals', title: 'Revenue by product', label: 'Product', valueLabel: 'Revenue',
       items: result.products.map((item) => ({ name: item.product, total: item.revenue, rows: item.row_count })),
       total: result.total_revenue, sort: 'value', file: 'revenue_by_product.csv', unit: ['product', 'products'] };
   }
-  if (Array.isArray(result?.groups)) {
+  if (Array.isArray(result.groups) && 'total' in result && every(result.groups, 'group', 'total')) {
     return { kind: 'totals', title: `Totals by ${result.group_column || 'group'}`, label: result.group_column || 'Group',
       valueLabel: 'Total', items: result.groups.map((item) => ({ name: item.group, total: item.total, rows: item.row_count })),
       total: result.total, sort: 'value', file: 'totals_by_group.csv', unit: ['group', 'groups'] };
   }
-  if (Array.isArray(result?.periods)) {
+  if (Array.isArray(result.periods) && 'total' in result && every(result.periods, 'period', 'total')) {
     return { kind: 'totals', title: 'Totals by month', label: 'Month', valueLabel: 'Total',
       items: result.periods.map((item) => ({ name: item.period, total: item.total, rows: item.row_count })),
       total: result.total, sort: 'name', file: 'totals_by_month.csv', unit: ['month', 'months'] };
   }
-  if (Array.isArray(result?.rows) && Array.isArray(result?.headers)) {
+  if (Array.isArray(result.rows) && Array.isArray(result.headers)) {
     const deduped = result.operation === 'dedupe_rows';
     const changes = result.changes || {};
     const facts = deduped
@@ -61,6 +65,9 @@ function Proof({ result }) {
     </p>
   );
 }
+
+/** Whether a skill's output is one of the spreadsheet results this component can show as a table. */
+export const isTableResult = (result) => describe(result) !== null;
 
 export function TaskResult({ result }) {
   const view = describe(result);

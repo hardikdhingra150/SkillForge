@@ -131,7 +131,9 @@
 .sf-chat__file b { font-weight: 500; }
 .sf-chat__file small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; opacity: .7; }
 .sf-chat__file button { display: grid; place-items: center; padding: 2px; border: 0; background: none; cursor: pointer; }
-.sf-chat__attach { display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid var(--line) !important; border-radius: 12px; background: var(--glass-inset) !important; color: var(--text) !important; }
+.sf-chat__composer .sf-chat__attach { display: inline-flex; width: auto; align-items: center; gap: 8px; height: 46px; padding: 0 14px; border: 1px solid var(--line) !important; border-radius: 12px; background: var(--glass-inset) !important; color: var(--text) !important; font-size: 13px; white-space: nowrap; }
+.sf-chat__attach:hover:not(:disabled) { border-color: var(--text) !important; }
+@media (max-width: 560px) { .sf-chat__attach span { display: none; } .sf-chat__composer .sf-chat__attach { width: 46px; justify-content: center; padding: 0; } }
 
 /* Multi-step pipeline */
 .sf-chat__pipeline { list-style: none; margin: 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); counter-reset: step; }
@@ -140,3 +142,22 @@
 .sf-chat__badge[data-event=reused] { background: none; color: var(--text); border: 1px solid var(--muted); }
 .sf-chat__badge[data-event=repaired] { background: none; color: var(--text); border: 1px dashed var(--text); }
 .sf-chat__ask { justify-self: start; background: none !important; color: var(--text) !important; border: 1px dashed var(--text); }
+
+/* Studio: start panel, notes on how a skill was used, spreadsheet results in the thread */
+.sf-chat__empty { max-width: 760px; }
+.sf-chat__start { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: 100%; margin-top: 10px; text-align: left; }
+.sf-chat__start section { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--glass-inset); }
+.sf-chat__start h3 { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--text); font: 600 13px 'Space Grotesk', sans-serif; }
+.sf-chat__start .sf-chat__suggestions { justify-content: flex-start; margin-top: 10px; }
+@media (max-width: 720px) { .sf-chat__start { grid-template-columns: minmax(0, 1fr); } }
+.sf-chat__note { margin: 6px 0 10px; color: var(--muted); font-size: 13px; }
+.sf-chat__providers > .sf-chat__label { margin: 0 4px 0 0; }
+.sf-chat__skill .task-result { margin: 8px 0 0; padding: 14px; }
+.sf-chat__skill .task-result .sf-process__eyebrow { margin: 0; color: var(--faint); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.sf-chat__skill .task-result .sf-process__muted, .sf-chat__skill .task-result__proof { color: var(--faint); font-size: 12px; }
+.sf-chat__skill .task-result__scroll { overflow-x: auto; }
+.sf-chat__skill .task-result header button { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--glass-inset); color: var(--text); font-size: 13px; }
+.sf-chat__table { overflow-x: auto; }
+.sf-chat__table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sf-chat__table th { color: var(--faint); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; text-align: left; }
+.sf-chat__table :is(th, td) { padding: 6px 8px; border-bottom: 1px solid var(--line); }

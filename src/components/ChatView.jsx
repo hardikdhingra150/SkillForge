@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { ArrowUpRight, Bot, Check, CircleCheck, Copy, FileSpreadsheet, LoaderCircle, MessagesSquare, Paperclip, Plus, RefreshCw, Send, Trash2, Wrench, X } from "lucide-react";
+import { ArrowUpRight, Bot, Check, CircleCheck, Copy, FileSpreadsheet, LoaderCircle, MessagesSquare, Paperclip, Plus, RefreshCw, Send, Sparkles, Trash2, Wrench, X } from "lucide-react";
+import { isTableResult, TaskResult } from "./TaskResult.jsx";
+import sampleCsv from "../../demo_data/sales_formatted_amounts.csv?raw";
 import {
   createConversation,
   deleteConversation,
@@ -18,11 +20,23 @@ const SUGGESTIONS = [
   "Extract the email addresses from: write to hi@acme.io or team@forge.dev",
   "Convert 100 degrees Celsius to Fahrenheit",
   "Add up these numbers: 1, 2.5, 3",
-  "In one sentence, what is a skill registry?",
-  "Extract the emails from: ana@acme.io, bo@forge.dev, cy@acme.io — then count them by domain",
+  "Make a skill that turns a title into a URL slug: Hello World 2026",
 ];
 
+// With a spreadsheet attached, these run instantly with a ready-made skill (no model needed). Anything else
+// you ask about the file gets a new skill.
+const FILE_SUGGESTIONS = [
+  "Show revenue by product",
+  "Total sales by region",
+  "Monthly sales totals",
+  "Remove duplicate rows",
+  "Clean up this table",
+];
+
+const SAMPLE_FILE = { name: "sample_sales.csv", text: sampleCsv };
+
 const STEP_ICON = {
+  spreadsheet: FileSpreadsheet, columns: FileSpreadsheet, rewriting: Wrench, repair_applied: Wrench,
   skill_created: CircleCheck, skill_promoted: Wrench, skill_ran: CircleCheck, verified: CircleCheck,
   failed: Wrench, skill_failed: Wrench, verify_failed: Wrench, smith_rejected: Wrench,
 };
@@ -34,8 +48,10 @@ const PROVIDER_LABEL = { auto: "Auto", claude: "Claude", codex: "Codex", ollama:
 /** "Auto" lets the scoreboard pick the model per task; it is available whenever any model is. */
 function withAuto(list) {
   const any = list.some((p) => p.available);
-  return [{ id: "auto", label: "Auto (scoreboard routing)", kind: "auto", available: any, models: [], default_model: null,
-            detail: any ? "Routes each task to the cheapest model with a good record." : "Connect at least one model.", setup: [] },
+  // Spreadsheet tasks need no model, so Auto is always usable; other requests need one connected.
+  return [{ id: "auto", label: "Auto (scoreboard routing)", kind: "auto", available: true, models: [], default_model: null,
+            detail: any ? "Picks the best available model for each task." :
+              "No model is connected. Spreadsheet tasks still work; other requests need a model.", setup: [] },
           ...list];
 }
 
@@ -49,6 +65,22 @@ function Inline({ text }) {
 }
 
 function Value({ value }) {
+  // A list of records (what most new skills return) reads best as a small table.
+  const records = Array.isArray(value) && value.length > 0
+    && value.every((item) => item && typeof item === "object" && !Array.isArray(item));
+  if (records) {
+    const columns = [...new Set(value.flatMap((item) => Object.keys(item)))];
+    return (
+      <div className="sf-chat__table">
+        <table>
+          <thead><tr>{columns.map((c) => <th key={c} scope="col">{c.replaceAll("_", " ")}</th>)}</tr></thead>
+          <tbody>{value.map((item, i) => (
+            <tr key={i}>{columns.map((c) => <td key={c}>{typeof item[c] === "object" ? JSON.stringify(item[c]) : String(item[c] ?? "")}</td>)}</tr>
+          ))}</tbody>
+        </table>
+      </div>
+    );
+  }
   if (Array.isArray(value)) {
     return value.length ? <ul>{value.map((item, i) => <li key={i}><Value value={item} /></li>)}</ul> : <em>empty</em>;
   }
@@ -66,7 +98,15 @@ function FileChip({ file, onRemove }) {
   );
 }
 
+const EVENT_NOTE = {
+  reused: "An existing skill did this. No new code.",
+  created: "No skill could do this yet, so a new one was written, tested and saved for everyone.",
+  repaired: "The skill failed on this input, so it was fixed, tested and saved as a new version.",
+  pipeline: "Several skills ran one after another.",
+};
+
 function SkillCard({ skill, onOpenLibrary }) {
+  const table = isTableResult(skill.output);
   return (
     <div className="sf-chat__skill" data-event={skill.event}>
       {skill.steps?.length > 1 && (
@@ -81,22 +121,28 @@ function SkillCard({ skill, onOpenLibrary }) {
         <span className="sf-chat__badge">{EVENT_LABEL[skill.event] || skill.event}</span>
         <code>{skill.skill_id} v{skill.version}</code>
         {skill.parent_version && <span className="sf-chat__muted">from v{skill.parent_version}</span>}
-        <button className="sf-chat__link" onClick={onOpenLibrary}>Skill library <ArrowUpRight size={12} /></button>
+        <button className="sf-chat__link" onClick={onOpenLibrary}>See it in Skills <ArrowUpRight size={12} /></button>
       </div>
-      <dl>
-        {Object.entries(skill.output || {}).map(([key, value]) => (
-          <div key={key}><dt>{key.replaceAll("_", " ")}</dt><dd><Value value={value} /></dd></div>
-        ))}
-      </dl>
+      {EVENT_NOTE[skill.event] && <p className="sf-chat__note">{EVENT_NOTE[skill.event]}</p>}
+      {table ? (
+        <TaskResult result={{ ...skill.output, skill: { id: skill.skill_id, version: skill.version,
+                                                        repaired_from: skill.parent_version } }} />
+      ) : (
+        <dl>
+          {Object.entries(skill.output || {}).map(([key, value]) => (
+            <div key={key}><dt>{key.replaceAll("_", " ")}</dt><dd><Value value={value} /></dd></div>
+          ))}
+        </dl>
+      )}
     </div>
   );
 }
 
-function Steps({ steps, pending }) {
+function Steps({ steps, pending, latest }) {
   if (!steps.length && !pending) return null;
   return (
-    <details className="sf-chat__steps" open={pending}>
-      <summary>{pending ? "Working…" : `${steps.length} steps`}</summary>
+    <details className="sf-chat__steps" open={pending || latest}>
+      <summary>{pending ? "Working…" : `How it was done · ${steps.length} steps`}</summary>
       <ol>
         {steps.map((step, index) => {
           const Icon = STEP_ICON[step.kind];
@@ -142,7 +188,7 @@ function SetupCard({ provider, onRecheck }) {
   );
 }
 
-function Message({ message, onOpenLibrary }) {
+function Message({ message, onOpenLibrary, latest }) {
   if (message.role === "user") {
     return (
       <div className="sf-chat__message" data-role="user">
@@ -155,7 +201,7 @@ function Message({ message, onOpenLibrary }) {
   return (
     <div className="sf-chat__message" data-role="assistant" data-status={message.status}>
       <div className="sf-chat__who"><Bot size={14} /> {message.provider}{message.model ? ` · ${message.model}` : ""}</div>
-      <Steps steps={message.steps || []} pending={pending} />
+      <Steps steps={message.steps || []} pending={pending} latest={latest} />
       {!pending && message.content && <p className="sf-chat__content">{message.content.split("\n").map((line, i) => (
         <span key={i}><Inline text={line} />{"\n"}</span>
       ))}</p>}
@@ -265,8 +311,8 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
   }
 
   async function attach(list) {
-    const picked = [...list].filter((f) => f.name.toLowerCase().endsWith(".csv"));
-    if (!picked.length) { setError("Attach a .csv file."); return; }
+    const picked = [...list].filter((f) => /\.(csv|xlsx)$/i.test(f.name));
+    if (!picked.length) { setError("Attach a spreadsheet: a .csv or .xlsx file."); return; }
     setUploading(true);
     setError("");
     try {
@@ -282,6 +328,10 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  async function trySample() {
+    await attach([new File([SAMPLE_FILE.text], SAMPLE_FILE.name, { type: "text/csv" })]);
   }
 
   async function send(text) {
@@ -339,10 +389,11 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
       <div className="sf-chat__main">
         <header className="sf-chat__header">
           <div>
-            <p className="sf-chat__label">Ask anything · skills are created, reused and repaired as you go</p>
-            <h1 id={`${uid}-title`}>{active?.title || "Chat with your skills"}</h1>
+            <p className="sf-chat__label">Ask anything or attach a spreadsheet · skills are created, reused and repaired as you go</p>
+            <h1 id={`${uid}-title`}>{active?.title || "Studio"}</h1>
           </div>
-          <div className="sf-chat__providers" role="radiogroup" aria-label="Model provider">
+          <div className="sf-chat__providers" role="radiogroup" aria-label="Model">
+            <span className="sf-chat__label">Model</span>
             {providers.map((p) => (
               <button key={p.id} role="radio" aria-checked={providerId === p.id} data-available={p.available}
                       title={p.detail} onClick={() => setProviderId(p.id)}>
@@ -364,15 +415,36 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
         <div className="sf-chat__thread" ref={threadRef} aria-live="polite">
           {!active?.messages?.length && (
             <div className="sf-chat__empty">
-              <Bot size={28} />
-              <h2>What should your agents learn today?</h2>
-              <p>Ask a question, or give a task. Repeatable tasks become tested skills you can reuse.</p>
-              <div className="sf-chat__suggestions">
-                {SUGGESTIONS.map((s) => <button key={s} onClick={() => send(s)} disabled={sending}>{s}</button>)}
+              <Sparkles size={28} />
+              <h2>What do you need done?</h2>
+              <p>Ask anything, or attach a spreadsheet and say what you want from it. SkillForge reuses a skill if one
+                fits, and writes, tests and saves a new one if not. You see every step.</p>
+              <div className="sf-chat__start">
+                <section>
+                  <h3><FileSpreadsheet size={14} /> With a spreadsheet</h3>
+                  {files.length ? (
+                    <div className="sf-chat__suggestions">
+                      {FILE_SUGGESTIONS.map((s) => <button key={s} onClick={() => send(s)} disabled={sending}>{s}</button>)}
+                    </div>
+                  ) : (
+                    <div className="sf-chat__suggestions">
+                      <button onClick={() => fileRef.current?.click()} disabled={uploading}>Attach a CSV or Excel file</button>
+                      <button onClick={trySample} disabled={uploading || sending}>Try it with a sample sales file</button>
+                    </div>
+                  )}
+                </section>
+                <section>
+                  <h3><MessagesSquare size={14} /> Without a file</h3>
+                  <div className="sf-chat__suggestions">
+                    {SUGGESTIONS.map((s) => <button key={s} onClick={() => send(s)} disabled={sending}>{s}</button>)}
+                  </div>
+                </section>
               </div>
             </div>
           )}
-          {active?.messages?.map((m) => <Message key={m.id} message={m} onOpenLibrary={onOpenLibrary} />)}
+          {active?.messages?.map((m, index) => (
+            <Message key={m.id} message={m} onOpenLibrary={onOpenLibrary} latest={index === active.messages.length - 1} />
+          ))}
         </div>
 
         <form className={`sf-chat__composer ${dragging ? "is-dragging" : ""}`} onSubmit={(e) => { e.preventDefault(); send(); }}
@@ -383,16 +455,17 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
               {files.map((f) => <FileChip key={f.id} file={f} onRemove={() => setFiles((c) => c.filter((x) => x.id !== f.id))} />)}
             </div>
           )}
-          <input ref={fileRef} type="file" accept=".csv,text/csv" multiple hidden onChange={(e) => attach(e.target.files)} />
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,text/csv" multiple hidden onChange={(e) => attach(e.target.files)} />
           <button type="button" className="sf-chat__attach" onClick={() => fileRef.current?.click()} disabled={uploading || pending}
-                  aria-label="Attach a CSV file" title="Attach a CSV file">
+                  title="Attach a CSV or Excel file">
             {uploading ? <LoaderCircle size={16} className="sf-chat__spin" /> : <Paperclip size={16} />}
+            <span>Attach spreadsheet</span>
           </button>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder={pending ? "Waiting for the reply…" : files.length ? "What should I do with this file?" : "Ask anything, describe a task, or drop a CSV…"}
+            placeholder={pending ? "Waiting for the reply…" : files.length ? "What should I do with this file? e.g. Total sales by region" : "Ask anything, describe a task, or drop a spreadsheet here…"}
             rows={2}
             maxLength={8000}
             aria-label="Message"
