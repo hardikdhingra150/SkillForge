@@ -195,6 +195,20 @@ export function useSkillForgeProcess() {
           return;
         }
 
+        if (failure.status === 404 && !loaded) {
+          // The remembered run isn't in this workspace (it was removed, or this browser now has its own private
+          // workspace). Forget it quietly instead of showing an error.
+          try {
+            localStorage.removeItem(STORAGE_KEY);
+          } catch {
+            // Nothing stored to forget.
+          }
+          continuePolling = false;
+          setExecution(null);
+          setSaved({ executionId: "", pending: null });
+          return;
+        }
+
         setError(
           failure.message
           || "Could not refresh the execution.",
