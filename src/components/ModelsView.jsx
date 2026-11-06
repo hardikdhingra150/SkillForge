@@ -9,7 +9,7 @@ function Meter({ value }) {
   return <span className="sf-models__meter" aria-hidden="true"><i style={{ width: `${Math.round((value ?? 0) * 100)}%` }} /></span>;
 }
 
-export default function ModelsView() {
+export default function ModelsView({ onOpenStudio }) {
   const [board, setBoard] = useState(null);
   const [providers, setProviders] = useState([]);
   const [error, setError] = useState("");
@@ -49,8 +49,15 @@ export default function ModelsView() {
             <article key={p.provider} className="sf-models__card" data-available={s?.available}>
               <div className="sf-models__card-top">
                 <h2>{s?.label || p.provider}</h2>
-                <span className="sf-models__status"><i />{s?.available ? "connected" : "not connected"}</span>
+                <span className="sf-models__status"><i />
+                  {s?.available ? (s.kind === "connector" ? "connected · your computer" : "connected") : "not connected"}</span>
               </div>
+              {s?.kind === "connector" && !s.available && (
+                <p className="sf-models__connect">
+                  Runs on your own computer, with your login.{" "}
+                  {onOpenStudio && <button type="button" className="sf-models__link" onClick={onOpenStudio}>Connect it in the Studio</button>}
+                </p>
+              )}
               <dl>
                 <div><dt>Success rate</dt><dd>{percent(p.success_rate)}<Meter value={p.success_rate} /></dd></div>
                 <div><dt>First-try proofs</dt><dd>{percent(p.first_try_rate)}<Meter value={p.first_try_rate} /></dd></div>

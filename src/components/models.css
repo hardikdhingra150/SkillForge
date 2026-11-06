@@ -43,3 +43,6 @@
 .sf-audit time, .sf-audit__actor { color: var(--muted); font: 11px var(--mono); }
 .sf-audit__action { font: 11px var(--mono); text-transform: uppercase; letter-spacing: .5px; color: var(--text); }
 .sf-audit li p { flex-basis: 100%; margin: 0; color: var(--muted); }
+.sf-models__connect { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.sf-models__link { padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-decoration: underline; cursor: pointer; }
+.sf-models__link:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }

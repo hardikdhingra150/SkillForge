@@ -332,7 +332,7 @@ export default function App() {
                         startSample={studioSample} onSampleStarted={() => setStudioSample(false)} />
             )}
 
-            {view === 'models' && <ModelsView />}
+            {view === 'models' && <ModelsView onOpenStudio={() => navigate('chat')} />}
 
             {view === 'review' && (
               <ReviewView onOpenRun={openRun} />
