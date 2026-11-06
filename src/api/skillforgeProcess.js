@@ -159,7 +159,8 @@ async function send(path, options = {}) {
       );
     }
 
-    if (body === null) {
+    // 204 No Content (a delete, for example) has no body by design.
+    if (body === null && response.status !== 204) {
       throw new ProcessApiError(
         "The API returned an invalid JSON response.",
       );
