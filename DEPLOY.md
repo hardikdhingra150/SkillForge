@@ -6,12 +6,11 @@ This puts SkillForge online at an address anyone can open from Windows, macOS, L
 |---|---|---|
 | **Frontend** | **Vercel** (Hobby) | The web app. Redeploys by itself on every push to GitHub. |
 | **Backend** | **Render** (free web service, Docker) | The API and the worker, in one container. Redeploys by itself on every push. |
-| **Chat model for visitors** | **Groq** (free API tier, no card) | Fast hosted open models that visitors chat with and that write new skills. |
 | **Database** | **Supabase** (free project) | Workspaces, chats, runs and skills. |
 
-Visitors never sign in: each browser automatically gets a private workspace, and workspaces nobody opens for 30 days are deleted. Your own Claude and Codex logins are only for you: you unlock them on the site with your owner key.
+Visitors never sign in: each browser automatically gets a private workspace, and workspaces nobody opens for 30 days are deleted. For chat and new skills, visitors connect **their own** Claude Code or Codex from their computer (see [Visitors' own Claude and Codex](#visitors-own-claude-and-codex)). Spreadsheet tasks need no model at all. Your own Claude and Codex logins on the server are only for you: you unlock them on the site with your owner key.
 
-The live frontend is already deployed at **https://skillforge-beta-lilac.vercel.app**, and the backend settings are in [`render.yaml`](render.yaml).
+**It's live:** the frontend at **https://skillforge-beta-lilac.vercel.app** talks to the backend at **https://skillforge-api-0n0y.onrender.com**, which uses the Supabase database. The backend settings are in [`render.yaml`](render.yaml).
 
 ## What "free" means in practice
 
@@ -19,21 +18,16 @@ The live frontend is already deployed at **https://skillforge-beta-lilac.vercel.
 - **The free backend has a tenth of a CPU, so it's slow.**
   - Spreadsheet tasks take 30 seconds to a minute.
   - The first repair of a skill can take two minutes.
-  - Chat replies are quick, because Groq does the thinking on its own servers.
-- **Groq's free tier has rate limits.** If many people chat at once, some get "Groq's free-tier limit was reached, try again in a minute". SkillForge also caps chat at 50 replies per visitor and 500 for everyone together each day.
+  - Chat replies take as long as the visitor's own Claude or Codex takes, because the thinking happens on their computer.
+- **Chat is capped** at 50 replies per visitor and 500 for everyone together each day.
 - **Skills run in the process sandbox, not containers.** Render doesn't let an app start Docker containers. SkillForge checks each skill's code before running it; blocks network, file and process access; gives it no environment variables (so no secrets); and limits its CPU time and memory. That's good protection, but weaker than a container. For container isolation, use your own server (see [Option B](#option-b-your-own-server)).
 - **Supabase pauses a free project after a week with no activity**, and has a 500 MB limit. If it pauses, press **Restore** in the Supabase dashboard.
 
 ## 1. Database: Supabase (done)
 
-Your `skillforge` project is ready, with all tables and row-level security. You'll need its connection string in step 3: **Connect → Connection String → Type: URI → Method: Session pooler**, with your password filled in (the same line as `DATABASE_URL` in `backend/.env`). Production needs a password of 16+ characters; yours is.
+Your `skillforge` project is ready, with all tables and row-level security. You'll need its connection string in step 2: **Connect → Connection String → Type: URI → Method: Session pooler**, with your password filled in (the same line as `DATABASE_URL` in `backend/.env`). Production needs a password of 16+ characters; yours is.
 
-## 2. Chat model: Groq
-
-1. Sign up at <https://console.groq.com> (free, no card).
-2. Open **API Keys → Create API Key**, name it `skillforge`, and copy the key (it starts with `gsk_`). You'll paste it in step 3. Keep it private.
-
-## 3. Backend: Render
+## 2. Backend: Render
 
 1. Sign up at <https://render.com> with your GitHub account (free plan).
 2. Click **New → Blueprint**, pick the `hardikdhingra150/SkillForge` repository, and click **Connect**. Render reads [`render.yaml`](render.yaml) and shows one service, `skillforge-api`, on the free plan in Singapore (closest to your Supabase database).
@@ -42,9 +36,8 @@ Your `skillforge` project is ready, with all tables and row-level security. You'
    | Name | Value |
    |---|---|
    | `DATABASE_URL` | Your Supabase session pooler string |
-   | `GROQ_API_KEY` | Your Groq key from step 2 |
-   | `CLAUDE_CODE_OAUTH_TOKEN` | Optional: see step 5. Leave empty for now. |
-   | `CODEX_AUTH_JSON` | Optional: see step 5. Leave empty for now. |
+   | `CLAUDE_CODE_OAUTH_TOKEN` | Optional: see step 4. Leave empty for now. |
+   | `CODEX_AUTH_JSON` | Optional: see step 4. Leave empty for now. |
 
 4. Click **Apply**. The first deploy takes 10–15 minutes (building the image, then registering the starter skills). When it says **Live**, open
 
@@ -54,7 +47,7 @@ Your `skillforge` project is ready, with all tables and row-level security. You'
 
 Render created your **owner key** (`API_TOKEN`) for you. To see it, open the service's **Environment** page.
 
-## 4. Connect the frontend to the backend
+## 3. Connect the frontend to the backend
 
 On Vercel, open the `skillforge` project → **Settings → Environment Variables**, and set:
 
@@ -66,7 +59,7 @@ Then **Deployments → ⋯ → Redeploy**. The build stops with a clear message 
 
 If your Vercel address ever changes, update `FRONTEND_ORIGINS` in Render's **Environment** page to match. The API only accepts browser requests from the addresses listed there.
 
-## 5. Unlock Claude and Codex for yourself (optional)
+## 4. Unlock Claude and Codex for yourself (optional)
 
 Render keeps no files between restarts, so your logins go in as secrets in the service's **Environment** page:
 
@@ -87,11 +80,11 @@ Visitors can use their own Claude Code or Codex subscription, without giving Ski
 
 The server never uses its own logins for visitors, and never sees the visitor's login. Each workspace has its own connector key, stored only as a hash; **Disconnect** in the Studio revokes it, and the program stops. While a connector is running it contacts the site every 20 seconds, which also keeps Render's free backend awake.
 
-## 6. Updating
+## 5. Updating
 
 Push to GitHub. Vercel and Render both redeploy by themselves, and the backend applies any database changes when it starts.
 
-## 7. Let Google find it (Search Console)
+## 6. Let Google find it (Search Console)
 
 1. Open <https://search.google.com/search-console> and add a **URL prefix** property with your Vercel address.
 2. Choose **HTML file** verification, put the file Google gives you in this repository's `public/` folder, and push.
@@ -104,7 +97,7 @@ Push to GitHub. Vercel and Render both redeploy by themselves, and the backend a
 - **Skills are sandboxed**, as described under "What free means in practice".
 - **The database is closed to Supabase's public API.** Row-level security is on for every table, and SkillForge connects as the owner.
 - **The API only answers your site.** It accepts browser requests only from the addresses in `FRONTEND_ORIGINS`, and it refuses to start in production with unsafe settings.
-- **Secrets stay secret.** They live in Render's and Vercel's encrypted settings, never in the repository. The Groq key and your logins go only to the code that calls those services, never to skills. CI scans every push for leaked secrets.
+- **Secrets stay secret.** They live in Render's and Vercel's encrypted settings, never in the repository. Your logins go only to the Claude and Codex command-line tools, never to skills. CI scans every push for leaked secrets.
 
 ## Other ways to host the backend
 

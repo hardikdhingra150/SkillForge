@@ -62,9 +62,10 @@ class Settings(BaseSettings):
     # And across every visitor's workspace together, so opening new browsers can't get around the limit above.
     # The owner (API_TOKEN, or AUTH_MODE=off) is not counted.
     chat_turns_per_day_total: int = Field(default=500, ge=1)
-    # Models visitors may use in browser mode. The Claude Code and Codex CLIs run on the owner's own logins,
-    # so by default only the owner can use them; visitors get Groq's free hosted models and the local model.
-    public_providers: list[str] = Field(default_factory=lambda: ["groq", "ollama"])
+    # Server-side models visitors may use in browser mode (the local model, if the server runs one). Claude and
+    # Codex are always the visitor's own, on their connected computer (services/bridge.py); the server's own CLI
+    # logins serve only the owner.
+    public_providers: list[str] = Field(default_factory=lambda: ["ollama"])
     # Browser mode: delete a visitor's workspace after this many days without a visit, task or chat (0: never).
     workspace_retention_days: int = Field(default=30, ge=0)
 

@@ -31,9 +31,10 @@ services:
       # Render's proxy is the only client, so trust its X-Forwarded-For (rate limits see each visitor).
       - key: FORWARDED_ALLOW_IPS
         value: "*"
-      # Visitors chat with Groq's free models; Claude and Codex stay the owner's.
+      # No server-side model for visitors: they use their own Claude Code or Codex, through the connector on their
+      # computer (Studio → Connect your computer). The server's own Claude and Codex logins serve only the owner.
       - key: PUBLIC_PROVIDERS
-        value: '["groq"]'
+        value: '[]'
       - key: CHAT_TURNS_PER_DAY
         value: "50"
       - key: CHAT_TURNS_PER_DAY_TOTAL
@@ -48,8 +49,6 @@ services:
         generateValue: true
       # Filled in by you when you create the Blueprint (Render asks for each):
       - key: DATABASE_URL
-        sync: false
-      - key: GROQ_API_KEY
         sync: false
       # Optional, for your own Claude and Codex: see DEPLOY.md.
       - key: CLAUDE_CODE_OAUTH_TOKEN

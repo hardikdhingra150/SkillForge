@@ -156,73 +156,7 @@ class Ollama(Provider):
         return reply.get("message", {}).get("content", "")
 
 
-GROQ_URL = "https://api.groq.com/openai/v1"
-# Tried in order; the first one this key can use becomes the default. Groq retires models, so the list of what is
-# actually offered comes from its /models endpoint, not from here.
-GROQ_PREFERRED = ("llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant")
-GROQ_SETUP = [
-    {"label": "Create a free API key (no card needed)", "command": "https://console.groq.com/keys"},
-    {"label": "Give it to the server as GROQ_API_KEY, then restart it", "command": "GROQ_API_KEY=gsk_..."},
-]
-
-
-class Groq(Provider):
-    """Groq's hosted models through its OpenAI-compatible API (free tier, no card). Needs GROQ_API_KEY."""
-
-    id, label, kind = "groq", "Groq (hosted, free tier)", "api"
-    setup = GROQ_SETUP
-
-    def _key(self):
-        return os.environ.get("GROQ_API_KEY", "").strip()
-
-    def _call(self, path, body=None, timeout=10):
-        request = urllib.request.Request(GROQ_URL + path, data=json.dumps(body).encode() if body is not None else None,
-                                         headers={"Authorization": f"Bearer {self._key()}",
-                                                  "Content-Type": "application/json",
-                                                  "User-Agent": "SkillForge"})
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read())
-
-    def _status(self):
-        if not self._key():
-            return ProviderStatus(self.id, self.label, self.kind, False, "Set GROQ_API_KEY to use Groq.")
-        try:
-            listed = [m["id"] for m in self._call("/models").get("data", []) if m.get("active", True)]
-        except urllib.error.HTTPError as error:
-            detail = "The GROQ_API_KEY was refused." if error.code in (401, 403) else f"Groq answered {error.code}."
-            return ProviderStatus(self.id, self.label, self.kind, False, detail)
-        except (urllib.error.URLError, OSError, ValueError):
-            return ProviderStatus(self.id, self.label, self.kind, False, "Groq can't be reached right now.")
-        chat = [m for m in listed if not any(word in m for word in ("whisper", "tts", "guard", "embed"))]
-        preferred = [m for m in GROQ_PREFERRED if m in chat]
-        models = preferred + sorted(m for m in chat if m not in preferred)
-        if not models:
-            return ProviderStatus(self.id, self.label, self.kind, False, "This Groq key has no chat models.")
-        return ProviderStatus(self.id, self.label, self.kind, True, f"Connected ({len(models)} models).",
-                              models, models[0])
-
-    def complete(self, prompt, *, system=None, model=None, timeout=180):
-        status = self.status()
-        if not status.available:
-            raise LLMError(status.detail)
-        messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
-        try:
-            reply = self._call("/chat/completions", {"model": model or status.default_model, "messages": messages,
-                                                     "temperature": 0.2}, timeout=timeout)
-        except urllib.error.HTTPError as error:
-            body = error.read().decode(errors="replace")[:300]
-            if error.code == 429:
-                raise LLMError("Groq's free-tier limit was reached. Try again in a minute.") from None
-            raise LLMError(f"Groq: {body}") from None
-        except (urllib.error.URLError, OSError, TimeoutError) as error:
-            raise LLMError(f"Groq did not answer: {error}") from None
-        try:
-            return reply["choices"][0]["message"]["content"] or ""
-        except (KeyError, IndexError, TypeError):
-            raise LLMError("Groq returned an unexpected reply.") from None
-
-
-PROVIDERS: dict[str, Provider] = {p.id: p for p in (ClaudeCLI(), CodexCLI(), Groq(), Ollama())}
+PROVIDERS: dict[str, Provider] = {p.id: p for p in (ClaudeCLI(), CodexCLI(), Ollama())}
 
 
 def get_provider(provider_id: str) -> Provider:
