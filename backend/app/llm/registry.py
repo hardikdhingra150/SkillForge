@@ -37,6 +37,9 @@ class ClaudeCLI(Provider):
     def _status(self):
         if shutil.which("claude") is None:
             return ProviderStatus(self.id, self.label, self.kind, False, "Install Claude Code to use Claude.")
+        if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):  # a long-lived login from `claude setup-token`
+            return ProviderStatus(self.id, self.label, self.kind, True, "Logged in with a token.",
+                                  ["default", "sonnet", "opus", "haiku"], "default")
         done = subprocess.run(["claude", "auth", "status"], capture_output=True, text=True, timeout=20, env=minimal_env())
         try:
             info = json.loads(done.stdout)

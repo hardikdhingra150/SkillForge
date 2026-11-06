@@ -10,8 +10,10 @@ from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, replace
 
 # Only what a CLI needs to find its own login; never app settings or database secrets.
+# CLAUDE_CODE_OAUTH_TOKEN is the owner's own login on hosts without a disk (from `claude setup-token`); it goes
+# only to the Claude CLI's process, never to skills, which run with no environment at all.
 PASSTHROUGH_ENV = ("HOME", "PATH", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "SHELL", "TERM",
-                   "CLAUDE_CONFIG_DIR", "CODEX_HOME")
+                   "CLAUDE_CONFIG_DIR", "CODEX_HOME", "CLAUDE_CODE_OAUTH_TOKEN")
 STATUS_TTL = 30.0
 
 # The providers the current request may use (None: all). On a public site, visitors get only the free local

@@ -51,3 +51,18 @@ class OwnerOnlyModelTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as caught:
             check_site_budget(500, 500)
         self.assertEqual(caught.exception.status_code, 429)
+
+
+class ClaudeTokenTests(unittest.TestCase):
+    def test_a_login_token_counts_as_logged_in_and_reaches_only_the_cli(self):
+        from app.llm.base import minimal_env
+        from app.llm.registry import ClaudeCLI
+
+        with mock.patch.dict("os.environ", {"CLAUDE_CODE_OAUTH_TOKEN": "tok", "DATABASE_URL": "secret"}), \
+                mock.patch("shutil.which", return_value="/usr/bin/claude"), mock.patch("subprocess.run") as run:
+            status = ClaudeCLI()._status()
+            env = minimal_env()
+        self.assertTrue(status.available)
+        run.assert_not_called()
+        self.assertEqual(env.get("CLAUDE_CODE_OAUTH_TOKEN"), "tok")
+        self.assertNotIn("DATABASE_URL", env)
