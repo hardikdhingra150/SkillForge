@@ -184,3 +184,6 @@
 /* Reviewer questions in the Process view */
 .app .main-content .sf-process .sf-process__clarify { margin: 14px 0; padding: 16px 18px; border: 1px dashed var(--text); border-radius: 14px; background: var(--glass-inset); }
 .app .main-content .sf-process .sf-process__question { margin: 0 0 10px; color: var(--text); font-size: 17px; }
+.app .main-content .sf-process .sf-process__chat { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 10px 16px; border: 1px solid var(--lime, var(--text)); border-radius: 11px; background: var(--lime, var(--text)); color: var(--ink, var(--surface)); font: 600 14px 'Space Grotesk', sans-serif; cursor: pointer; }
+.app .main-content .sf-process .sf-process__chat:hover { transform: translateY(-1px); }
+.app .main-content .sf-process .sf-process__chat:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }

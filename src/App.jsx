@@ -163,6 +163,9 @@ export default function App() {
     );
   };
 
+  // Text the Workbench hands to Chat ("Do this in Chat"); Chat starts with it in the message box.
+  const [chatDraft, setChatDraft] = useState('');
+
   const navigate = (next) => {
     history.pushState(
       null,
@@ -317,13 +320,14 @@ export default function App() {
                 onRun={startRun}
                 requestedExecutionId={requestedExecutionId}
                 onOpenRequestHandled={setRequestedExecutionId}
+                onOpenChat={(text) => { setChatDraft(text); navigate('chat'); }}
                 onNavigate={navigate}
                 onOpenModal={setModal}
               />
             )}
 
             {view === 'chat' && (
-              <ChatView onOpenLibrary={() => navigate('library')} />
+              <ChatView onOpenLibrary={() => navigate('library')} initialDraft={chatDraft} onDraftUsed={() => setChatDraft('')} />
             )}
 
             {view === 'models' && <ModelsView />}

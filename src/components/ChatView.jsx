@@ -165,15 +165,19 @@ function Message({ message, onOpenLibrary }) {
   );
 }
 
-export default function ChatView({ onOpenLibrary }) {
+export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed }) {
   const uid = useId();
   const [providers, setProviders] = useState([]);
   const [providerId, setProviderId] = useState("");
   const [model, setModel] = useState("");
   const [conversations, setConversations] = useState([]);
   const [active, setActive] = useState(null);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialDraft);
   const [error, setError] = useState("");
+  // A request handed over from the Workbench starts in the message box once; forget it after that.
+  useEffect(() => {
+    if (initialDraft) onDraftUsed?.();
+  }, [initialDraft, onDraftUsed]);
   const [sending, setSending] = useState(false);
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);

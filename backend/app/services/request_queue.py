@@ -159,6 +159,7 @@ def finish_review(db: Session, execution_id: UUID, review) -> UUID | None:
     append_event(db, execution.id, event_key=f"{prefix}.input_required", stage="awaiting_input",
                  event_type="input_required", message=review.input_message,
                  payload={"next_action": review.next_action, "required_inputs": list(review.required_inputs),
-                          "question": review.question, "method": review.method})
+                          "question": review.question, "method": review.method,
+                          "suggest_chat": getattr(review, "suggest_chat", False)})
     db.flush()
     return execution.id

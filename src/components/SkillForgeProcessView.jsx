@@ -5,6 +5,8 @@ import {
   useState,
 } from "react";
 
+import { MessagesSquare } from "lucide-react";
+
 import ExecutionHistory from "./ExecutionHistory.jsx";
 import CSVInputPanel from "./CSVInputPanel.jsx";
 import { TaskResult } from "./TaskResult.jsx";
@@ -18,7 +20,7 @@ import { submitClarification } from "../api/skillforgeProcess.js";
 
 import "./skillforge-process-view.css";
 
-function ClarifyForm({ executionId, question, onSent }) {
+function ClarifyForm({ executionId, question, onSent, suggestChat, onOpenChat }) {
   const [answer, setAnswer] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -39,10 +41,17 @@ function ClarifyForm({ executionId, question, onSent }) {
   }
   return (
     <form className="sf-process__clarify" onSubmit={send}>
-      <p className="sf-process__eyebrow">The reviewer has a question</p>
+      <p className="sf-process__eyebrow">{suggestChat ? "This looks like a Chat task" : "The reviewer has a question"}</p>
       <p className="sf-process__question">{question}</p>
+      {suggestChat && onOpenChat && (
+        <button type="button" className="sf-process__chat" onClick={onOpenChat}>
+          <MessagesSquare size={14} />
+          Do this in Chat
+        </button>
+      )}
       <div className="sf-process__actions">
-        <input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Your answer…"
+        <input value={answer} onChange={(e) => setAnswer(e.target.value)}
+               placeholder={suggestChat ? "Or rephrase it as a spreadsheet task…" : "Your answer…"}
                aria-label="Answer the reviewer's question" maxLength={2000} />
         <button type="submit" disabled={sending || !answer.trim()}>{sending ? "Sending…" : "Send answer"}</button>
       </div>
@@ -63,6 +72,7 @@ export default function SkillForgeProcessView({
   requestedExecutionId = "",
   onOpenRequestHandled,
   onChanged,
+  onOpenChat,
 }) {
   const process = useSkillForgeProcess();
   const runStatus = process.execution?.status;
@@ -76,6 +86,7 @@ export default function SkillForgeProcessView({
   const lastInputRequest = [...(process.events || [])].reverse().find((event) => event.event_type === "input_required");
   const clarifyQuestion = lastInputRequest?.payload?.next_action === "clarify_requirement"
     ? (lastInputRequest.payload.question || lastInputRequest.message) : "";
+  const suggestChat = Boolean(lastInputRequest?.payload?.suggest_chat);
 
   const [draft, setDraft] = useState("");
   const [restoreId, setRestoreId] = useState("");
@@ -355,7 +366,9 @@ export default function SkillForgeProcessView({
               )}
 
               {process.execution.status === "waiting_input" && clarifyQuestion && (
-                <ClarifyForm executionId={process.executionId} question={clarifyQuestion} onSent={process.refresh} />
+                <ClarifyForm executionId={process.executionId} question={clarifyQuestion} onSent={process.refresh}
+                             suggestChat={suggestChat}
+                             onOpenChat={onOpenChat && (() => onOpenChat(process.execution.requirement))} />
               )}
 
               {process.execution.status

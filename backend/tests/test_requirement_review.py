@@ -140,3 +140,27 @@ class RequirementReviewTests(
 
 if __name__ == "__main__":
     unittest.main()
+
+class ChatRequestTests(unittest.TestCase):
+    def test_requests_that_are_not_about_a_table_are_sent_to_chat(self):
+        for text in ("make a new skill to make every text humanised", "Write a poem about the sea",
+                     "convert 5 miles to kilometres"):
+            with self.subTest(text=text):
+                review = review_requirement(text)
+                self.assertTrue(review.suggest_chat)
+                self.assertIn("Chat", review.input_message)
+                self.assertIsNone(review.candidate_workflow)
+
+    def test_unclear_spreadsheet_requests_still_get_a_question(self):
+        review = review_requirement("Analyze my data file")
+        self.assertFalse(review.suggest_chat)
+        self.assertEqual(review.next_action, "clarify_requirement")
+
+    def test_the_model_can_send_a_request_to_chat(self):
+        from unittest import mock
+
+        from app.services import requirement_review
+        with mock.patch("app.llm.complete_json", return_value={"workflow": None, "confidence": 0.1, "chat": True}):
+            review = requirement_review.review_with_model("summarise this article", [], provider=object())
+        self.assertTrue(review.suggest_chat)
+        self.assertEqual(review.method, "llm_review_v1")

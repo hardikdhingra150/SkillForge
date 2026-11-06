@@ -17,6 +17,7 @@ export function Workbench({
   onRun,
   requestedExecutionId,
   onOpenRequestHandled,
+  onOpenChat,
   onNavigate,
   onOpenModal,
 }) {
@@ -61,6 +62,7 @@ export function Workbench({
           requestedExecutionId={requestedExecutionId}
           onOpenRequestHandled={onOpenRequestHandled}
           onChanged={workspace.refresh}
+          onOpenChat={onOpenChat}
         />
       </div>
 
