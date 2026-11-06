@@ -8,7 +8,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { BASE } from '../api/skillforgeProcess.js';
+import { BASE, HOSTED } from '../api/skillforgeProcess.js';
 import { STATUS_LABEL } from '../state/useWorkspace.js';
 import { Status } from './ui.jsx';
 
@@ -71,7 +71,21 @@ function CopyCommand({ command }) {
   );
 }
 
-const SETUP = {
+// On a deployed site the visitor can't start anything: the server is asleep or starting, and comes back by itself.
+const HOSTED_SETUP = {
+  offline: {
+    title: 'SkillForge is waking up',
+    text: 'The server sleeps when nobody has used it for a while. Starting it takes a minute or two, and this page checks again by itself.',
+    steps: [],
+  },
+  degraded: {
+    title: 'SkillForge is starting',
+    text: 'The server is up but not ready yet. This page checks again by itself in a few seconds.',
+    steps: [],
+  },
+};
+
+const SETUP = HOSTED ? HOSTED_SETUP : {
   offline: {
     title: 'Start SkillForge on your machine',
     text: `The page can’t reach the API at ${BASE}. Run these from the project folder, each in its own terminal.`,
@@ -114,14 +128,16 @@ export function SetupSteps({ status, onRetry, onOpenSettings }) {
       <h3>{setup.title}</h3>
       <p>{setup.text}</p>
 
-      <ol>
-        {setup.steps.map(([label, command]) => (
-          <li key={command}>
-            <span>{label}</span>
-            <CopyCommand command={command} />
-          </li>
-        ))}
-      </ol>
+      {setup.steps.length > 0 && (
+        <ol>
+          {setup.steps.map(([label, command]) => (
+            <li key={command}>
+              <span>{label}</span>
+              <CopyCommand command={command} />
+            </li>
+          ))}
+        </ol>
+      )}
 
       <div className="ws-setup-actions">
         <button type="button" className="ws-link" onClick={onRetry}>

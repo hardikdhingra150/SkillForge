@@ -5,6 +5,12 @@ export const BASE = (
 
 const TOKEN_KEY = "skillforge.apiToken";
 
+// A deployed site (the API isn't on this computer). Its backend may be asleep or starting, which needs
+// different wording from "start the API in a terminal".
+export const HOSTED = !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(`${BASE}/`);
+const WAKING = "SkillForge's server is starting up (it sleeps when nobody has used it for a while). "
+  + "This takes a minute or two; try again shortly.";
+
 // The API access token (API_TOKEN on the server), kept in this browser only.
 export function getApiToken() {
   try {
@@ -141,6 +147,11 @@ async function send(path, options = {}) {
         );
       }
 
+      // A sleeping or starting host answers with its own page, not SkillForge's JSON.
+      if (HOSTED && !message && [502, 503, 504].includes(response.status)) {
+        throw new ProcessApiError(WAKING, response.status);
+      }
+
       throw new ProcessApiError(
         message
           || `Request failed (HTTP ${response.status}).`,
@@ -171,7 +182,7 @@ async function send(path, options = {}) {
     }
 
     throw new ProcessApiError(
-      "Cannot reach SkillForge. Check FastAPI and the frontend CORS origin.",
+      HOSTED ? WAKING : "Cannot reach SkillForge. Check FastAPI and the frontend CORS origin.",
     );
   } finally {
     clearTimeout(timeout);

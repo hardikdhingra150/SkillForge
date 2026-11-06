@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getEventsSince, mergeEvents, ProcessApiError, request, setApiToken, streamUrl } from "./skillforgeProcess.js";
+import { getEventsSince, HOSTED as HOSTED_LOCAL, mergeEvents, ProcessApiError, request, setApiToken, streamUrl } from "./skillforgeProcess.js";
 
 function respond(status, body) {
   return vi.fn().mockResolvedValue({
@@ -154,5 +154,22 @@ describe("private browser workspaces", () => {
     vi.stubGlobal("fetch", fetch);
     await expect(request("/x")).rejects.toMatchObject({ status: 401 });
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a hosted backend that is asleep", () => {
+  it("explains it is waking up instead of showing a raw HTTP error", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_API_BASE_URL", "https://me-skillforge-api.hf.space/api/v1");
+    const hosted = await import("./skillforgeProcess.js");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503, json: () => Promise.reject(new SyntaxError("html")) }));
+    expect(hosted.HOSTED).toBe(true);
+    await expect(hosted.request("/health/ready")).rejects.toMatchObject({ status: 503, message: expect.stringContaining("starting up") });
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("keeps the developer wording for a local API", () => {
+    expect(HOSTED_LOCAL).toBe(false);
   });
 });
