@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     # Models visitors may use in browser mode. The Claude Code and Codex CLIs run on the owner's own logins,
     # so by default only the owner can use them; visitors get the local model.
     public_providers: list[str] = Field(default_factory=lambda: ["ollama"])
+    # Browser mode: delete a visitor's workspace after this many days without a visit, task or chat (0: never).
+    workspace_retention_days: int = Field(default=30, ge=0)
 
     # How many repair strategies the worker may try before asking a person to review.
     repair_budget: int = Field(default=2, ge=0, le=5)

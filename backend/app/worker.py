@@ -4,6 +4,7 @@ import argparse
 import logging
 import signal
 import threading
+import time
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -15,8 +16,11 @@ from app.security import models_for_workspace
 from app.services import scoreboard
 from app.services.execution_queue import execute_next
 from app.services.request_queue import claim_review, finish_review, review_requested
+from app.services.retention import clean_up
 
 logger = logging.getLogger("skillforge.worker")
+# How often the worker deletes idle visitor workspaces (browser mode).
+CLEANUP_EVERY_SECONDS = 3600
 
 
 def log_database_error(error: SQLAlchemyError) -> None:
@@ -57,8 +61,20 @@ def main() -> int:
     signal.signal(signal.SIGTERM, request_stop)
     logger.info("Worker ready. Reviewing requests and running confirmed file tasks.")
 
+    next_cleanup = 0.0
+
     try:
         while not stop.is_set():
+            if (settings.auth_mode == "browser" and settings.workspace_retention_days
+                    and time.monotonic() >= next_cleanup and not args.once):
+                next_cleanup = time.monotonic() + CLEANUP_EVERY_SECONDS
+                try:
+                    removed = clean_up(SessionLocal, settings.workspace_retention_days)
+                    if removed:
+                        logger.info("Deleted %d workspace(s) idle for %d days.", removed,
+                                    settings.workspace_retention_days)
+                except SQLAlchemyError as error:
+                    log_database_error(error)
             try:
                 # The current review is short and entirely local. A crash before
                 # commit rolls everything back, leaving the task queued.
