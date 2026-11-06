@@ -6,6 +6,9 @@ WORKDIR /app/backend
 
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+# The Docker CLI, so skills can run in throwaway containers (SANDBOX_BACKEND=docker, compose.prod.yaml).
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
+
 
 COPY backend/ ./
 COPY demo_data/ /app/demo_data/

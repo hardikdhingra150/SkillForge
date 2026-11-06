@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # network, a read-only filesystem, no capabilities and memory/PID limits). Production requires docker.
     sandbox_backend: Literal["process", "docker"] = "process"
     sandbox_image: str = "python:3.14-slim"
+    # True when SANDBOX_IMAGE already holds the sandbox code (backend/docker/sandbox.Dockerfile). Needed when the
+    # API and worker run in containers themselves: the host's Docker can't mount files from inside them.
+    sandbox_code_in_image: bool = False
 
     # Requests per client per minute on /api/v1 (health checks are exempt).
     rate_limit_writes_per_minute: int = Field(default=60, ge=1)

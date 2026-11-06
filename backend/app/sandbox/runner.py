@@ -29,8 +29,9 @@ class SandboxResult:
     duration_ms: float = 0.0
 
 
-def docker_command(name: str, image: str) -> list[str]:
+def docker_command(name: str, image: str, code_in_image: bool = False) -> list[str]:
     """A throwaway container: no network, read-only root, no capabilities, an unprivileged user, small limits."""
+    code = [] if code_in_image else ["--volume", f"{SANDBOX_DIR}:/sandbox:ro"]
     return [
         "docker", "run", "--rm", "-i", "--name", name,
         "--network", "none",
@@ -42,7 +43,7 @@ def docker_command(name: str, image: str) -> list[str]:
         "--memory", "256m", "--memory-swap", "256m",
         "--cpus", "1",
         "--env", "PYTHONDONTWRITEBYTECODE=1",
-        "--volume", f"{SANDBOX_DIR}:/sandbox:ro",
+        *code,
         "--workdir", "/sandbox",
         image, "python", "-I", "-S", "/sandbox/child.py",
     ]
@@ -52,7 +53,7 @@ def start(request: bytes, timeout: float, backend: str):
     if backend == "docker":
         name = f"skillforge-sandbox-{uuid.uuid4().hex[:12]}"
         try:
-            return subprocess.run(docker_command(name, settings.sandbox_image), input=request, capture_output=True,
+            return subprocess.run(docker_command(name, settings.sandbox_image, settings.sandbox_code_in_image), input=request, capture_output=True,
                                   timeout=timeout + DOCKER_STARTUP_SECONDS, check=False)
         except subprocess.TimeoutExpired:
             subprocess.run(["docker", "kill", name], capture_output=True, check=False)

@@ -145,6 +145,13 @@ class DockerBackendTests(unittest.TestCase):
         self.assertTrue(joined.endswith("python:3.14-slim python -I -S /sandbox/child.py"))
         self.assertRegex(joined, r"--volume \S+/app/sandbox:/sandbox:ro")
 
+    def test_code_in_image_mounts_nothing(self):
+        from app.sandbox.runner import docker_command
+        command = docker_command("skillforge-sandbox-test", "skillforge-sandbox", code_in_image=True)
+        self.assertNotIn("--volume", command)
+        self.assertIn("--network", command)
+        self.assertEqual(command[-5:], ["skillforge-sandbox", "python", "-I", "-S", "/sandbox/child.py"])
+
 
 @unittest.skipUnless(docker_ready("python:3.14-slim"), "Docker and the python:3.14-slim image are needed")
 class DockerRunTests(unittest.TestCase):
