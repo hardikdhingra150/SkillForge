@@ -97,9 +97,14 @@ def models_for(request: Request) -> list[str] | None:
     return list(settings.public_providers) if is_visitor(request) else None
 
 
+def is_visitor_workspace(workspace_id: UUID | None) -> bool:
+    """A browser-mode visitor's workspace, as opposed to the owner's (the local one) or AUTH_MODE=off."""
+    return settings.auth_mode == "browser" and workspace_id != LOCAL_WORKSPACE_ID
+
+
 def models_for_workspace(workspace_id: UUID | None) -> list[str] | None:
     """The same rule for background work, which knows only the workspace: the owner's is the local one."""
-    if settings.auth_mode == "browser" and workspace_id != LOCAL_WORKSPACE_ID:
+    if is_visitor_workspace(workspace_id):
         return list(settings.public_providers)
     return None
 

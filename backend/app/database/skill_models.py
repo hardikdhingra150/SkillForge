@@ -22,8 +22,8 @@ class SkillVersion(Base):
     # What changed relative to parent_version (repair diff, reason, evidence) or a backfill note.
     change_json = mapped_column(JSONB, nullable=True)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    # None: shared with everyone (built-in, imported, or made by the owner). Otherwise the one workspace whose
-    # chat created or repaired it; it may hold that visitor's data (examples, the input that broke it).
+    # None: shared with everyone. Every version is shared today (a visitor's data is removed first, see
+    # skill_registry.shareable_change); a workspace id would keep a version private to that workspace.
     workspace_id = mapped_column(Uuid, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
 
     __table_args__ = (

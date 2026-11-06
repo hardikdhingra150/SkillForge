@@ -27,7 +27,7 @@ Everything below runs against the real API and database. Nothing in the app is p
 | Skills stored as source + contract, run in a sandbox (static policy, approved tools, CPU/time limits, a runtime audit hook that blocks network, process and file access; optional Docker container with no network and a read-only filesystem) | ✅ Backend |
 | **Private workspaces, no sign-in** (`AUTH_MODE=browser`): every browser silently gets its own workspace for tasks, chats, reviews, metrics and history. The skill library stays shared, and only the operator's `API_TOKEN` can retire, restore or import skills | ✅ |
 | **Hosted database**: point `DATABASE_URL` at Supabase (or any Postgres 17+) instead of running Postgres yourself | ✅ |
-| **Ready to host**: skills run in throwaway containers from the Docker setup, visitors' chat-made skills stay private, idle workspaces are deleted after 30 days, chat has per-visitor and site-wide daily caps, and Claude and Codex are kept for the owner | ✅ |
+| **Ready to host**: skills run in throwaway containers from the Docker setup, new skills are shared with everyone after the visitor's data is removed, idle workspaces are deleted after 30 days, chat has per-visitor and site-wide daily caps, and Claude and Codex are kept for the owner | ✅ |
 | **One-command install**: `docker compose up --build` runs Postgres, the API (migrations and starter skills on start), the worker and the web app | ✅ |
 | **Security:** bearer-token API access, rate and body-size limits, a daily model budget, safe production settings enforced at startup, and an audit trail of every promotion, rollback, import and review decision | ✅ |
 | Host-side contract checks against independent reference calculations | ✅ Backend |

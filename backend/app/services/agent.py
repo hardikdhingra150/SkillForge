@@ -50,6 +50,7 @@ from app.services.skill_registry import (
     latest_validated,
     owner_for,
     run_fixture_tests,
+    shareable_change,
     verify,
     version_key,
     visible_to,
@@ -759,10 +760,10 @@ def create(message_id, provider, provider_id, model, capability, summary, inputs
             row = SkillVersion(skill_id=skill_id, version=version, capability=capability, status="validated",
                                implementation_hash=fingerprint, validation_json=evidence, source_code=source,
                                contract_json=contract, origin="generated",
-                               workspace_id=owner_for(TURN_WORKSPACE.get()), change_json={
+                               workspace_id=owner_for(TURN_WORKSPACE.get()), change_json=shareable_change({
                                    "created_by": provider_id, "model": model, "request": request[:500],
                                    "fixtures": [encode_fixture(*e) for e in examples],
-                               })
+                               }, TURN_WORKSPACE.get()))
             db.add(row)
             db.flush()
             audit.record(db, actor=f"agent:{provider_id}", action="skill.promoted",

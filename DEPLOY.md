@@ -117,7 +117,7 @@ Database changes are applied automatically when the API starts.
 ## How it's protected
 
 - **Skills run in throwaway containers** with no network, a read-only filesystem, no capabilities, an unprivileged user and CPU, memory and process limits. The API and worker start them through a proxy that only allows the Docker calls `docker run` needs.
-- **Visitors are kept apart.** Each browser's tasks, chats, history and the skills its chats create or repair are private. Built-in skills are shared. Only the owner key can retire, restore or import shared skills.
+- **Visitors are kept apart.** Each browser's tasks, chats and history are private. Skills are shared: when anyone's Chat creates or repairs one, everyone can reuse it, but the visitor's request text and the input that broke it are removed first. Only the owner key can retire, restore or import skills.
 - **Spending and load are capped.** Each visitor gets 50 chat replies a day, and all visitors together get 500 (`CHAT_TURNS_PER_DAY`, `CHAT_TURNS_PER_DAY_TOTAL`). One address can create at most 30 new workspaces a minute, and requests are rate-limited.
 - **The database is closed to Supabase's public API.** Row-level security is on for every table, and SkillForge connects as the owner.
 - **Secrets stay on the server.** `.env.production` is ignored by git, and CI scans every push for leaked secrets.

@@ -2,7 +2,7 @@
 
 A browser workspace is idle when its browser hasn't been seen, and it has had no new task or chat, for
 WORKSPACE_RETENTION_DAYS. Everything in it goes: runs and their history, uploaded files, chats, the audit trail
-and its private skills. The owner's workspace is never touched. The worker runs this about once an hour.
+and any skill versions kept private to it. Shared skills stay. The owner's workspace is never touched. The worker runs this about once an hour.
 """
 
 from datetime import timedelta

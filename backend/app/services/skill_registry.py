@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.database.skill_models import SkillVersion
 from app.sandbox import run_skill
 from app.schemas.skill_contract import SkillContract
-from app.security import LOCAL_WORKSPACE_ID
+from app.security import LOCAL_WORKSPACE_ID, is_visitor_workspace
 from app.services.checks import run_checks
 
 
@@ -50,8 +50,26 @@ def can_see(skill: SkillVersion | None, workspace_id) -> bool:
 
 
 def owner_for(workspace_id):
-    """Who a newly created or repaired version belongs to: the owner's are shared, a visitor's stay private."""
-    return None if workspace_id in (None, LOCAL_WORKSPACE_ID) else workspace_id
+    """Who a newly created or repaired version belongs to. Every new version is shared, so the library grows for
+    everyone; shareable_change() removes a visitor's data first. (A workspace_id would make one private.)"""
+    return None
+
+
+def shareable_change(change: dict, workspace_id) -> dict:
+    """The change record of a version a visitor's work created, without that visitor's data: their request text,
+    the input that broke the skill (kept as a regression fixture) and failure messages that quote their values.
+    The code, its contract and the model-written worked examples stay. The owner's records are kept whole."""
+    if not is_visitor_workspace(workspace_id):
+        return change
+    clean = {key: value for key, value in change.items() if key not in ("request", "summary", "failure")}
+    clean["fixtures"] = [item for item in change.get("fixtures", [])
+                         if not str(item.get("name", "")).startswith("regression_input")]
+    if isinstance(change.get("failure"), dict):
+        clean["failure"] = {"code": change["failure"].get("code")}
+    if "summary" in change:
+        clean["summary"] = f"Repaired with {change.get('strategy') or 'a rewrite'} after a failure on a user's input."
+    clean["shared_from_visitor"] = True
+    return clean
 
 
 def latest_validated(db, capability: str, workspace_id=LOCAL_WORKSPACE_ID) -> SkillVersion | None:

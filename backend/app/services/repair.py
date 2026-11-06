@@ -21,7 +21,14 @@ from app.sandbox.tools import loose
 from app.schemas.skill_contract import SkillContract
 from app.services import audit
 from app.services.checks import CheckFailed, run_checks
-from app.services.skill_registry import can_see, implementation_hash, owner_for, run_fixture_tests, version_key
+from app.services.skill_registry import (
+    can_see,
+    implementation_hash,
+    owner_for,
+    run_fixture_tests,
+    shareable_change,
+    version_key,
+)
 from app.skills import BUILTIN_SKILLS
 
 MAX_FIXTURE_BYTES = 256 * 1024
@@ -212,6 +219,8 @@ def retired_duplicate(db, skill_id, source, contract):
 def promote(db, parent, source, contract, evidence, change, actor: str = "worker", workspace_id=None) -> SkillVersion:
     """Insert the repaired version and audit it. If another worker promoted the same fix first, reuse it."""
     fingerprint = implementation_hash(source, contract)
+    audit_reason = change.get("summary") or f"Repaired from v{parent.version}."  # the workspace's own audit trail
+    change = shareable_change(change, workspace_id)
     for _ in range(5):
         version = next_version(db, parent.skill_id, parent.version)
         inserted = db.execute(
@@ -225,7 +234,7 @@ def promote(db, parent, source, contract, evidence, change, actor: str = "worker
         row = db.get(SkillVersion, (parent.skill_id, version))
         if inserted:
             audit.record(db, actor=actor, action="skill.promoted", target=audit.skill_target(row.skill_id, row.version),
-                         reason=change.get("summary") or f"Repaired from v{parent.version}.",
+                         reason=audit_reason,
                          details={"parent_version": parent.version, "strategy": change.get("strategy"),
                                   "failure": (change.get("failure") or {}).get("code"),
                                   "tests": evidence.get("test_count"), "implementation_hash": fingerprint},
