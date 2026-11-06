@@ -36,7 +36,7 @@ export default [
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
   },
   {
-    files: ['*.config.js'],
+    files: ['*.config.js', 'scripts/**/*.mjs'],
     languageOptions: { globals: globals.node },
   },
 ];
