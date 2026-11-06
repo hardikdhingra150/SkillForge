@@ -17,6 +17,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.database.skill_models import SkillVersion
 from app.sandbox import PolicyViolation, check_source, run_skill
+from app.sandbox.tools import loose
 from app.schemas.skill_contract import SkillContract
 from app.services import audit
 from app.services.checks import CheckFailed, run_checks
@@ -59,6 +60,38 @@ class Patch:
     fixtures: list  # (name, inputs, files, expected) proving the fix
 
 
+# Proof files per capability: a small input with the problem a strategy fixes. The host reference checks are the
+# oracle ("checks"), so the proof holds for any correct implementation.
+AMOUNT_PROOFS = {
+    "totals_by_group": ({"group_column": "Region", "amount_column": "Amount"},
+                        b'Region,Amount\nNorth,"$1,200.50"\nSouth,(300)\nNorth,-\xe2\x82\xac100\n'),
+    "totals_by_month": ({"date_column": "Date", "amount_column": "Amount"},
+                        b'Date,Amount\n2026-01-02,"$1,200.50"\n2026-02-03,(300)\n'),
+}
+DATE_PROOFS = {
+    "totals_by_month": ({"date_column": "Date", "amount_column": "Amount"},
+                        b'Date,Amount\n03/15/2026,1\n15 Mar 2026,2\n2026-04-01,3\n"Apr 2, 2026",4\n'),
+}
+
+
+def proof(table, contract, name):
+    item = table.get(contract["capability"])
+    if item is None:
+        return []
+    mapping, content = item
+    files = {next(f["name"] for f in contract["inputs"] if f["type"] == "csv"): content}
+    return [(name, mapping, files, "checks")]
+
+
+def swap_tool(source, contract, old, new):
+    """Replace calls to one tool with another, and the contract's tool list to match."""
+    new_source = source.replace(f"tools.{old}(", f"tools.{new}(")
+    tools = [name for name in contract["tools"] if name != old or f"tools.{old}(" in new_source]
+    if new not in tools:
+        tools.append(new)
+    return new_source, {**contract, "tools": tools}
+
+
 class NormalizeAmounts:
     """BAD_NUMBER: the skill parses amounts strictly; switch it to the export-aware parser."""
 
@@ -68,23 +101,65 @@ class NormalizeAmounts:
         return failure.code == "BAD_NUMBER" and "tools.to_decimal(" in source and "parse_amount" not in contract["tools"]
 
     def patch(self, failure, source, contract):
-        new_source = source.replace("tools.to_decimal(", "tools.parse_amount(")
-        tools = [("parse_amount" if name == "to_decimal" else name) for name in contract["tools"]]
-        if "tools.to_decimal(" in new_source:
-            tools.append("to_decimal")
-        proof = b'Product,Sales\nPen,"$1,200.50"\nBook,(300)\nPen,-\xe2\x82\xac100\nCard,"\xc2\xa32,000"\n'
-        mapping = {"product_column": "Product", "revenue_column": "Sales"}
+        new_source, new_contract = swap_tool(source, contract, "to_decimal", "parse_amount")
+        if contract["capability"] == "revenue_by_product":
+            proof_csv = b'Product,Sales\nPen,"$1,200.50"\nBook,(300)\nPen,-\xe2\x82\xac100\nCard,"\xc2\xa32,000"\n'
+            mapping = {"product_column": "Product", "revenue_column": "Sales"}
+            fixtures = [("repair_formatted_amounts", mapping, {"sales_csv": proof_csv},
+                         {"totals": {"Pen": "1100.50", "Book": "-300", "Card": "2000"}, "total_revenue": "2800.50"})]
+        else:
+            fixtures = proof(AMOUNT_PROOFS, contract, "repair_formatted_amounts")
         return Patch(
             source=new_source,
-            contract={**contract, "tools": tools},
+            contract=new_contract,
             summary=f"Amounts like {failure.details.get('value', 'the failing value')!r} are export-formatted. "
                     "Parse them with parse_amount (currency symbols, thousands separators, parentheses negatives).",
-            fixtures=[("repair_formatted_amounts", mapping, {"sales_csv": proof},
-                       {"totals": {"Pen": "1100.50", "Book": "-300", "Card": "2000"}, "total_revenue": "2800.50"})],
+            fixtures=fixtures,
         )
 
 
-STRATEGIES = [NormalizeAmounts()]
+class NormalizeDates:
+    """DATE_FORMAT: the skill only reads ISO dates; switch it to the exported-date parser."""
+
+    name = "normalize_dates"
+
+    def applies(self, failure, source, contract):
+        return failure.code == "DATE_FORMAT" and "tools.iso_dates(" in source and "parse_dates" not in contract["tools"]
+
+    def patch(self, failure, source, contract):
+        new_source, new_contract = swap_tool(source, contract, "iso_dates", "parse_dates")
+        return Patch(
+            source=new_source, contract=new_contract,
+            summary=f"Dates like {failure.details.get('value', 'the failing value')!r} are not ISO. Read them with "
+                    "parse_dates (15/03/2026, 03/15/2026, 15 Mar 2026, Mar 15, 2026; day/month order from the column).",
+            fixtures=proof(DATE_PROOFS, contract, "repair_exported_dates"),
+        )
+
+
+class MatchColumnsLoosely:
+    """MISSING_COLUMN: the requested header differs only in case, spaces, underscores or hyphens."""
+
+    name = "match_columns_loosely"
+
+    def applies(self, failure, source, contract):
+        if failure.code != "MISSING_COLUMN" or "tools.column(" not in source or "find_column" in contract["tools"]:
+            return False
+        wanted, available = failure.details.get("column"), failure.details.get("available") or []
+        return wanted is not None and sum(loose(header) == loose(wanted) for header in available) == 1
+
+    def patch(self, failure, source, contract):
+        new_source, new_contract = swap_tool(source, contract, "column", "find_column")
+        wanted = failure.details.get("column")
+        actual = next(h for h in failure.details.get("available", []) if loose(h) == loose(wanted))
+        return Patch(
+            source=new_source, contract=new_contract,
+            summary=f"The file calls the column {actual!r}, not {wanted!r}. Look columns up with find_column, which "
+                    "ignores case, surrounding spaces, underscores and hyphens (and refuses ambiguous matches).",
+            fixtures=[],
+        )
+
+
+STRATEGIES = [NormalizeAmounts(), NormalizeDates(), MatchColumnsLoosely()]
 
 
 # ---------- Fixtures across a skill's lineage ----------
@@ -134,7 +209,7 @@ def retired_duplicate(db, skill_id, source, contract):
                                                  SkillVersion.implementation_hash == fingerprint)).first()
 
 
-def promote(db, parent, source, contract, evidence, change, actor: str = "worker") -> SkillVersion:
+def promote(db, parent, source, contract, evidence, change, actor: str = "worker", workspace_id=None) -> SkillVersion:
     """Insert the repaired version and audit it. If another worker promoted the same fix first, reuse it."""
     fingerprint = implementation_hash(source, contract)
     for _ in range(5):
@@ -152,7 +227,8 @@ def promote(db, parent, source, contract, evidence, change, actor: str = "worker
                          reason=change.get("summary") or f"Repaired from v{parent.version}.",
                          details={"parent_version": parent.version, "strategy": change.get("strategy"),
                                   "failure": (change.get("failure") or {}).get("code"),
-                                  "tests": evidence.get("test_count"), "implementation_hash": fingerprint})
+                                  "tests": evidence.get("test_count"), "implementation_hash": fingerprint},
+                         **({"workspace_id": workspace_id} if workspace_id else {}))
         if inserted or row.implementation_hash == fingerprint:
             return row
     raise RuntimeError("Could not allocate a version for the repaired skill.")
@@ -174,10 +250,15 @@ class Exhausted:
     last_failure: Failure
 
 
-def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int, actor: str = "worker"):
-    """Try up to `budget` strategies. Returns Repaired, or Exhausted for human review."""
+def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int, actor: str = "worker",
+                   workspace_id=None):
+    """Try up to `budget` strategies. Returns Repaired, or Exhausted for human review.
+
+    When a patch fixes the diagnosed problem but the run then hits a different problem another strategy can fix,
+    the next strategy builds on that patch, so a file with two problems gets both fixes in one new version.
+    """
     source, contract = skill.source_code, skill.contract_json
-    attempts, tried, diagnosed = [], set(), failure
+    attempts, tried, diagnosed, applied = [], set(), failure, []
     emit("repair_started", "repair", f"Diagnosed {failure.code}. Starting repair (budget: {budget} attempts).",
          {"failure": failure.payload(), "budget": budget})
 
@@ -189,23 +270,28 @@ def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int
         patch = strategy.patch(failure, source, contract)
         version_hint = next_version(db, skill.skill_id, skill.version)
         diff = "".join(difflib.unified_diff(
-            source.splitlines(keepends=True), patch.source.splitlines(keepends=True),
+            skill.source_code.splitlines(keepends=True), patch.source.splitlines(keepends=True),
             fromfile=f"{skill.skill_id} v{skill.version}", tofile=f"{skill.skill_id} v{version_hint}",
         ))
         emit("repair_candidate", "repair", f"Attempt {len(attempts) + 1}: {strategy.name}. {patch.summary}",
              {"strategy": strategy.name, "summary": patch.summary, "diff": diff, "tools": patch.contract["tools"]})
 
+        builds_on = False
         try:
             check_source(patch.source)
             candidate_contract = SkillContract.model_validate(patch.contract)
             run = run_skill(patch.source, inputs=inputs, files=files, tools=candidate_contract.tools)
             if not run.ok:
-                raise _AttemptFailed(classify_run_error(run.error))
+                next_failure = classify_run_error(run.error)
+                builds_on = next_failure.code != failure.code and any(
+                    s.name not in tried and s.applies(next_failure, patch.source, patch.contract) for s in STRATEGIES)
+                raise _AttemptFailed(next_failure)
             try:
                 validation = run_checks(candidate_contract, files, inputs, run.output)
             except CheckFailed as error:
                 raise _AttemptFailed(classify_check(error)) from None
-            fixtures = lineage_fixtures(db, skill) + patch.fixtures
+            proofs = [fixture for earlier in applied for fixture in earlier[1].fixtures] + patch.fixtures
+            fixtures = lineage_fixtures(db, skill) + proofs
             regression = failing_input_fixture(version_hint, inputs, files)
             if regression:
                 fixtures.append(regression)
@@ -221,16 +307,18 @@ def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int
         except _AttemptFailed as error:
             failure = error.failure
         else:
-            new_fixtures = patch.fixtures + ([regression] if regression else [])
+            steps = [*applied, (strategy, patch)]
+            new_fixtures = proofs + ([regression] if regression else [])
             change = {
-                "strategy": strategy.name, "summary": patch.summary, "diff": diff,
+                "strategy": "+".join(step.name for step, _ in steps),
+                "summary": " ".join(item.summary for _, item in steps), "diff": diff,
                 "failure": diagnosed.payload(), "attempts": len(attempts) + 1,
                 "fixtures": [encode_fixture(*fixture) for fixture in new_fixtures],
             }
             new = promote(db, skill, patch.source, patch.contract,
-                          {**evidence, "repaired_from": skill.version}, change, actor=actor)
+                          {**evidence, "repaired_from": skill.version}, change, actor=actor, workspace_id=workspace_id)
             emit("repair_applied", "repair", f"The patched skill passed {evidence['test_count']} tests and all contract checks.",
-                 {"strategy": strategy.name, "tests": evidence["tests"]})
+                 {"strategy": change["strategy"], "tests": evidence["tests"]})
             emit("skill_promoted", "versioning", f"Saved {new.skill_id} v{new.version} (repaired from v{skill.version}). "
                  "Future runs will reuse it.",
                  {"skill_id": new.skill_id, "version": new.version, "parent_version": skill.version,
@@ -238,6 +326,13 @@ def attempt_repair(db, emit, skill, inputs, files, failure: Failure, budget: int
             return Repaired(new, candidate_contract, run.output, validation)
 
         attempts.append({"strategy": strategy.name, "failure": failure.payload()})
+        if builds_on:
+            applied.append((strategy, patch))
+            source, contract = patch.source, patch.contract
+            emit("repair_progress", "repair", f"{strategy.name} fixed that, and the file also has {failure.code}: "
+                 f"{failure.message} Building the next fix on top of it.",
+                 {"strategy": strategy.name, "failure": failure.payload()})
+            continue
         emit("repair_rejected", "repair", f"{strategy.name} did not fix it: {failure.message}",
              {"strategy": strategy.name, "failure": failure.payload()})
 
