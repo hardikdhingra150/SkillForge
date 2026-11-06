@@ -4,9 +4,16 @@ Self-evolving skill infrastructure for AI agents: **build what's missing, repair
 
 SkillForge pairs a React workspace (dot-matrix and pixel type on a greyscale particle background, in dark and light themes) with a FastAPI + PostgreSQL backend.
 
-**Chat** with Claude, Codex or a local model. Repeatable tasks become tested, versioned skills that later messages reuse. When a skill fails or gives a wrong answer, SkillSmith repairs it and saves a new version. The **Workbench** runs the same loop on uploaded CSV and Excel files.
+Everything happens in one place, the **Studio**. Ask anything, or attach a spreadsheet (CSV or Excel) and say what you want from it, and pick the model: Auto, Claude, Codex or a local one.
 
-> **Status:** create, execute, verify, repair, version and reuse all run for real, from chat (any text task) and from the Workbench (five file workflows: revenue by product, totals by any column, totals by month, remove duplicates, clean up a table). The Live console runs a real task too, on a bundled sample CSV. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
+- **Spreadsheet tasks with a ready-made skill** (revenue by product, totals by a column, totals by month, remove duplicates, clean up a table) run at once with no model: the columns are picked for you and every number is checked against an independent recount.
+- **Anything else** (a different question about the file, text, maths, "make a skill that…") gets a new skill: a model writes it, it's tested in the sandbox, another model checks the answer, and it's saved for everyone to reuse.
+- **When a skill fails**, the automatic fixes run first (formatted amounts, date formats, renamed columns), then a model rewrites it. The working version is saved as a new version.
+- **You see every step**: which skill was reused, created or repaired, and how.
+
+The top navigation has three pages: **Studio**, **Skills** (every saved skill, its versions and tests) and **Models** (what's connected, and how each model has done). Past runs, Review, the Live console, the classic Workbench and Guardrails are linked from the footer.
+
+> **Status:** create, execute, verify, repair, version and reuse all run for real. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).
 
 ## What works today
 
