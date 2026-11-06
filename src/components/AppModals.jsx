@@ -98,13 +98,20 @@ export function AppModals({
             ))}
 
             {getApiToken().startsWith('sfb_') ? (
-              <div className="runtime-account">
-                <div>
-                  <span>Workspace</span>
-                  <strong>Private to this browser</strong>
-                  <small>No sign-in needed. Your tasks, chats and history stay here; another browser or device starts its own workspace.</small>
+              <>
+                <div className="runtime-account">
+                  <div>
+                    <span>Workspace</span>
+                    <strong>Private to this browser</strong>
+                    <small>No sign-in needed. Your tasks, chats and history stay here; another browser or device starts its own workspace.</small>
+                  </div>
                 </div>
-              </div>
+                <details className="runtime-owner">
+                  <summary>Site owner? Use your owner key</summary>
+                  <p>Your owner key (API_TOKEN) unlocks Claude and Codex in Chat and opens the owner&rsquo;s workspace in this browser.</p>
+                  <ApiTokenForm onChange={onConnectionChanged} />
+                </details>
+              </>
             ) : (
               <ApiTokenForm onChange={onConnectionChanged} />
             )}

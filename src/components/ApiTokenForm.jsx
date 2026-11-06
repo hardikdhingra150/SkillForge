@@ -5,7 +5,8 @@ import { getApiToken, setApiToken } from '../api/skillforgeProcess.js';
 // Paste the server's API_TOKEN once; it is stored in this browser and sent with every request.
 export function ApiTokenForm({ onChange }) {
   const id = useId();
-  const [saved, setSaved] = useState(() => Boolean(getApiToken()));
+  // A browser workspace key (sfb_) is not an access token; only a pasted API_TOKEN counts as saved here.
+  const [saved, setSaved] = useState(() => Boolean(getApiToken()) && !getApiToken().startsWith('sfb_'));
   const [draft, setDraft] = useState('');
 
   const save = (event) => {

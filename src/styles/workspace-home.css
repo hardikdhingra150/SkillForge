@@ -187,3 +187,7 @@
 /* The process card is a grid: keep its one column at the card's width so wide tables scroll inside it. */
 .app .main-content .sf-process { grid-template-columns: minmax(0, 1fr); }
 .app .main-content .sf-process > * { min-width: 0; }
+.runtime-owner { margin: 0 0 6px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; }
+.runtime-owner summary { cursor: pointer; color: var(--muted); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.runtime-owner summary:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.runtime-owner p { margin: 10px 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
