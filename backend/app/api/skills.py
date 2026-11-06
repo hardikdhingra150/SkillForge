@@ -15,6 +15,7 @@ from app.sandbox import PolicyViolation
 from app.security import WorkspaceId, actor, require_access, require_operator
 from app.services import audit
 from app.services.skill_bundle import BundleError, export_bundle, import_bundle
+from app.services.skill_registry import can_see, visible_to
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(
@@ -50,6 +51,7 @@ class SkillPage(BaseModel):
 @router.get("/skills", response_model=SkillPage)
 def list_skills(
     db: DB,
+    workspace_id: WorkspaceId,
     limit: Annotated[int, Query(ge=1, le=100)] = 24,
     after_skill_id: Annotated[str | None, Query(min_length=1, max_length=80)] = None,
     after_version: Annotated[str | None, Query(min_length=1, max_length=32)] = None,
@@ -59,7 +61,7 @@ def list_skills(
     if (after_skill_id is None) != (after_version is None):
         raise HTTPException(400, "Both cursor fields must be supplied together.")
 
-    statement = select(SkillVersion)
+    statement = select(SkillVersion).where(visible_to(workspace_id))
     if status is not None:
         statement = statement.where(SkillVersion.status == status)
     term = q.strip()
@@ -105,11 +107,11 @@ def registry_error(error):
 
 
 @router.get("/skills/{skill_id}/{version}/export")
-def export_skill(skill_id: str, version: str, db: DB):
+def export_skill(skill_id: str, version: str, db: DB, workspace_id: WorkspaceId):
     """Download one version as a portable bundle (code, contract, evidence, lineage and fixtures)."""
     try:
         skill = db.get(SkillVersion, (skill_id, version))
-        if skill is None:
+        if not can_see(skill, workspace_id):
             raise HTTPException(404, "Skill version not found.")
         bundle = export_bundle(db, skill)
     except BundleError as error:

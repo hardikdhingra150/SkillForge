@@ -28,7 +28,7 @@ class SkillRegistryTests(unittest.TestCase):
                     status TEXT, implementation_hash TEXT,
                     validation_json JSON, source_code TEXT, contract_json JSON,
                     origin TEXT DEFAULT 'builtin', parent_version TEXT, change_json JSON,
-                    created_at DATETIME,
+                    created_at DATETIME, workspace_id CHAR(32),
                     PRIMARY KEY (skill_id, version)
                 )
             """))

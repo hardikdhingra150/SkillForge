@@ -4,12 +4,13 @@ import hashlib
 import json
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.database.skill_models import SkillVersion
 from app.sandbox import run_skill
 from app.schemas.skill_contract import SkillContract
+from app.security import LOCAL_WORKSPACE_ID
 from app.services.checks import run_checks
 
 
@@ -39,10 +40,25 @@ def version_key(version: str) -> tuple[int, ...]:
     return tuple(int(part) for part in version.split("."))
 
 
-def latest_validated(db, capability: str) -> SkillVersion | None:
-    """The newest validated, runnable (stored-source) version for a capability."""
+def visible_to(workspace_id):
+    """Skills a workspace can see and run: the shared ones plus its own."""
+    return or_(SkillVersion.workspace_id.is_(None), SkillVersion.workspace_id == workspace_id)
+
+
+def can_see(skill: SkillVersion | None, workspace_id) -> bool:
+    return skill is not None and skill.workspace_id in (None, workspace_id)
+
+
+def owner_for(workspace_id):
+    """Who a newly created or repaired version belongs to: the owner's are shared, a visitor's stay private."""
+    return None if workspace_id in (None, LOCAL_WORKSPACE_ID) else workspace_id
+
+
+def latest_validated(db, capability: str, workspace_id=LOCAL_WORKSPACE_ID) -> SkillVersion | None:
+    """The newest validated, runnable (stored-source) version for a capability that this workspace can see."""
     rows = db.scalars(
         select(SkillVersion).where(
+            visible_to(workspace_id),
             SkillVersion.capability == capability,
             SkillVersion.status == "validated",
             SkillVersion.source_code.is_not(None),

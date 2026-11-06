@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, DateTime, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import mapped_column
 
@@ -22,6 +22,9 @@ class SkillVersion(Base):
     # What changed relative to parent_version (repair diff, reason, evidence) or a backfill note.
     change_json = mapped_column(JSONB, nullable=True)
     created_at = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    # None: shared with everyone (built-in, imported, or made by the owner). Otherwise the one workspace whose
+    # chat created or repaired it; it may hold that visitor's data (examples, the input that broke it).
+    workspace_id = mapped_column(Uuid, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True, index=True)
 
     __table_args__ = (
         CheckConstraint("status IN ('draft', 'validated', 'retired')", name="ck_skill_versions_status"),

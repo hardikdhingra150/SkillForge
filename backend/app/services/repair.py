@@ -21,7 +21,7 @@ from app.sandbox.tools import loose
 from app.schemas.skill_contract import SkillContract
 from app.services import audit
 from app.services.checks import CheckFailed, run_checks
-from app.services.skill_registry import implementation_hash, run_fixture_tests, version_key
+from app.services.skill_registry import can_see, implementation_hash, owner_for, run_fixture_tests, version_key
 from app.skills import BUILTIN_SKILLS
 
 MAX_FIXTURE_BYTES = 256 * 1024
@@ -219,6 +219,7 @@ def promote(db, parent, source, contract, evidence, change, actor: str = "worker
                 skill_id=parent.skill_id, version=version, capability=parent.capability, status="validated",
                 implementation_hash=fingerprint, validation_json=evidence, source_code=source, contract_json=contract,
                 origin="repaired", parent_version=parent.version, change_json=change,
+                workspace_id=owner_for(workspace_id),
             ).on_conflict_do_nothing(index_elements=["skill_id", "version"])
         ).rowcount
         row = db.get(SkillVersion, (parent.skill_id, version))
@@ -229,7 +230,8 @@ def promote(db, parent, source, contract, evidence, change, actor: str = "worker
                                   "failure": (change.get("failure") or {}).get("code"),
                                   "tests": evidence.get("test_count"), "implementation_hash": fingerprint},
                          **({"workspace_id": workspace_id} if workspace_id else {}))
-        if inserted or row.implementation_hash == fingerprint:
+        # Someone else promoted the same fix first: reuse it, unless it is another visitor's private version.
+        if inserted or (row.implementation_hash == fingerprint and can_see(row, workspace_id)):
             return row
     raise RuntimeError("Could not allocate a version for the repaired skill.")
 

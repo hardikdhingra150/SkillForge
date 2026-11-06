@@ -16,6 +16,7 @@ sandbox policy, the contract schema and every worked example pass.
 """
 
 import json
+from contextvars import ContextVar
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -28,6 +29,7 @@ from app.llm import PROVIDERS, LLMError, complete_json, get_provider, only
 from app.sandbox import PolicyViolation, check_source, run_skill
 from app.sandbox.tools import TOOL_DOCS, TOOL_NAMES
 from app.schemas.skill_contract import SkillContract
+from app.security import LOCAL_WORKSPACE_ID
 from app.services import audit, live, scoreboard
 from app.services.checks import CheckFailed, run_checks
 from app.services.discovery import discover
@@ -43,14 +45,19 @@ from app.services.repair import (
 )
 from app.services.skill_registry import (
     ExampleMismatch,
+    can_see,
     implementation_hash,
     latest_validated,
+    owner_for,
     run_fixture_tests,
     verify,
     version_key,
+    visible_to,
 )
 
 MAX_HISTORY = 10
+# The workspace the current chat turn belongs to: it sees the shared skills plus its own.
+TURN_WORKSPACE: ContextVar = ContextVar("turn_workspace", default=LOCAL_WORKSPACE_ID)
 # Strongest first: used to pick an independent verifier and an escalation target.
 STRENGTH_ORDER = ["claude", "codex", "ollama"]
 LOCAL = "ollama"
@@ -187,7 +194,8 @@ def needs_files(contract: dict) -> bool:
 
 
 def registry_text(db, with_files=False):
-    rows = db.scalars(select(SkillVersion).where(SkillVersion.status == "validated", SkillVersion.contract_json.is_not(None))).all()
+    rows = db.scalars(select(SkillVersion).where(visible_to(TURN_WORKSPACE.get()), SkillVersion.status == "validated",
+                                                 SkillVersion.contract_json.is_not(None))).all()
     seen, lines = set(), []
     for row in rows:
         if row.capability in seen or (needs_files(row.contract_json) and not with_files):
@@ -445,9 +453,17 @@ def load_attachments(db, message_id):
 
 
 def run_turn(conversation_id, assistant_id, provider_id, model, allowed=None):
-    """Answer one chat message using only the `allowed` model providers (None: all of them)."""
-    with only(allowed):
-        _run_turn(conversation_id, assistant_id, provider_id, model)
+    """Answer one chat message using only the `allowed` model providers (None: all of them), seeing only the
+    shared skills and this conversation's workspace's own."""
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        workspace_id = conversation.workspace_id if conversation else LOCAL_WORKSPACE_ID
+    token = TURN_WORKSPACE.set(workspace_id)
+    try:
+        with only(allowed):
+            _run_turn(conversation_id, assistant_id, provider_id, model)
+    finally:
+        TURN_WORKSPACE.reset(token)
 
 
 def _run_turn(conversation_id, assistant_id, provider_id, model):
@@ -522,9 +538,10 @@ def run_step(message_id, label, step, outputs, attachments, auto, provider_id, m
     confirmed_by_model = match.how == "model"
 
     with SessionLocal.begin() as db:
-        skill = latest_validated(db, capability)
+        workspace = TURN_WORKSPACE.get()
+        skill = latest_validated(db, capability, workspace)
         if skill is not None and needs_files(skill.contract_json) and not files:
-            capability, skill = f"{capability}_text", latest_validated(db, f"{capability}_text")
+            capability, skill = f"{capability}_text", latest_validated(db, f"{capability}_text", workspace)
         existing = (skill.skill_id, skill.version) if skill else None
 
     provider = get_provider(provider_id)
@@ -565,7 +582,7 @@ def run_step(message_id, label, step, outputs, attachments, auto, provider_id, m
 def discover_capability(message_id, capability, inputs, files, request):
     """Find an existing skill for this operation before creating one (see services/discovery.py)."""
     with SessionLocal() as db:
-        rows = db.scalars(select(SkillVersion).where(SkillVersion.status == "validated",
+        rows = db.scalars(select(SkillVersion).where(visible_to(TURN_WORKSPACE.get()), SkillVersion.status == "validated",
                                                      SkillVersion.contract_json.is_not(None))).all()
     skills = {}
     for row in rows:
@@ -631,6 +648,8 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
     files = files or {}
     with SessionLocal.begin() as db:
         skill = db.get(SkillVersion, key)
+        if not can_see(skill, TURN_WORKSPACE.get()):
+            raise ValueError(f"{key[0]} v{key[1]} is not available in this workspace.")
         contract = verify(skill)
         source = skill.source_code
     add_step(message_id, "skill_selected", f"Found {skill.skill_id} v{skill.version} in the registry. Running it in the sandbox.")
@@ -739,7 +758,8 @@ def create(message_id, provider, provider_id, model, capability, summary, inputs
         if row is None:
             row = SkillVersion(skill_id=skill_id, version=version, capability=capability, status="validated",
                                implementation_hash=fingerprint, validation_json=evidence, source_code=source,
-                               contract_json=contract, origin="generated", change_json={
+                               contract_json=contract, origin="generated",
+                               workspace_id=owner_for(TURN_WORKSPACE.get()), change_json={
                                    "created_by": provider_id, "model": model, "request": request[:500],
                                    "fixtures": [encode_fixture(*e) for e in examples],
                                })

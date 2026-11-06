@@ -7,6 +7,7 @@ Clearing the browser's data, or another device, starts a new empty workspace.
 
 import hashlib
 import secrets
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from app.database.browser_models import BrowserKey
@@ -29,6 +30,16 @@ def create(db) -> str:
     return key
 
 
+SEEN_EVERY = timedelta(days=1)
+
+
 def workspace_for(db, key: str) -> UUID | None:
+    """The workspace this key opens, noting (once a day at most) that its browser was here."""
     found = db.get(BrowserKey, key_hash(key))
-    return found.workspace_id if found else None
+    if found is None:
+        return None
+    now = datetime.now(UTC)
+    if found.last_seen_at is None or now - found.last_seen_at > SEEN_EVERY:
+        found.last_seen_at = now
+        db.commit()
+    return found.workspace_id

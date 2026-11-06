@@ -12,6 +12,7 @@ from app.database.chat_models import ChatMessage, Conversation
 from app.database.models import Execution, ExecutionEvent, Task
 from app.database.skill_models import SkillVersion
 from app.security import WorkspaceId, require_access
+from app.services.skill_registry import visible_to
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/v1", tags=["Metrics"], dependencies=[Depends(require_access)])
@@ -61,8 +62,10 @@ def summarize(runs: list[Run], skills: int, repaired_versions: int) -> dict:
 @router.get("/metrics/summary")
 def metrics_summary(db: DB, workspace_id: WorkspaceId):
     try:
-        skills = db.scalar(select(func.count(func.distinct(SkillVersion.skill_id))).where(SkillVersion.status == "validated"))
-        repaired = db.scalar(select(func.count()).select_from(SkillVersion).where(SkillVersion.origin == "repaired"))
+        skills = db.scalar(select(func.count(func.distinct(SkillVersion.skill_id)))
+                           .where(visible_to(workspace_id), SkillVersion.status == "validated"))
+        repaired = db.scalar(select(func.count()).select_from(SkillVersion)
+                             .where(visible_to(workspace_id), SkillVersion.origin == "repaired"))
         # Time the skill run only (from the worker's first run event), not the wait for the user's CSV.
         run_started = (
             select(ExecutionEvent.execution_id, func.min(ExecutionEvent.created_at).label("at"))
@@ -91,3 +94,4 @@ def metrics_summary(db: DB, workspace_id: WorkspaceId):
     runs = [workbench_run(status, result, seconds(elapsed)) for status, result, elapsed in executions]
     runs += [run for status, skill, elapsed in replies if (run := chat_run(status, skill, seconds(elapsed)))]
     return summarize(runs, skills or 0, repaired or 0)
+

@@ -22,9 +22,10 @@ from sqlalchemy import select
 from app.database.session import SessionLocal
 from app.database.skill_models import SkillVersion
 from app.sandbox import run_skill
+from app.security import LOCAL_WORKSPACE_ID
 from app.services import scoreboard
 from app.services.checks import CheckFailed, run_checks
-from app.services.skill_registry import SkillIntegrityError, latest_validated, verify, version_key
+from app.services.skill_registry import SkillIntegrityError, latest_validated, verify, version_key, visible_to
 
 logger = logging.getLogger("skillforge.mcp")
 server = Server("skillforge", instructions=(
@@ -42,7 +43,9 @@ def tool_name(capability: str) -> str:
 
 def latest_skills(db) -> dict[str, SkillVersion]:
     """The newest validated, runnable version of every capability, keyed by tool name."""
-    rows = db.scalars(select(SkillVersion).where(SkillVersion.status == "validated", SkillVersion.source_code.is_not(None))).all()
+    # The MCP server is the owner's tool: the shared library plus the owner's own skills.
+    rows = db.scalars(select(SkillVersion).where(visible_to(LOCAL_WORKSPACE_ID), SkillVersion.status == "validated",
+                                                 SkillVersion.source_code.is_not(None))).all()
     best: dict[str, SkillVersion] = {}
     for row in rows:
         current = best.get(row.capability)

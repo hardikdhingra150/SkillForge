@@ -87,7 +87,7 @@ def execute_next(db):
         ):
             raise ValueError("The stored CSV no longer matches its confirmed input.")
 
-        skill = latest_validated(db, capability) if capability else None
+        skill = latest_validated(db, capability, task.workspace_id) if capability else None
         if skill is None:
             raise ValueError(f"No validated skill is registered for {capability or 'this operation'}.")
         contract = verify(skill)
