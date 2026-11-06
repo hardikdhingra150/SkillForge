@@ -285,7 +285,7 @@ function Message({ message, onOpenLibrary, latest }) {
   );
 }
 
-export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed, startSample = false, onSampleStarted }) {
+export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed, startSample = false, onSampleStarted, onTour }) {
   const uid = useId();
   const [providers, setProviders] = useState([]);
   const [providerId, setProviderId] = useState("");
@@ -532,6 +532,7 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
               <h2>What do you need done?</h2>
               <p>Ask anything, or attach a spreadsheet and say what you want from it. SkillForge reuses a skill if one
                 fits, and writes, tests and saves a new one if not. You see every step.</p>
+              {onTour && <button type="button" className="sf-chat__link sf-chat__tour" onClick={onTour}>New here? Watch the 2-minute tour</button>}
               <div className="sf-chat__start">
                 <section>
                   <h3><FileSpreadsheet size={14} /> With a spreadsheet</h3>

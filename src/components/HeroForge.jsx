@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, CheckCheck, FileText, Layers3, Play, ShieldCheck, Sparkles, Terminal } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, CheckCheck, Clapperboard, FileText, Layers3, Play, ShieldCheck, Sparkles, Terminal } from 'lucide-react';
 import { PixelSprite } from './PixelArt';
 import KineticType from './KineticType';
 import { SavedSkills, SetupSteps, StatusPill } from './WorkspaceParts.jsx';
@@ -71,7 +71,7 @@ function WorkspacePulse({ workspace, onEnter }) {
   </div>;
 }
 
-export default function HeroForge({ workspace, onEnter, onSampleRun, onLearn, onToast }) {
+export default function HeroForge({ workspace, onEnter, onSampleRun, onLearn, onToast, onTour }) {
   return <section className="forge-hero hx" id="top">
     <div className="hx-backdrop" aria-hidden="true"><i className="hx-grid" /><i className="hx-glow" /></div>
     <div className="forge-hero-overline"><span><i />SELF-EVOLVING SKILL INFRASTRUCTURE</span><span>BUILT TO LEARN. MADE TO LAST.</span></div>
@@ -90,6 +90,7 @@ export default function HeroForge({ workspace, onEnter, onSampleRun, onLearn, on
       <div className="hx-actions">
         <button className="forge-cta" onClick={onEnter}>Open your workspace <ArrowUpRight size={18} /></button>
         <button className="hx-try" onClick={onSampleRun}><Play size={14} /><span>Try it with a sample file</span><ArrowRight size={14} /></button>
+        {onTour && <button className="hx-try" onClick={onTour}><Clapperboard size={14} /><span>Watch the 2-minute tour</span></button>}
       </div>
       <div className="hx-proof"><span><ShieldCheck size={14} />Test before trust</span><span><Layers3 size={14} />Every version remembered</span><span><FileText size={14} />Full repair history</span></div>
     </div>

@@ -121,6 +121,25 @@ export function AppModals({
         </Modal>
       )}
 
+      {modal?.type === 'tour' && (
+        <Modal
+          title="SkillForge in two minutes"
+          eyebrow="TOUR · EVERY FEATURE"
+          onClose={onClose}
+        >
+          <div className="modal-body tour-video">
+            {/* The tour is recorded from the real app by scripts/record-tour.mjs. */}
+            <video src="/tour/skillforge-tour.webm" poster="/tour/poster.jpg" controls autoPlay playsInline preload="metadata">
+              Your browser can&rsquo;t play this video. It shows the Studio, spreadsheet tasks, repairs, new skills,
+              connecting your own Claude or Codex, the Skills and Models pages, and workspace settings.
+            </video>
+            <p className="modal-note">
+              Studio · spreadsheet tasks · automatic repairs · new skills · your own Claude and Codex · Skills · Models · settings
+            </p>
+          </div>
+        </Modal>
+      )}
+
       {modal?.type === 'lifecycle' && (
         <Modal
           title="One problem. A lasting capability."

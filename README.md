@@ -11,6 +11,8 @@ Everything happens in one place, the **Studio**. Ask anything, or attach a sprea
 - **When a skill fails**, the automatic fixes run first (formatted amounts, date formats, renamed columns), then a model rewrites it. The working version is saved as a new version.
 - **You see every step**: which skill was reused, created or repaired, and how.
 
+**New here?** Watch the 2-minute tour (the **Watch the 2-minute tour** button on the home page and in the Studio). It shows every feature in the real app, and `npm run tour` records it again after the app changes.
+
 The top navigation has three pages: **Studio**, **Skills** (every saved skill, its versions and tests) and **Models** (what's connected, and how each model has done). Past runs, Review, the Live console, the classic Workbench and Guardrails are linked from the footer.
 
 > **Status:** create, execute, verify, repair, version and reuse all run for real. See [PROJECT_COMPLETION_PLAN.md](PROJECT_COMPLETION_PLAN.md).

@@ -117,7 +117,9 @@
 .sf-chat__setup ol { margin: 8px 0 10px; padding-left: 18px; display: grid; gap: 8px; color: var(--muted); }
 .sf-chat__setup li > span { display: block; margin-bottom: 4px; font: 10px 'Space Mono', monospace; letter-spacing: .6px; text-transform: uppercase; color: var(--faint); }
 .sf-chat__command { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--glass-panel); }
-.sf-chat__command code { flex: 1; overflow-x: auto; white-space: nowrap; color: var(--text); font: 12.5px 'Space Mono', monospace; }
+.sf-chat__command { min-width: 0; }
+/* Long commands (the connector's) wrap inside the card instead of running past its edge. */
+.sf-chat__command code { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); font: 12.5px/1.5 'Space Mono', monospace; }
 .sf-chat__command button { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: none; }
 .sf-chat__recheck { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: none; font-size: 12px; }
 
@@ -162,3 +164,4 @@
 .sf-chat__table th { color: var(--faint); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; text-align: left; }
 .sf-chat__table :is(th, td) { padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .sf-chat__connect p svg { vertical-align: -2px; margin-right: 4px; }
+.sf-chat__tour { margin-top: 2px; font-size: 13px; }

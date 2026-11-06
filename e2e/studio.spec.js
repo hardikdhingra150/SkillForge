@@ -29,3 +29,15 @@ test('the home page sample opens the Studio and runs there', async ({ page }) =>
   await expect(page).toHaveURL(/#chat$/);
   await expect(page.getByRole('region', { name: 'Result' }).getByText('3,658.00')).toBeVisible();
 });
+
+test('a new user can watch the tour from the home page and the Studio', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Watch the 2-minute tour' }).click();
+  const video = page.getByRole('dialog').locator('video');
+  await expect(video).toHaveAttribute('src', '/tour/skillforge-tour.webm');
+  await expect.poll(() => video.evaluate((v) => v.duration)).toBeGreaterThan(60);
+  await page.keyboard.press('Escape');
+  await page.goto('/#chat');
+  await page.getByRole('button', { name: 'New here? Watch the 2-minute tour' }).click();
+  await expect(page.getByRole('dialog').locator('video')).toBeVisible();
+});

@@ -182,6 +182,7 @@ export default function Landing({
   motion,
   workspace,
   onToast,
+  onTour,
 }) {
   const goTo = (id) => {
     document.getElementById(id)?.scrollIntoView({
@@ -203,6 +204,7 @@ export default function Landing({
         onSampleRun={onSampleRun}
         onLearn={() => goTo('how')}
         onToast={onToast}
+        onTour={onTour}
       />
 
       <section

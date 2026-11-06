@@ -281,6 +281,7 @@ export default function App() {
               navigate('chat');
             }}
             onToast={notify}
+            onTour={() => setModal({ type: 'tour' })}
           />
         ) : (
           <main
@@ -329,6 +330,7 @@ export default function App() {
 
             {view === 'chat' && (
               <ChatView onOpenLibrary={() => navigate('library')} initialDraft={chatDraft} onDraftUsed={() => setChatDraft('')}
+                        onTour={() => setModal({ type: 'tour' })}
                         startSample={studioSample} onSampleStarted={() => setStudioSample(false)} />
             )}
 
