@@ -77,6 +77,16 @@ Render keeps no files between restarts, so your logins go in as secrets in the s
 
 Then, on the site, open **Workspace settings** (the status button, top right) → **Site owner? Use your owner key**, and paste your `API_TOKEN`. In that browser, Claude and Codex now appear in the Studio. Visitors never get them: those subscriptions are for your own use.
 
+## Visitors' own Claude and Codex
+
+Visitors can use their own Claude Code or Codex subscription, without giving SkillForge their login:
+
+1. In the Studio, a visitor picks **Claude** or **Codex** and clicks **Connect your computer**.
+2. The Studio shows one command (for macOS/Linux and for Windows). They run it in a terminal and leave it open. It needs Python 3, plus Claude Code or Codex installed and logged in on that computer.
+3. While it runs, that visitor's chats send their Claude and Codex requests to their computer. Their own logged-in CLI answers, with its tools switched off (Claude) or in its read-only sandbox (Codex), in an empty folder.
+
+The server never uses its own logins for visitors, and never sees the visitor's login. Each workspace has its own connector key, stored only as a hash; **Disconnect** in the Studio revokes it, and the program stops. While a connector is running it contacts the site every 20 seconds, which also keeps Render's free backend awake.
+
 ## 6. Updating
 
 Push to GitHub. Vercel and Render both redeploy by themselves, and the backend applies any database changes when it starts.
