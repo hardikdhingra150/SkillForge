@@ -6,7 +6,7 @@ VPY     := $(VENV)/bin/python
 BACKEND := cd backend &&
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate seed api worker web mcp test test-backend test-web e2e lint lint-backend lint-web build check token sandbox-image secrets rotate-db-password
+.PHONY: help up down setup db db-down migrate seed api worker web mcp test test-backend test-web e2e lint lint-backend lint-web build check token sandbox-image secrets rotate-db-password
 
 help: ## Show available commands
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
@@ -16,11 +16,20 @@ setup: ## Install frontend and backend dependencies (creates backend/.venv)
 	test -x $(VPY) || $(PY) -m venv $(VENV)
 	$(VPY) -m pip install -q -r backend/requirements.txt -r backend/requirements-dev.txt
 
-db: ## Start local Postgres (needs .env.postgres)
-	docker compose up -d postgres
+ENV_FILE := $(if $(wildcard .env.postgres),--env-file .env.postgres,)
+
+up: ## Run everything in Docker (Postgres, API, worker, web) on http://localhost:5173
+	docker compose $(ENV_FILE) up --build -d
+	@echo "SkillForge is starting: open http://localhost:5173 (logs: docker compose logs -f)"
+
+down: ## Stop the Docker stack (your data stays in the volume)
+	docker compose $(ENV_FILE) down
+
+db: ## Start only Postgres, for running the API, worker and web on your machine
+	docker compose $(ENV_FILE) up -d postgres
 
 db-down: ## Stop local Postgres
-	docker compose down
+	docker compose $(ENV_FILE) down
 
 migrate: ## Apply database migrations
 	$(BACKEND) .venv/bin/alembic upgrade head

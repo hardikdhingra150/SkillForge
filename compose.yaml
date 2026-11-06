@@ -1,24 +1,83 @@
+# One command runs everything:   docker compose up --build
+# Then open http://localhost:5173. Postgres, the API (it applies migrations and registers the starter skills on
+# start), the worker and the web app all run in containers. For development with hot reload, run only the
+# database (make db) and start the API, worker and web app on your machine (make api / make worker / make web).
+#
+# Settings come from your shell or a .env file next to this one; the defaults are for a laptop only.
+# If you already created .env.postgres for the make setup, pass it so the passwords match:
+#   docker compose --env-file .env.postgres up --build
+# Chat in Docker can use Ollama running on your machine. The Claude Code and Codex CLIs need the non-Docker
+# setup (make api), because they run as your user with your logins.
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  environment:
+    APP_ENV: development
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: ${POSTGRES_DB:-skillforge}
+    POSTGRES_USER: ${POSTGRES_USER:-skillforge}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skillforge-local-only}
+    FRONTEND_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
+    AUTH_MODE: ${AUTH_MODE:-off}
+    OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  restart: unless-stopped
+
 services:
   postgres:
     image: postgres:18
-
-    env_file:
-      - .env.postgres
-
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-skillforge}
+      POSTGRES_USER: ${POSTGRES_USER:-skillforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skillforge-local-only}
     ports:
       - "127.0.0.1:5432:5432"
-
     volumes:
       - skillforge_pgdata:/var/lib/postgresql
-
     healthcheck:
       test:
         - CMD-SHELL
-        - pg_isready -U skillforge -d skillforge
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  api:
+    <<: *backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   skillforge_pgdata:

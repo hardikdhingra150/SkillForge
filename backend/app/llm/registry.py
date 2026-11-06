@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import subprocess
 import urllib.error
@@ -7,7 +8,8 @@ from pathlib import Path
 
 from app.llm.base import LLMError, Provider, ProviderStatus, minimal_env, run_cli, scratch_dir
 
-OLLAMA_URL = "http://127.0.0.1:11434"
+# In Docker the compose file points this at the host (host.docker.internal).
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 PREFERRED_LOCAL_MODEL = "qwen2.5-coder:3b"
 
 
