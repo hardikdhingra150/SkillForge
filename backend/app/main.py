@@ -104,3 +104,53 @@ def readiness() -> dict[str, str]:
         "api": "ready",
         "database": "ready",
     }
+
+STATUS_PAGE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SkillForge API</title>
+<style>
+  :root {{ color-scheme: light dark; --bg: #f4f4f4; --fg: #161616; --muted: #5c5c5c; --line: #d6d6d6; }}
+  @media (prefers-color-scheme: dark) {{ :root {{ --bg: #141414; --fg: #ededed; --muted: #a3a3a3; --line: #333; }} }}
+  body {{ margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--fg);
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }}
+  main {{ width: min(560px, calc(100vw - 32px)); padding: 28px; border: 1px solid var(--line); border-radius: 16px; }}
+  h1 {{ margin: 0 0 6px; font-size: 24px; }}
+  p {{ margin: 0 0 14px; color: var(--muted); }}
+  ul {{ margin: 0; padding: 0; list-style: none; }}
+  li {{ padding: 10px 0; border-top: 1px solid var(--line); }}
+  a {{ color: var(--fg); font-weight: 600; }}
+  .ok {{ display: inline-block; margin-bottom: 12px; padding: 2px 10px; border-radius: 99px; font-size: 13px;
+         background: #1f7a3a; color: #fff; }}
+</style>
+</head>
+<body>
+<main>
+  <span class="ok">Running</span>
+  <h1>SkillForge API</h1>
+  <p>This is SkillForge's backend. It has no pages for people: the web app talks to it at <code>/api/v1</code>.</p>
+  <ul>
+    {website}
+    <li><a href="/api/v1/health/ready">Health check</a>: is the API up, and does the database answer?</li>
+    <li><a href="/docs">API documentation</a>: every endpoint, for developers.</li>
+  </ul>
+</main>
+</body>
+</html>
+"""
+
+
+@app.get("/", include_in_schema=False)
+def status_page():
+    """What people see when they open the backend's address: it is running, and where to go instead."""
+    from html import escape
+
+    from fastapi.responses import HTMLResponse
+
+    site = next((origin for origin in settings.frontend_origins if origin.startswith("https://")), None)
+    website = (f'<li><a href="{escape(site, quote=True)}">Open SkillForge</a>: the website people use.</li>'
+               if site else "")
+    return HTMLResponse(STATUS_PAGE.format(website=website))
