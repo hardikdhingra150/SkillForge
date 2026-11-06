@@ -1,15 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { CheckCircle2, FileSpreadsheet, Sparkles, UploadCloud } from "lucide-react";
 import { confirmCSVMapping, getCSVInput, uploadCSVInput } from "../api/skillforgeProcess.js";
 
-const cellStyle = { border: "1px solid #667085", padding: "6px 10px", textAlign: "left" };
+const ACCEPT = ".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+function startingColumns(value) {
+  return value?.column_mapping || value?.suggested_mapping || {};
+}
+
+function isAccepted(file) {
+  return /\.(csv|xlsx)$/i.test(file?.name || "");
+}
+
+/** Drop or pick a CSV/Excel file, check the preview, then confirm the suggested columns. */
 export default function CSVInputPanel({ execution, events, onUpdated }) {
+  const uid = useId();
   const [input, setInput] = useState(null);
-  const [file, setFile] = useState(null);
-  const [product, setProduct] = useState("");
-  const [revenue, setRevenue] = useState("");
+  const [columns, setColumns] = useState({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef(null);
   const actionController = useRef(null);
 
   useEffect(() => () => actionController.current?.abort(), []);
@@ -19,8 +30,7 @@ export default function CSVInputPanel({ execution, events, onUpdated }) {
     getCSVInput(execution.execution_id, controller.signal).then((value) => {
       if (controller.signal.aborted) return;
       setInput(value);
-      setProduct(value.column_mapping?.product || "");
-      setRevenue(value.column_mapping?.revenue || "");
+      setColumns(startingColumns(value));
       setError("");
     }).catch((failure) => {
       if (controller.signal.aborted) return;
@@ -45,8 +55,7 @@ export default function CSVInputPanel({ execution, events, onUpdated }) {
       const value = await action(controller.signal);
       if (controller.signal.aborted) return;
       setInput(value);
-      setProduct(value.column_mapping?.product || "");
-      setRevenue(value.column_mapping?.revenue || "");
+      setColumns(startingColumns(value));
       onUpdated();
     } catch (failure) {
       if (!controller.signal.aborted) setError(failure.message);
@@ -55,66 +64,141 @@ export default function CSVInputPanel({ execution, events, onUpdated }) {
     }
   }
 
+  function upload(file) {
+    if (!file) return;
+    if (!isAccepted(file)) {
+      setError("Choose a .csv or .xlsx file.");
+      return;
+    }
+    perform((signal) => uploadCSVInput(execution.execution_id, file, signal));
+  }
+
   if (!canUpload && !input && !error) return null;
 
+  const workflow = input?.workflow;
+  const roles = workflow?.roles || [];
+  const suggested = input?.suggested_mapping || {};
+  const chosen = Object.values(columns).filter(Boolean);
+  const missing = roles.some((role) => role.required && !columns[role.name]);
+  const repeated = new Set(chosen).size !== chosen.length;
+  const label = (name) => roles.find((role) => role.name === name)?.label || name;
+
   return (
-    <section style={{ borderTop: "1px solid #667085", marginTop: 20, paddingTop: 20 }}>
-      <h3>Sales CSV and columns</h3>
+    <section className="sf-upload" aria-labelledby={`${uid}-title`}>
+      <header className="sf-upload__head">
+        <div>
+          <p className="sf-process__eyebrow">Step 2 · Your file</p>
+          <h3 id={`${uid}-title`}>{workflow ? workflow.title : "Upload your file"}</h3>
+          {workflow?.about && <p className="sf-process__muted">{workflow.about}</p>}
+        </div>
+      </header>
+
       {error && <p role="alert" className="sf-process__error">{error}</p>}
+
       {canUpload && !input?.confirmed && (
-        <form onSubmit={(event) => {
-          event.preventDefault();
-          if (!file) return;
-          perform((signal) => uploadCSVInput(execution.execution_id, file, signal));
-        }}>
-          <label>Sales CSV
-            <input type="file" accept=".csv,text/csv" required disabled={busy}
-              onChange={(event) => setFile(event.target.files?.[0] || null)} />
-          </label>
-          <p className="sf-process__muted">UTF-8 CSV · up to 1 MiB · up to 10,000 data rows</p>
-          <button type="submit" disabled={busy || !file}>
-            {busy ? "Saving…" : input ? "Replace CSV" : "Upload CSV"}
+        <div
+          className={`sf-drop${dragging ? " is-dragging" : ""}${busy ? " is-busy" : ""}`}
+          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            upload(event.dataTransfer.files?.[0]);
+          }}
+        >
+          <UploadCloud size={26} aria-hidden="true" />
+          <p className="sf-drop__title">
+            {busy ? "Reading your file…" : input ? "Drop a different file to replace it" : "Drop your CSV or Excel file here"}
+          </p>
+          <p className="sf-process__muted">.csv or .xlsx · first sheet · up to 10,000 rows</p>
+          <input
+            ref={fileRef}
+            id={`${uid}-file`}
+            className="sf-drop__input"
+            type="file"
+            accept={ACCEPT}
+            disabled={busy}
+            onChange={(event) => {
+              upload(event.target.files?.[0]);
+              event.target.value = "";
+            }}
+          />
+          <button type="button" className="sf-process__secondary" disabled={busy} onClick={() => fileRef.current?.click()}>
+            <FileSpreadsheet size={15} aria-hidden="true" />
+            {input ? "Choose another file" : "Choose a file"}
           </button>
-        </form>
+        </div>
       )}
+
       {input && (
         <>
-          <p><strong>{input.filename}</strong> · {input.row_count} rows · {input.headers.length} columns</p>
-          <div style={{ overflowX: "auto", margin: "12px 0" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }}>
-              <caption>Preview of the first {input.preview.length} data rows</caption>
-              <thead><tr>{input.headers.map((header) => <th key={header} style={cellStyle}>{header}</th>)}</tr></thead>
+          <p className="sf-upload__file">
+            <FileSpreadsheet size={15} aria-hidden="true" />
+            <strong>{input.filename}</strong>
+            <span>{input.row_count.toLocaleString()} rows · {input.headers.length} columns</span>
+          </p>
+
+          <div className="sf-upload__preview">
+            <table>
+              <caption>First {input.preview.length} rows</caption>
+              <thead>
+                <tr>{input.headers.map((header) => {
+                  const role = Object.keys(columns).find((name) => columns[name] === header);
+                  return <th key={header} className={role ? "is-mapped" : undefined}>
+                    {header}{role && <small>{label(role)}</small>}
+                  </th>;
+                })}</tr>
+              </thead>
               <tbody>{input.preview.map((row, index) => (
-                <tr key={index}>{row.map((value, column) => <td key={column} style={cellStyle}>{value}</td>)}</tr>
+                <tr key={index}>{row.map((value, column) => <td key={column}>{value}</td>)}</tr>
               ))}</tbody>
             </table>
           </div>
+
           {input.confirmed ? (
-            <p className="sf-process__notice">
-              Confirmed columns: product = {input.column_mapping.product}; revenue = {input.column_mapping.revenue}.
+            <p className="sf-process__notice sf-upload__done">
+              <CheckCircle2 size={15} aria-hidden="true" />
+              {roles.length && Object.keys(input.column_mapping || {}).length
+                ? `Confirmed: ${Object.entries(input.column_mapping).map(([name, header]) => `${label(name).toLowerCase()} = ${header}`).join(" · ")}`
+                : "Confirmed. No columns needed."}
             </p>
           ) : canUpload && (
-            <form onSubmit={(event) => {
-              event.preventDefault();
-              perform((signal) => confirmCSVMapping(execution.execution_id, {
-                file_sha256: input.sha256, file_version: input.version,
-                product_column: product, revenue_column: revenue,
-              }, signal));
-            }}>
-              <label>Product column
-                <select required value={product} disabled={busy} onChange={(event) => setProduct(event.target.value)}>
-                  <option value="">Choose a column</option>
-                  {input.headers.map((header) => <option key={header} value={header}>{header}</option>)}
-                </select>
-              </label>
-              <label>Revenue column
-                <select required value={revenue} disabled={busy} onChange={(event) => setRevenue(event.target.value)}>
-                  <option value="">Choose a column</option>
-                  {input.headers.map((header) => <option key={header} value={header}>{header}</option>)}
-                </select>
-              </label>
-              <button type="submit" disabled={busy || !product || !revenue || product === revenue}>
-                {busy ? "Confirming…" : "Confirm columns for revenue by product"}
+            <form
+              className="sf-upload__mapping"
+              onSubmit={(event) => {
+                event.preventDefault();
+                perform((signal) => confirmCSVMapping(execution.execution_id, {
+                  file_sha256: input.sha256, file_version: input.version, columns,
+                }, signal));
+              }}
+            >
+              {roles.length > 0 && Object.keys(suggested).length > 0 && (
+                <p className="sf-upload__hint"><Sparkles size={14} aria-hidden="true" />
+                  Columns suggested from the headers and values. Check them, then confirm.</p>
+              )}
+              {roles.length === 0 && <p className="sf-process__muted">This task works on the whole table. Nothing to choose.</p>}
+              <div className="sf-upload__roles">
+                {roles.map((role) => (
+                  <label key={role.name}>
+                    <span>{role.label}{!role.required && <em> (optional)</em>}
+                      {suggested[role.name] && suggested[role.name] === columns[role.name] && <b className="sf-upload__tag">Suggested</b>}
+                    </span>
+                    <select
+                      value={columns[role.name] || ""}
+                      disabled={busy}
+                      required={role.required}
+                      onChange={(event) => setColumns({ ...columns, [role.name]: event.target.value })}
+                    >
+                      <option value="">{role.required ? "Choose a column" : "Whole row (no key)"}</option>
+                      {input.headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                    </select>
+                    {role.help && <small>{role.help}</small>}
+                  </label>
+                ))}
+              </div>
+              {repeated && <p className="sf-process__muted">Each column can only be used once.</p>}
+              <button type="submit" disabled={busy || missing || repeated}>
+                {busy ? "Confirming…" : roles.length ? "Confirm columns and run" : "Run it"}
               </button>
             </form>
           )}

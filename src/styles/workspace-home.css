@@ -132,3 +132,78 @@
 .task-result tbody th { position: relative; font-weight: 600; }
 .task-result__bar { position: absolute; left: 0; bottom: 0; height: 2px; width: var(--width); background: var(--text); opacity: .55; }
 .task-result__proof { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: var(--muted); font: 11px var(--mono); }
+
+/* ---- Task examples, file upload and column mapping (Workbench) ---- */
+.sf-examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 14px; }
+.app .main-content .sf-process .sf-example { padding: 6px 12px; border: 1px solid var(--line); border-radius: 99px; background: transparent; color: var(--muted); font: 11px var(--mono); letter-spacing: .3px; box-shadow: none; }
+.app .main-content .sf-process .sf-example:not(:disabled):hover { color: var(--text); border-color: var(--text); background: var(--glass-raised, transparent); }
+
+.sf-upload { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--line); }
+.sf-upload__head h3 { margin: 6px 0 4px; font-size: 20px; }
+.sf-drop { position: relative; display: grid; justify-items: center; gap: 8px; margin: 14px 0; padding: 30px 18px; border: 1px dashed var(--glass-edge, var(--line)); border-radius: 16px; background: var(--glass-inset, transparent); color: var(--text); text-align: center; transition: border-color .2s, background .2s, transform .2s var(--ease, ease); }
+.sf-drop.is-dragging { border-color: var(--text); border-style: solid; background: var(--glass-raised, transparent); transform: scale(1.01); }
+.sf-drop.is-busy { opacity: .7; }
+.sf-drop svg { color: var(--muted); }
+.sf-drop__title { margin: 0; font-weight: 600; }
+.sf-drop .sf-process__muted { margin: 0 0 6px; }
+.sf-drop button { display: inline-flex; align-items: center; gap: 8px; }
+.app .main-content .sf-process .sf-drop__input { position: absolute; width: 1px; height: 1px; padding: 0; opacity: 0; pointer-events: none; }
+
+.sf-upload__file { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 8px; }
+.sf-upload__file span { color: var(--muted); font: 11px var(--mono); }
+.sf-upload__preview { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--line); border-radius: 12px; }
+.sf-upload__preview table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sf-upload__preview caption { padding: 8px 12px; text-align: left; color: var(--faint); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.sf-upload__preview th, .sf-upload__preview td { padding: 8px 12px; border-top: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.sf-upload__preview td { font-family: var(--mono); color: var(--muted); }
+.sf-upload__preview th { font-weight: 600; color: var(--text); vertical-align: bottom; }
+.sf-upload__preview th.is-mapped { background: var(--glass-raised, transparent); box-shadow: inset 0 -2px 0 var(--text); }
+.sf-upload__preview th small { display: block; margin-top: 2px; color: var(--muted); font: 9px var(--mono); letter-spacing: .8px; text-transform: uppercase; }
+
+.sf-upload__hint { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.sf-upload__roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 16px; }
+.sf-upload__roles label > span { display: flex; align-items: center; gap: 8px; }
+.sf-upload__roles em { font-style: normal; color: var(--faint); font-weight: 400; }
+.sf-upload__roles small { display: block; margin: -8px 0 12px; color: var(--faint); font-size: 12px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: 0; font-family: inherit; }
+.sf-upload__tag { padding: 1px 7px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); font: 9px var(--mono); letter-spacing: .8px; text-transform: uppercase; }
+.sf-upload__done { display: flex; align-items: center; gap: 8px; }
+
+.task-result__facts { display: flex; flex-wrap: wrap; gap: 22px; margin: 0 0 14px; }
+.task-result__facts dd { margin: 2px 0 0; font: 15px var(--mono); text-transform: none; }
+.task-result__scroll { overflow-x: auto; }
+.task-result__scroll td { white-space: nowrap; }
+.task-result__blank { color: var(--faint); }
+
+@media (max-width: 520px) {
+  .sf-drop { padding: 22px 14px; }
+  .sf-upload__roles { grid-template-columns: 1fr; }
+}
+
+/* ---- Sign in (AUTH_MODE=accounts) ---- */
+.auth-screen { display: grid; place-items: center; min-height: 62vh; padding: 32px 0 48px; }
+.auth-card { width: min(440px, 100%); padding: clamp(22px, 4vw, 34px); border: 1px solid var(--glass-edge, var(--line)); border-radius: 22px; background: var(--glass-panel, var(--surface)); backdrop-filter: blur(18px); }
+.auth-eyebrow { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--muted); font: 10px var(--mono); letter-spacing: 1.4px; }
+.auth-card h1 { margin: 0 0 10px; font: clamp(24px, 4vw, 30px) var(--pixel); color: var(--text); line-height: 1.15; }
+.auth-lead { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 12px; }
+.auth-tabs button { padding: 9px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 500 13px 'Space Grotesk', sans-serif; cursor: pointer; }
+.auth-tabs button[aria-selected="true"] { background: var(--glass-raised, var(--surface-high)); color: var(--text); }
+.auth-tabs button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.auth-form { display: grid; gap: 14px; }
+.auth-form label { display: grid; gap: 6px; color: var(--muted); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+.auth-form label span { text-transform: none; letter-spacing: 0; color: var(--faint); }
+.auth-form input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--glass-inset, transparent); color: var(--text); font: 15px 'Space Grotesk', sans-serif; text-transform: none; letter-spacing: 0; }
+.auth-form input:focus { outline: none; border-color: var(--text); }
+.auth-hint { margin: -6px 0 0; color: var(--faint); font-size: 12px; }
+.auth-error { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); font-size: 13px; }
+.auth-submit { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; margin-top: 4px; border: 1px solid var(--lime, var(--text)); border-radius: 11px; background: var(--lime, var(--text)); color: var(--ink, var(--surface)); font: 600 14px 'Space Grotesk', sans-serif; cursor: pointer; transition: transform .2s; }
+.auth-submit:not(:disabled):hover { transform: translateY(-2px); }
+.auth-submit:disabled { opacity: .6; cursor: default; }
+.auth-submit:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.runtime-account { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 6px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.runtime-account span, .runtime-account small { display: block; color: var(--muted); font: 10px var(--mono); letter-spacing: 1px; }
+.runtime-account strong { display: block; margin: 3px 0; color: var(--text); }
+
+/* The process card is a grid: keep its one column at the card's width so wide tables scroll inside it. */
+.app .main-content .sf-process { grid-template-columns: minmax(0, 1fr); }
+.app .main-content .sf-process > * { min-width: 0; }

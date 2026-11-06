@@ -8,6 +8,7 @@ import {
 import ExecutionHistory from "./ExecutionHistory.jsx";
 import CSVInputPanel from "./CSVInputPanel.jsx";
 import { TaskResult } from "./TaskResult.jsx";
+import { workflows } from "../workflows.js";
 
 import {
   useSkillForgeProcess,
@@ -170,9 +171,24 @@ export default function SkillForgeProcessView({
           id={`${uid}-scope`}
           className="sf-process__muted"
         >
-          Be specific about the result you want. Example: “Total revenue
-          per product from my sales export.” Today SkillForge works on CSV files.
+          Describe the result you want. The Workbench works on CSV and Excel
+          files; anything else goes to Chat. Try one:
         </p>
+
+        <div className="sf-examples" role="group" aria-label="Example tasks">
+          {workflows.map((workflow) => (
+            <button
+              key={workflow.id}
+              type="button"
+              className="sf-example sf-process__secondary"
+              disabled={Boolean(process.pending) || process.submitting || Boolean(process.executionId)}
+              onClick={() => setDraft(workflow.example)}
+              title={workflow.example}
+            >
+              {workflow.title}
+            </button>
+          ))}
+        </div>
 
         {process.pending && (
           <p className="sf-process__notice">

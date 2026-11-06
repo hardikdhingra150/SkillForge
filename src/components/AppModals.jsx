@@ -1,6 +1,7 @@
 import {
   ArrowUpRight,
   Layers3,
+  LogOut,
   Search,
   ShieldCheck,
   Terminal,
@@ -20,6 +21,7 @@ export function AppModals({
   skills,
   connection,
   onConnectionChanged,
+  auth,
   search,
   onSearch,
   onNavigate,
@@ -96,7 +98,23 @@ export function AppModals({
               </div>
             ))}
 
-            <ApiTokenForm onChange={onConnectionChanged} />
+            {auth?.mode === 'accounts' ? (
+              <div className="runtime-account">
+                <div>
+                  <span>Signed in as</span>
+                  <strong>{auth.user ? auth.user.email : 'Nobody yet'}</strong>
+                  {auth.user?.workspace && <small>{auth.user.workspace}</small>}
+                </div>
+                {auth.user && (
+                  <button type="button" className="ws-link" onClick={() => { auth.signOut(); onClose(); }}>
+                    <LogOut size={13} />
+                    Sign out
+                  </button>
+                )}
+              </div>
+            ) : (
+              <ApiTokenForm onChange={onConnectionChanged} />
+            )}
 
             <p className="modal-note">
               Every page reads from this API and its PostgreSQL database.
