@@ -34,6 +34,7 @@ const FILE_SUGGESTIONS = [
 ];
 
 const SAMPLE_FILE = { name: "sample_sales.csv", text: sampleCsv };
+const SAMPLE_REQUEST = "Show revenue by product";
 
 const STEP_ICON = {
   spreadsheet: FileSpreadsheet, columns: FileSpreadsheet, rewriting: Wrench, repair_applied: Wrench,
@@ -211,7 +212,7 @@ function Message({ message, onOpenLibrary, latest }) {
   );
 }
 
-export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed }) {
+export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed, startSample = false, onSampleStarted }) {
   const uid = useId();
   const [providers, setProviders] = useState([]);
   const [providerId, setProviderId] = useState("");
@@ -304,7 +305,7 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
 
   async function ensureConversation() {
     if (active?.id) return active;
-    const created = await createConversation(providerId, model);
+    const created = await createConversation(providerId || "auto", model);
     const fresh = { ...created, messages: [] };
     setActive(fresh);
     return fresh;
@@ -333,6 +334,34 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
   async function trySample() {
     await attach([new File([SAMPLE_FILE.text], SAMPLE_FILE.name, { type: "text/csv" })]);
   }
+
+  // "Try it with a sample file" on the home page: attach the sample and ask for revenue by product, which runs
+  // a ready-made skill (and repairs it the first time, since the sample's amounts look like "$1,200.50").
+  async function runSample() {
+    setUploading(true);
+    setStreamFailed(false);
+    setError("");
+    try {
+      const conversation = await ensureConversation();
+      const file = await uploadAttachment(conversation.id,
+                                          new File([SAMPLE_FILE.text], SAMPLE_FILE.name, { type: "text/csv" }));
+      await sendMessage(conversation.id, SAMPLE_REQUEST, providerId || "auto", model, [file.id]);
+      setActive(await getConversation(conversation.id));
+      loadConversations();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const sampleStarted = useRef(false);
+  useEffect(() => {
+    if (!startSample || sampleStarted.current) return;
+    sampleStarted.current = true;
+    onSampleStarted?.();
+    runSample();
+  });
 
   async function send(text) {
     const content = (text ?? draft).trim();

@@ -165,6 +165,8 @@ export default function App() {
 
   // Text the Workbench hands to Chat ("Do this in Chat"); Chat starts with it in the message box.
   const [chatDraft, setChatDraft] = useState('');
+  // The home page's "Try it with a sample file": Studio runs the sample once when it opens.
+  const [studioSample, setStudioSample] = useState(false);
 
   const navigate = (next) => {
     history.pushState(
@@ -275,8 +277,8 @@ export default function App() {
             workspace={workspace}
             onEnter={() => navigate('chat')}
             onSampleRun={() => {
-              navigate('console');
-              startRun();
+              setStudioSample(true);
+              navigate('chat');
             }}
             onToast={notify}
           />
@@ -326,7 +328,8 @@ export default function App() {
             )}
 
             {view === 'chat' && (
-              <ChatView onOpenLibrary={() => navigate('library')} initialDraft={chatDraft} onDraftUsed={() => setChatDraft('')} />
+              <ChatView onOpenLibrary={() => navigate('library')} initialDraft={chatDraft} onDraftUsed={() => setChatDraft('')}
+                        startSample={studioSample} onSampleStarted={() => setStudioSample(false)} />
             )}
 
             {view === 'models' && <ModelsView />}
