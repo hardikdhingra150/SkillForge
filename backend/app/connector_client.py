@@ -19,6 +19,7 @@ import argparse
 import json
 import os
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -115,17 +116,41 @@ RUNNERS = {"claude": run_claude, "codex": run_codex}
 
 # ---------- talking to the site ----------
 
+# Where operating systems keep their trusted certificates. Python from python.org on macOS ships with none until
+# "Install Certificates.command" is run, so HTTPS fails there; the system's own list works instead.
+CA_FILES = ("/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt",
+            "/etc/ssl/ca-bundle.pem")
+
+
+def tls_context():
+    """Verified HTTPS, always. Uses Python's certificates, or certifi's, or the system's if Python has none."""
+    context = ssl.create_default_context()
+    if context.cert_store_stats()["x509_ca"]:
+        return context
+    candidates = []
+    try:
+        import certifi  # present in many Python installs, never required
+        candidates.append(certifi.where())
+    except ImportError:
+        pass
+    for path in (*candidates, *CA_FILES):
+        if os.path.exists(path):
+            context.load_verify_locations(cafile=path)
+            return context
+    return context  # still verifies; the error message explains how to fix it
+
 class Site:
     def __init__(self, api, token):
         self.api = api.rstrip("/")
         self.token = token
+        self.tls = tls_context()
 
     def call(self, method, path, body=None, timeout=30):
         request = urllib.request.Request(
             self.api + path, method=method, data=json.dumps(body).encode() if body is not None else None,
             headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json",
                      "User-Agent": f"skillforge-connect/{VERSION}"})
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urllib.request.urlopen(request, timeout=timeout, context=self.tls) as response:
             raw = response.read()
             return response.status, (json.loads(raw) if raw else None)
 
@@ -175,7 +200,11 @@ def main():
     except urllib.error.HTTPError as error:
         sys.exit(f"The site refused this connector ({error.code}). Pair again in the Studio and use the new command.")
     except (urllib.error.URLError, OSError) as error:
-        sys.exit(f"Can't reach {site.api}: {error}")
+        hint = ""
+        if "CERTIFICATE_VERIFY_FAILED" in str(error):
+            hint = (" Python can't check the site's certificate. On macOS, run the \"Install Certificates.command\" "
+                    "in your Python folder (Applications > Python 3.x), or `pip3 install certifi`, then try again.")
+        sys.exit(f"Can't reach {site.api}: {error}.{hint}")
     if not ready:
         say("Neither Claude Code nor Codex is ready on this computer yet. Fix that (see above); this keeps "
             "checking every few minutes. Leave it running.")
