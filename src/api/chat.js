@@ -49,3 +49,16 @@ export function streamConversation(id, { onUpdate, onDone, onError }) {
 export function getScoreboard(signal) {
   return request("/scoreboard", { signal });
 }
+
+// Visitors connect their own computer, which runs their logged-in Claude Code / Codex for them.
+export function getConnector(signal) {
+  return request("/connector", { signal });
+}
+
+export function pairConnector() {
+  return request("/connector", { method: "POST" });
+}
+
+export function unpairConnector() {
+  return request("/connector", { method: "DELETE" });
+}

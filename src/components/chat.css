@@ -161,3 +161,4 @@
 .sf-chat__table table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .sf-chat__table th { color: var(--faint); font: 10px var(--mono); letter-spacing: 1px; text-transform: uppercase; text-align: left; }
 .sf-chat__table :is(th, td) { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.sf-chat__connect p svg { vertical-align: -2px; margin-right: 4px; }

@@ -6,8 +6,11 @@ import {
   createConversation,
   deleteConversation,
   getConversation,
+  getConnector,
   getProviders,
   listConversations,
+  pairConnector,
+  unpairConnector,
   sendMessage,
   streamConversation,
   uploadAttachment,
@@ -170,6 +173,76 @@ function CopyCommand({ command }) {
     <div className="sf-chat__command">
       <code>{command}</code>
       <button type="button" onClick={copy} aria-label={`Copy ${command}`}>{copied ? <Check size={13} /> : <Copy size={13} />}</button>
+    </div>
+  );
+}
+
+/** Claude or Codex for a visitor: their own computer runs their logged-in CLI. Pair it once with one command. */
+function ConnectCard({ provider, onConnected }) {
+  const [pairing, setPairing] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState("");
+  const [connected, setConnected] = useState(false);
+  const name = provider.id === "codex" ? "Codex" : "Claude Code";
+
+  // While the command is on screen, check every few seconds whether the computer has connected.
+  useEffect(() => {
+    if (!pairing || connected) return undefined;
+    const timer = setInterval(async () => {
+      try {
+        const state = await getConnector();
+        if (state.connected) {
+          setConnected(true);
+          onConnected?.();
+        }
+      } catch {
+        // Keep waiting; the next check may work.
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [pairing, connected, onConnected]);
+
+  async function pair() {
+    setBusy(true);
+    setFailure("");
+    try {
+      setPairing(await pairConnector());
+    } catch (error) {
+      setFailure(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="sf-chat__setup sf-chat__connect" role="status">
+      <p><strong>Use your own {name}.</strong>
+        {provider.detail.startsWith("Your connector is running") ? ` ${provider.detail}` : ""}</p>
+      {!pairing ? (
+        <>
+          <p className="sf-chat__muted">
+            {`SkillForge runs it on your computer, with your login. On that computer you need Python 3, and ${name} `
+              + `installed and logged in. The program only starts ${name}, with its tools switched off, and stops `
+              + "when you close it."}
+          </p>
+          <button type="button" className="sf-chat__recheck" onClick={pair} disabled={busy}>
+            {busy ? <LoaderCircle size={13} className="sf-chat__spin" /> : <Plus size={13} />} Connect your computer
+          </button>
+        </>
+      ) : connected ? (
+        <p><CircleCheck size={13} /> Connected. Pick {provider.id === "codex" ? "Codex" : "Claude"} and send your message.</p>
+      ) : (
+        <>
+          <p className="sf-chat__muted">Run this in a terminal on your computer and leave it open. This page notices when it connects.</p>
+          <ol>
+            <li><span>macOS or Linux (Terminal)</span><CopyCommand command={pairing.commands.mac_linux} /></li>
+            <li><span>Windows (PowerShell)</span><CopyCommand command={pairing.commands.windows} /></li>
+          </ol>
+          <p className="sf-chat__muted"><LoaderCircle size={12} className="sf-chat__spin" /> Waiting for your computer…
+            The command contains a private key for your workspace: don&rsquo;t share it.</p>
+        </>
+      )}
+      {failure && <p className="sf-chat__error" role="alert">{failure}</p>}
     </div>
   );
 }
@@ -437,8 +510,19 @@ export default function ChatView({ onOpenLibrary, initialDraft = "", onDraftUsed
             <button className="sf-chat__icon" onClick={() => loadProviders(true)} aria-label="Refresh provider status"><RefreshCw size={14} /></button>
           </div>
         </header>
-        {provider && !provider.available && provider.setup?.length > 0 && <SetupCard provider={provider} onRecheck={() => loadProviders(true)} />}
-        {provider && !provider.available && !provider.setup?.length && <p className="sf-chat__notice">{provider.detail}</p>}
+        {provider && !provider.available && provider.kind === "connector" && (
+          <ConnectCard key={provider.id} provider={provider} onConnected={() => loadProviders(true)} />
+        )}
+        {provider && !provider.available && provider.kind !== "connector" && provider.setup?.length > 0 && <SetupCard provider={provider} onRecheck={() => loadProviders(true)} />}
+        {provider && !provider.available && provider.kind !== "connector" && !provider.setup?.length && <p className="sf-chat__notice">{provider.detail}</p>}
+        {providers.some((p) => p.kind === "connector" && p.available) && (
+          <p className="sf-chat__notice">
+            Claude and Codex run on your connected computer, with your login.{" "}
+            <button type="button" className="sf-chat__link" onClick={async () => {
+              try { await unpairConnector(); loadProviders(true); } catch (failure) { setError(failure.message); }
+            }}>Disconnect it</button>
+          </p>
+        )}
         {error && <p className="sf-chat__error" role="alert">{error}</p>}
 
         <div className="sf-chat__thread" ref={threadRef} aria-live="polite">
