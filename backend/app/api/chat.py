@@ -22,7 +22,7 @@ from app.llm import PROVIDERS, only, provider_statuses
 from app.security import LOCAL_WORKSPACE_ID, WorkspaceId, is_visitor, models_for, require_access
 from app.services import live, scoreboard
 from app.services.agent import run_turn
-from app.services.csv_inputs import MAX_BYTES, parse_csv
+from app.services.csv_inputs import MAX_XLSX_BYTES, parse_csv, xlsx_to_csv
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/v1", tags=["Chat"], dependencies=[Depends(require_access)])
@@ -211,11 +211,14 @@ def stream_conversation(conversation_id: UUID, workspace_id: WorkspaceId):
 @router.post("/conversations/{conversation_id}/attachments", response_model=AttachmentOut, status_code=201)
 def upload_attachment(conversation_id: UUID, db: DB, workspace_id: WorkspaceId, file: Annotated[UploadFile, File()]):
     filename = (file.filename or "").replace("\\", "/").rsplit("/", 1)[-1]
-    if not filename.casefold().endswith(".csv"):
-        raise HTTPException(422, "Attach a .csv file.")
+    kind = filename.casefold().rsplit(".", 1)[-1] if "." in filename else ""
+    if kind not in {"csv", "xlsx"}:
+        raise HTTPException(422, "Attach a .csv or .xlsx file. Older .xls files: save them as .xlsx or CSV first.")
     filename = "".join(char for char in filename if char.isprintable())[:200]
-    content = file.file.read(MAX_BYTES + 1)
+    content = file.file.read(MAX_XLSX_BYTES + 1)
     try:
+        if kind == "xlsx":  # stored as CSV: skills read every attachment the same way
+            content = xlsx_to_csv(content)
         headers, rows = parse_csv(content)
     except ValueError as error:
         raise HTTPException(422, str(error)) from None

@@ -32,6 +32,7 @@ from app.schemas.skill_contract import SkillContract
 from app.security import LOCAL_WORKSPACE_ID
 from app.services import audit, live, scoreboard
 from app.services.checks import CheckFailed, run_checks
+from app.services.csv_inputs import parse_csv
 from app.services.discovery import discover
 from app.services.repair import (
     Repaired,
@@ -55,6 +56,7 @@ from app.services.skill_registry import (
     version_key,
     visible_to,
 )
+from app.services.workflows import WORKFLOWS, describe_mapping, match_workflows, suggest_mapping, validate_columns
 
 MAX_HISTORY = 10
 # The workspace the current chat turn belongs to: it sees the shared skills plus its own.
@@ -453,6 +455,61 @@ def load_attachments(db, message_id):
                            "preview": row.preview_json, "content": row.content_bytes} for row in rows}
 
 
+# ---------- spreadsheet tasks: the former Workbench, inside Chat ----------
+
+def spreadsheet_workflow(text: str) -> str | None:
+    """The one file workflow this request names ("total sales by region"), if exactly one fits."""
+    matches = match_workflows(text)
+    return matches[0] if len(matches) == 1 else None
+
+
+def latest_attachments(db, conversation_id, before_sequence):
+    """Files attached to the most recent earlier message in this conversation that had any."""
+    message_ids = select(ChatMessage.id).where(ChatMessage.conversation_id == conversation_id,
+                                               ChatMessage.sequence < before_sequence)
+    latest = db.scalars(select(ChatAttachment.message_id).where(ChatAttachment.message_id.in_(message_ids))
+                        .order_by(ChatAttachment.created_at.desc()).limit(1)).first()
+    return load_attachments(db, latest) if latest else {}
+
+
+def spreadsheet_author(provider_id, model, capability):
+    """The model that would rewrite the skill if the automatic fixes fail (None: no model is connected)."""
+    if provider_id == "auto":
+        provider_id = scoreboard.route_author(capability)[0] or scoreboard.pick_planner()
+        model = PROVIDERS[provider_id].status().default_model if provider_id else None
+    if provider_id is None or not PROVIDERS[provider_id].status().available:
+        return None, provider_id, model
+    return get_provider(provider_id), provider_id, model
+
+
+def run_spreadsheet_task(message_id, workflow_id, attachments, request, provider_id, model):
+    """Run a file workflow without a model: suggest the columns, run the skill, check every number against an
+    independent recomputation. If it fails, repair it: the automatic fixes first, then a model rewrite."""
+    workflow = WORKFLOWS[workflow_id]
+    filename, attachment = next(iter(attachments.items()))
+    headers, rows = parse_csv(attachment["content"])
+    add_step(message_id, "spreadsheet", f"A spreadsheet task: {workflow.title.lower()} on {filename} "
+             f"({len(rows)} rows). No model is needed to plan it.", {"workflow": workflow_id})
+    mapping = suggest_mapping(workflow_id, headers, rows, request)
+    missing = [role.label.lower() for role in workflow.roles if role.required and not mapping.get(role.name)]
+    if missing:
+        raise NeedsInput(f"Which column holds the {' and the '.join(missing)}? {filename} has: {', '.join(headers)}. "
+                         f"Reply with the request and the column, for example: \"{workflow.example[:-1]} using "
+                         f"{headers[-1]}.\"")
+    mapping = validate_columns(workflow_id, headers, rows, mapping)
+    if mapping:
+        add_step(message_id, "columns", f"Using {describe_mapping(workflow_id, mapping)}.", {"columns": mapping})
+    with SessionLocal() as db:
+        skill = latest_validated(db, workflow_id, TURN_WORKSPACE.get())
+        if skill is None:
+            raise ValueError(f"No skill is registered for {workflow.title.lower()}. Run the starter-skill setup.")
+        key = (skill.skill_id, skill.version)
+    provider, author_id, author_model = spreadsheet_author(provider_id, model, workflow_id)
+    extracted = {f"{role}_column": header for role, header in mapping.items()}
+    return reuse_or_repair(message_id, provider, author_id, author_model, key, extracted, {}, workflow.about, request,
+                           {workflow.file_input: attachment["content"]}, model_check=False)
+
+
 def run_turn(conversation_id, assistant_id, provider_id, model, allowed=None):
     """Answer one chat message using only the `allowed` model providers (None: all of them), seeing only the
     shared skills and this conversation's workspace's own."""
@@ -474,8 +531,15 @@ def _run_turn(conversation_id, assistant_id, provider_id, model):
             user = db.scalars(select(ChatMessage).where(ChatMessage.conversation_id == conversation_id,
                                                         ChatMessage.sequence == message.sequence - 1)).one()
             attachments = load_attachments(db, user.id)
+            workflow_id = spreadsheet_workflow(user.content)
+            if workflow_id and not attachments:  # "now total it by month": use the file attached earlier
+                attachments = latest_attachments(db, conversation_id, user.sequence)
             history = history_text(db, conversation_id, user.sequence)
             registry = registry_text(db, with_files=bool(attachments))
+        if workflow_id and attachments:
+            payload = run_spreadsheet_task(assistant_id, workflow_id, attachments, user.content, provider_id, model)
+            finish(assistant_id, content=payload["text"], skill=payload["skill"])
+            return
         auto = provider_id == "auto"
         if auto:
             provider_id = scoreboard.pick_planner()
@@ -645,7 +709,10 @@ def make_verifier(message_id, judge, request, capability):
 
 
 def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, input_types, summary, request, files=None,
-                    allow_repair=True):
+                    allow_repair=True, model_check=True):
+    """Run a stored skill; if it fails, repair it (automatic fixes first, then a model rewrite) and save the new
+    version. model_check=False trusts the contract checks alone (spreadsheet tasks, whose checks recompute the
+    whole answer), so no model is needed unless the skill has to be rewritten."""
     files = files or {}
     with SessionLocal.begin() as db:
         skill = db.get(SkillVersion, key)
@@ -658,8 +725,12 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
     run = run_skill(source, inputs=inputs, files=files, tools=contract.tools)
     failure = None if run.ok else f"{run.error.get('type')}: {run.error.get('message')}"
     typed_failure = None if run.ok else classify_run_error(run.error)
-    judge = make_judge(provider_id, model)
-    verifier = make_verifier(message_id, judge, request, skill.capability)
+    judge = make_judge(provider_id, model) if provider is not None else None
+    if model_check and judge is not None:
+        verifier = make_verifier(message_id, judge, request, skill.capability)
+    else:
+        def verifier(*_args, **_kwargs):
+            return True, "the contract checks"
     if run.ok:
         try:
             run_checks(contract, files, inputs, run.output)
@@ -668,7 +739,7 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
                 failure = f"wrong answer {json.dumps(run.output)}: {reason}"
         except CheckFailed as error:
             failure, typed_failure = str(error), classify_check(error)
-    if failure is not None and run.ok and typed_failure is None:
+    if failure is not None and run.ok and typed_failure is None and model_check and provider is not None:
         # The verifier says the answer is wrong. Often the skill is fine and an input was bound wrong
         # (an optional flag the planner missed): re-bind from the full contract before touching code.
         strong = next((PROVIDERS[p] for p in STRENGTH_ORDER if p != LOCAL and PROVIDERS[p].status().available), provider)
@@ -716,6 +787,13 @@ def reuse_or_repair(message_id, provider, provider_id, model, key, extracted, in
                 return {"text": f"Repaired **{new.skill_id}** and saved **v{new.version}**.",
                         "skill": reply_payload(new, output, "repaired")}
 
+    if provider is None:
+        raise ValueError(f"{skill.skill_id} v{skill.version} failed ({failure}). The automatic fixes didn't work, and "
+                         "no AI model is connected to rewrite it.")
+    add_step(message_id, "rewriting", f"The automatic fixes didn't work. {provider.label} will rewrite the skill "
+             "and test it again.")
+    if not model_check:
+        verifier = make_verifier(message_id, judge, request, skill.capability)
     new_source, new_contract, examples, evidence, output = smith(
         message_id, provider, model, skill.capability, summary, inputs, input_types, existing=source,
         verifier=verifier, feedback=f"The current version failed: {failure}", judge=judge, files=files)
