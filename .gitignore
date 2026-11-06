@@ -27,3 +27,4 @@ outputs/*.mp4
 # Playwright
 test-results/
 playwright-report/
+.vercel
