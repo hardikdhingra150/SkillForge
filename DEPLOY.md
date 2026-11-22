@@ -14,14 +14,14 @@ Visitors never sign in: each browser automatically gets a private workspace, and
 
 ## What "free" means in practice
 
-- **The backend sleeps after 15 minutes without visitors.** The next visit wakes it, which takes about a minute and a half. Meanwhile the page says the server is starting and checks again by itself.
+- **Render's free backend sleeps after 15 minutes without visitors**, and Supabase pauses a free project after a week with no activity. A scheduled GitHub job ([`keep-alive.yml`](.github/workflows/keep-alive.yml)) checks the backend's health every 14 minutes, which keeps both awake. If that check fails, the job fails and GitHub emails you. One always-on free service uses about 744 of Render's 750 free hours a month.
 - **The free backend has a tenth of a CPU, so it's slow.**
   - Spreadsheet tasks take 30 seconds to a minute.
   - The first repair of a skill can take two minutes.
   - Chat replies take as long as the visitor's own Claude or Codex takes, because the thinking happens on their computer.
 - **Chat is capped** at 50 replies per visitor and 500 for everyone together each day.
 - **Skills run in the process sandbox, not containers.** Render doesn't let an app start Docker containers. SkillForge checks each skill's code before running it; blocks network, file and process access; gives it no environment variables (so no secrets); and limits its CPU time and memory. That's good protection, but weaker than a container. For container isolation, use your own server (see [Option B](#option-b-your-own-server)).
-- **Supabase pauses a free project after a week with no activity**, and has a 500 MB limit. If it pauses, press **Restore** in the Supabase dashboard.
+- **If Supabase does pause the project** (for example, while GitHub has paused scheduled jobs on an inactive repository), press **Restore** in the Supabase dashboard. The backend keeps running meanwhile, says the database is unavailable, and reconnects by itself. Supabase's free plan has a 500 MB limit.
 
 ## 1. Database: Supabase (done)
 

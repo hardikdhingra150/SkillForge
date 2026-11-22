@@ -1,0 +1,30 @@
+# Keeps the live site awake, free:
+# - Render's free backend sleeps after 15 minutes without visitors (waking takes ~1.5 minutes).
+# - Supabase pauses a free project after a week without activity, and then the backend can't start at all.
+# The health check wakes the backend and runs a database query, so both stay up. If it fails, this workflow fails
+# and GitHub emails you: an alarm that the backend or the database is down.
+name: Keep the site awake
+
+on:
+  schedule:
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Ping the backend's health check
+        env:
+          HEALTH_URL: https://skillforge-api-0n0y.onrender.com/api/v1/health/ready
+        run: |
+          for attempt in 1 2 3; do
+            if curl -fsS -m 150 "$HEALTH_URL"; then echo; exit 0; fi
+            echo "Attempt $attempt failed; the backend may be waking up."
+            sleep 30
+          done
+          echo "::error::The SkillForge backend or its database is not answering ($HEALTH_URL)."
+          exit 1
